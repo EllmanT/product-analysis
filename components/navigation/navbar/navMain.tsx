@@ -34,8 +34,8 @@ items?:Items[]
                   className={cn(
                     "duration-200 ease-linear",
                     isActive
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/90"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary text-primary-foreground hover:bg-primary hover:text-white active:bg-primary/90 "
+                      : "text-muted-foreground hover:text-foreground cursor-pointer"
                   )}
                 >
                   {Icon && <Icon />}

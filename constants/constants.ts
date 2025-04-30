@@ -77,15 +77,15 @@ import {
       icon: IconSettings,
     },
     {
-      title: "Get Help",
-      url: "/help",
+      title: "Account",
+      // url: "/account",
       icon: IconUser,
     },
   ]
   
   export const user = {
-    name: "shadcn",
-    email: "m@example.com",
+    name: "Tapiwa Muranda",
+    email: "Manager",
     avatar: "/avatars/shadcn.jpg",
   }
   

@@ -1,5 +1,5 @@
 import { AppSidebar } from '@/components/navigation/LeftSidebar';
-import { SiteHeader } from '@/components/site-header';
+import { SiteHeader } from '@/components/navigation/Header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import React, { ReactNode } from 'react'
 

@@ -8,3 +8,11 @@ type NavLink = {
       url: string
       icon?: Icon
     }
+    type StatisticsCard= {
+      label: string
+       value: string
+      trend?: string
+      description?:string
+      icon?:React.ElementType
+      period?:string
+    }

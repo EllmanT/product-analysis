@@ -1,4 +1,4 @@
-interface FetchOptions extends RequestInit {
+interface FetchOptions extends RequestInit { 
     timeOut?: number;
   }
   
@@ -12,12 +12,13 @@ interface FetchOptions extends RequestInit {
   
   export async function fetchHandler<T>(
     url: string,
-    options: FetchOptions = {}
+    options: FetchOptions = {} //An additional ts interface
   ): Promise<ActionResponse<T>> {
+    // T is generic type parameter
     const {
       timeOut = 5000,
       headers: customHeaders = {},
-      ...restOptions
+      ...restOfOptions
     } = options;
   
     const controller = new AbortController();
@@ -31,9 +32,9 @@ interface FetchOptions extends RequestInit {
     const headers: HeadersInit = { ...defaultHeaders, ...customHeaders };
   
     const config: RequestInit = {
-      ...restOptions,
+      ...restOfOptions,
       headers,
-      signal: controller.signal,
+      signal: controller.signal, 
     };
   
     try {

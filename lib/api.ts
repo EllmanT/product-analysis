@@ -3,23 +3,24 @@ import { IAccount } from "@/database/account.model";
 import { IUser } from "@/database/user.model";
 import { fetchHandler } from "./handlers/fetch";
 
-
+// Scalable approach
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api";
 
 export const api = {
-  auth: {
-    oAuthSignIn: ({
-      user,
-      provider,
-      providerAccountId,
-    }: SignInWithOAuthParams) =>
-      fetchHandler(`${API_BASE_URL}/${ROUTES.SIGN_IN_WITH_OAUTH}`, {
-        method: "POST",
-        body: JSON.stringify({ user, provider, providerAccountId }),
-      }),
-  },
+  // auth: {
+  //   oAuthSignIn: ({
+  //     user,
+  //     provider,
+  //     providerAccountId,
+  //   }: SignInWithOAuthParams) =>
+  //     fetchHandler(`${API_BASE_URL}/${ROUTES.SIGN_IN_WITH_OAUTH}`, {
+  //       method: "POST",
+  //       body: JSON.stringify({ user, provider, providerAccountId }),
+  //     }),
+  // },
 
+  // function that calls our api
   users: {
     getAll: () => fetchHandler(`${API_BASE_URL}/users`),
     getById: (id: string) => fetchHandler(`${API_BASE_URL}/users/${id}`),
@@ -38,6 +39,9 @@ export const api = {
         method: "PUT",
         body: JSON.stringify(userData),
       }),
+      // accept id.
+      // points to the url
+      // calls the method DELETE
     delete: (id: string) =>
       fetchHandler(`${API_BASE_URL}/users/${id}`, {
         method: "DELETE",

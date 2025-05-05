@@ -20,12 +20,17 @@ export default function Page() {
               <ChartAreaInteractive />
             </div>
             <div className="lg:col-span-5">
-            <DataTableTopHeader isVisible={false} label="Reorder Alert" color="bg-amber-600"/>
-            <DataTable data={reOrderItems} columns={reorderColumns} isVisible={true}/>
-            </div>
+  <div className="flex justify-center mb-2">
+    <DataTableTopHeader isVisible={false} label="Reorder Alert" color="bg-amber-600" />
+  </div>
+  <DataTable data={reOrderItems} columns={reorderColumns} isVisible={true} />
+</div>
+
 
           </div>
+          <div className="flex justify-center">
           <DataTableTopHeader isVisible={false} label="Branch History"/>
+          </div>
       <DataTable data={projects} columns={columns} />
       {/* <DataTable data={projects}/> */}
           {/* <DataTable data={data} /> */}

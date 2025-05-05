@@ -16,3 +16,19 @@ type NavLink = {
       icon?:React.ElementType
       period?:string
     }
+
+    type ActionResponse<T = null> = {
+      success: boolean;
+      data?: T;
+      error?: {
+        message: string;
+        details?: Record<string, string[]>;
+      };
+      status?: number;
+    };
+
+type ErrorResponse = ActionResponse<undefined> & { success: false };
+type SuccessResponse<T = null> = ActionResponse<T> & {sucess:true};
+
+type APIErrorResponse = NextResponse<ErrorResponse>;
+type APIResponse<T = null> = NextResponse<SuccessResponse<T> | ErrorResponse>;

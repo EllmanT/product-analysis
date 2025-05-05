@@ -55,7 +55,10 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="flex flex-col pb-3">
-      <TableTabs />
+      {/* {isVisible && 
+            // <TableTabs />
+
+      } */}
       <div className="rounded-md border relative">
         <Table>
           <TableHeader table={table} />

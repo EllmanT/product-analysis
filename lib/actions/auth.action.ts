@@ -85,8 +85,7 @@ export async function signInWithCredentials(
 
   try {
     const existingUser = await User.findOne({ email });
-
-    if (existingUser) throw new NotFoundError("User");
+    if (!existingUser) throw new NotFoundError("User");
 
     const existingAccount = await Account.findOne({
       provider: "credentials",

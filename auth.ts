@@ -16,7 +16,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Credentials({
       async authorize(credentials) {
         const validatedFields = SignInSchema.safeParse(credentials);
-
         if (validatedFields.success) {
           const { email, password } = validatedFields.data!;
 
@@ -76,14 +75,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (!account || !user) return false;
 
       const userInfo = {
+        // indeed the name will be here
         name: user.name!,
         email: user.email!,
         image: user.image!,
-        username:
+        surname:
           account.provider === "github"
             ? (profile?.login as string)
             : (user.name?.toLowerCase() as string),
       };
+      console.log("here now ")
 
       const { success } = (await api.auth.oAuthSignIn({
         user: userInfo,

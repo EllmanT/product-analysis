@@ -6,9 +6,7 @@ import {
     IconPackages,
     IconBuildingStore,
     IconFileUpload,
-    IconFileExport,
     IconTrendingUp,
-    IconTrendingDown,
     IconAlertTriangle
   } from "@tabler/icons-react"
   
@@ -18,55 +16,76 @@ import {
       url: "/dashboard",
       icon: IconDashboard,
     },
+      {
+        title: "Uploads",
+        url:""
+      },
+
+    {
+      title: "View All",
+      url: "/uploads",
+      icon: IconPackages,
+    },
+    
+    {
+      title: "Upload",
+      url: "/uploads/upload",
+      icon: IconFileUpload,
+    },
+   
     {
         title: "Insights",
         url:""
       },
     {
-      title: "Inventory Analytics",
-      url: "/insights",
+      title: "Branch Analytics",
+      url: "/branch-analytics",
       icon: IconChartBar,
     },
     {
-      title: "Re-order Needed",
-      url: "/reorder-needed",
+      title: "Product Movement",
+      url: "/product-movement",
       icon: IconAlertTriangle,
     },
     {
-      title: "Fast Moving",
-      url: "/fast-moving",
+      title: "Branch Upload Reports",
+      url: "/branch-up-reports",
       icon: IconTrendingUp,
     },
-    {
-      title: "Slow Moving",
-      url: "/slow-moving",
-      icon: IconTrendingDown,
-    },
-    {
-        title: "Inventory Management",
+   
+      {
+        title: "Downloads",
         url:""
       },
 
     {
-      title: "Products",
-      url: "/products",
+      title: "Download Centre",
+      url: "/download-centre",
       icon: IconPackages,
     },
     {
-        title: "Stores",
-        url: "/stores",
+        title: "Archived Reports",
+        url: "/archived-reports",
         icon: IconBuildingStore,
       },
+  
     {
-      title: "Uploads",
-      url: "/uploads",
-      icon: IconFileUpload,
+        title: "Management",
+        url:""
+      },
+
+    {
+      title: "Users",
+      url: "/users",
+      icon: IconPackages,
     },
     {
-      title: "Exports",
-      url: "/exports",
-      icon: IconFileExport,
-    },
+        title: "Branches",
+        url: "/branches",
+        icon: IconBuildingStore,
+      },
+   
+    
     
   ]
   

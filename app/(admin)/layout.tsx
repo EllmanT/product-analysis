@@ -2,8 +2,14 @@ import { AppSidebar } from '@/components/navigation/LeftSidebar';
 import { SiteHeader } from '@/components/navigation/Header';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import React, { ReactNode } from 'react'
+import { auth } from '@/auth';
+import { redirect } from 'next/navigation';
 
-const layout = ({ children }: { children: ReactNode}) => {
+const layout =async ({ children }: { children: ReactNode}) => {
+  const session = await auth();
+
+  // if (!session) return redirect("/sign-in");
+
     return (
         <>
          <SidebarProvider

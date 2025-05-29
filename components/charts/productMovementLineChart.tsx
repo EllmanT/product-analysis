@@ -137,7 +137,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-export function ChartAreaInteractive() {
+export function ProductMovementLineChart() {
   const [timeRange, setTimeRange] = React.useState("30d")
 
   const filteredData = chartData.filter((item) => {
@@ -156,55 +156,14 @@ export function ChartAreaInteractive() {
 
   return (
     <Card>
-      <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
+      <CardHeader className="flex items-center gap-2 space-y-0 border-b py-2 sm:flex-row">
         <div className="grid flex-1 gap-1 text-center sm:text-left">
-          <CardTitle>⚡️  Estimated Revenue</CardTitle>
+          <CardTitle>⚡️  Sales Trend</CardTitle>
           <CardDescription>
           
           </CardDescription>
         </div>
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger
-            className="w-[160px] rounded-lg sm:ml-auto"
-            aria-label="Select a value"
-          >
-            <SelectValue placeholder="Last 3 months" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl">
-            <SelectItem value="90d" className="rounded-lg">
-              Last 3 months
-            </SelectItem>
-            <SelectItem value="30d" className="rounded-lg">
-              Last 30 days
-            </SelectItem>
-            <SelectItem value="7d" className="rounded-lg">
-              Last 7 days
-            </SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger
-            className="w-[160px] rounded-lg sm:ml-auto"
-            aria-label="Select a value"
-          >
-            <SelectValue placeholder="All Branches" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl">
-            <SelectItem value="90d" className="rounded-lg">
-              All Stores
-            </SelectItem>
-            <SelectItem value="30d" className="rounded-lg">
-              Store A
-            </SelectItem>
-            <SelectItem value="30d" className="rounded-lg">
-              Store B
-            </SelectItem>
-            <SelectItem value="7d" className="rounded-lg">
-              Store C
-            </SelectItem>
-          </SelectContent>
-        </Select>
+       
        <Button
   className="primary-gradient h-9 px-3 py-1 text-sm !text-light-900 bg-green-900"
 >

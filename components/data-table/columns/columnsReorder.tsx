@@ -5,11 +5,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SortableHeader } from "@/components/data-table/SortableHeader";
 import { Project } from "../../../app/data";
 import ProjectName from "@/components/data-table/ProjectName";
-import ProjectManager from "@/components/data-table/ProjectManager";
 import ProjectStatus from "@/components/data-table/ProjectStatus";
-import ProjectLastUpdate from "@/components/data-table/ProjectLastUpdate";
 import ProjectResources from "@/components/data-table/ProjectResources";
-import ProjectTimeLine from "@/components/data-table/ProjectTimeLine";
 import { ProjectActions } from "@/components/data-table/ProjectActions";
 
 // function formatCurrency(amount: number) {

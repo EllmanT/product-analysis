@@ -78,8 +78,6 @@ export default function Page() {
               </div>
             </div>
        
-      {/* <DataTable data={projects}/> */}
-          {/* <DataTable data={data} /> */}
         </div>
       </div>
     </div>

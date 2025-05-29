@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import TableTabs from "./Tabs";
 import TableHeader from "./TableHeader";
 import { TableFooter } from "./Footer";
+import DataTableTopHeader from "./Header";
 
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -54,11 +55,14 @@ export function DataTable<TData, TValue>({
   console.log("sorting", table.getState().sorting);
 
   return (
-    <div className="flex flex-col pb-3">
+    <div className="flex flex-col">
       {/* {isVisible && 
             // <TableTabs />
 
       } */}
+       <div className="flex justify-center mb-2">
+          <DataTableTopHeader isVisible={false} label="Branch Summaries"/>
+          </div>
       <div className="rounded-md border relative">
         <Table>
           <TableHeader table={table} />

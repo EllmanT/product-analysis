@@ -19,9 +19,10 @@ const layout =async ({ children }: { children: ReactNode}) => {
           "--header-height": "calc(var(--spacing) * 12)",
         } as React.CSSProperties
       }
+      className='bg-gray-50'
     >
-      <AppSidebar variant="inset" />
-      <SidebarInset>
+      <AppSidebar variant="floating" />
+      <SidebarInset className='bg-gray-50' >
         <SiteHeader />
         {children}
       </SidebarInset>

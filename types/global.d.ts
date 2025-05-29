@@ -15,6 +15,7 @@ type NavLink = {
       description?:string
       icon?:React.ElementType
       period?:string
+      bgColor?:string
     }
 
     type ActionResponse<T = null> = {

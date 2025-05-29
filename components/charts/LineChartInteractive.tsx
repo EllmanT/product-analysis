@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-const chartData = [
+export const chartData = [
   { date: "2024-04-01", desktop: 222, mobile: 150 },
   { date: "2024-04-02", desktop: 97, mobile: 180 },
   { date: "2024-04-03", desktop: 167, mobile: 120 },
@@ -122,6 +122,7 @@ const chartData = [
 const chartConfig = {
   visitors: {
     label: "Visitors",
+    
   },
   desktop: {
     label: "Desktop",
@@ -134,7 +135,7 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function ChartAreaInteractive() {
-  const [timeRange, setTimeRange] = React.useState("90d")
+  const [timeRange, setTimeRange] = React.useState("30d")
 
   const filteredData = chartData.filter((item) => {
     const date = new Date(item.date)
@@ -154,9 +155,9 @@ export function ChartAreaInteractive() {
     <Card>
       <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
         <div className="grid flex-1 gap-1 text-center sm:text-left">
-          <CardTitle>Top 10 Products</CardTitle>
+          <CardTitle>⚡️  Estimated Revenue</CardTitle>
           <CardDescription>
-          ⚡️ Fastest Moving Items
+          
           </CardDescription>
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>
@@ -266,15 +267,16 @@ export function ChartAreaInteractive() {
             <Area
               dataKey="mobile"
               type="natural"
-              fill="url(#fillMobile)"
-              stroke="var(--color-mobile)"
+              fill="url(#1e90ff)"
+              stroke="#1e90ff"
               stackId="a"
+              
             />
             <Area
               dataKey="desktop"
               type="natural"
-              fill="url(#fillDesktop)"
-              stroke="var(--color-desktop)"
+              fill="url(#ff6347)"//leave this so that it does not default 
+             stroke="#ff6347" 
               stackId="a"
             />
             <ChartLegend content={<ChartLegendContent />} />

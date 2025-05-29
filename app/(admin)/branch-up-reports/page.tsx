@@ -12,10 +12,20 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FilterIcon } from "lucide-react";
 import { columnsBranchesUp } from "@/components/data-table/columns/columnsBranchesUp";
+import { Separator } from "@/components/ui/separator";
 
 export default function Page() {
   return (
     <div className="flex flex-1 flex-col">
+      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6 justify-between">
+  <div className="flex items-center gap-2 mt-2">
+    <Separator
+      orientation="vertical"
+      className="mx-2 data-[orientation=vertical]:h-4"
+    />
+    <h1 className="text-base font-medium">Branch Upload Reports</h1>
+  </div>
+  </div>
               <section className="ml-6 mr-6 mt-5 flex justify-between gap-2 max-sm:flex-col sm:items-center bg-white items-center rounded-md p-2">
        {/* <GlobalFilter
          label="Product Name"

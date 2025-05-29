@@ -16,6 +16,7 @@ type Props<T extends string> = {
   onSearchValueChange: (value: string) => void;
   items: { value: T; label: string }[];
   isLoading?: boolean;
+      isLabelVisible?:boolean;
   emptyMessage?: string;
   placeholder?: string;
 };
@@ -27,6 +28,7 @@ export function AutoComplete<T extends string>({
   onSearchValueChange,
   items,
   isLoading,
+      isLabelVisible=true,
   emptyMessage = "No items.",
   placeholder = "Search product...",
 }: Props<T>) {
@@ -67,7 +69,11 @@ export function AutoComplete<T extends string>({
 
   return (
     <div className="flex flex-col items-center">
+      {isLabelVisible
+      &&
        <Label className="justify-center m-1">Product</Label>
+
+      }
       <Popover open={open} onOpenChange={setOpen}>
         <Command shouldFilter={false}>
           <PopoverAnchor asChild>

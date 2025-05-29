@@ -60,10 +60,15 @@ export function DataTable<TData, TValue>({
             // <TableTabs />
 
       } */}
-       <div className="flex justify-center mb-2">
-          <DataTableTopHeader isVisible={false} label="Branch Summaries"/>
+      {
+        isVisible &&
+ <div className="flex justify-center mb-2">
+          <DataTableTopHeader isVisible={true} label="Branch Summaries"/>
           </div>
-      <div className="rounded-md border relative">
+
+      }
+      
+      <div className="rounded-t-md border relative bg-white">
         <Table>
           <TableHeader table={table} />
           <TableBody>

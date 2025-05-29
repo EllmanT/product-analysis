@@ -11,6 +11,7 @@ import { HomePageBranchesFilters,  HomePageMonth, HomePageWeek, HomePageYear } f
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FilterIcon } from "lucide-react";
+import { columnsBranchesUp } from "@/components/data-table/columns/columnsBranchesUp";
 
 export default function Page() {
   return (
@@ -72,7 +73,7 @@ export default function Page() {
          
            <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-12">
-      <DataTable data={projects} columns={columns} />
+      <DataTable data={projects} columns={columnsBranchesUp} isVisible={false} />
 
               </div>
             </div>

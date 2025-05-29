@@ -10,7 +10,7 @@ import {
 
 export function TableFooter<TData>({ table }: { table: Table<TData> }) {
   return (
-    <div className="flex items-center justify-between p-5 py-2">
+    <div className="flex items-center justify-between p-5 py-2 border rounded-b-md bg-white">
       <div className="flex-1 text-sm text-muted-foreground">
         {table.getFilteredSelectedRowModel().rows.length} of{" "}
         {table.getFilteredRowModel().rows.length} row(s) selected.

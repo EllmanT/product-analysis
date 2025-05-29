@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Arrow } from "@radix-ui/react-tooltip";
 
-const ProjectLastUpdate = ({ date }: { date: string }) => {
+const ProjectLastUpdate = ({ date }: { date?: string }) => {
   return (
     <div className="flex items-center gap-2">
       <TooltipProvider>

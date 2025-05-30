@@ -3,15 +3,19 @@ import mongoose, { Mongoose } from "mongoose";
 import logger from "./logger";
 import "@/database";
 
-const MONGODB_URI = process.env.MONGODB_URI as string;
-
+let MONGODB_URI = process.env.MONGODB_URI as string;
+const OFFLINE_MONGODB_URI = process.env.OFFLINE_MONGODB_URI as string;
+const NODE_ENV = process.env.NODE_ENV as string;
 
 if (!MONGODB_URI) {
   throw new Error("Mongo URI is not defined");
-}else{
-  console.log("Uri found")
-  console.log(MONGODB_URI)
+}
 
+console.log(OFFLINE_MONGODB_URI);
+if (NODE_ENV !== "production") {
+  MONGODB_URI = OFFLINE_MONGODB_URI;
+  console.log(OFFLINE_MONGODB_URI);
+  console.log(MONGODB_URI);
 }
 
 interface MongooseCache {

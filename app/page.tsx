@@ -1,17 +1,15 @@
+import { auth } from "@/auth";
 import Image from "next/image";
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth()
+
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
+  <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
+  <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
+    <span className="text-blue-900">Stock</span> <span className="text-gray-500">~</span> <span className="text-gray-600">Flow</span>
+  </h1>
         <ol className="list-inside  text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
           <li className="mb-2 ">
            Inventory Analysis Made Easy{" "}
@@ -41,7 +39,11 @@ export default function Home() {
             href="/sign-in"
             rel="noopener noreferrer"
           >
-            Sign In
+            {session ?
+            "Dashboard"
+            :"Sign In"
+          }
+            
           </a>
         </div>
       </main>

@@ -63,11 +63,11 @@ import {
       url: "/download-centre",
       icon: IconPackages,
     },
-    {
-        title: "Archived Reports",
-        url: "/archived-reports",
-        icon: IconBuildingStore,
-      },
+    // {
+    //     title: "Archived Reports",
+    //     url: "/archived-reports",
+    //     icon: IconBuildingStore,
+    //   },
   
     {
         title: "Management",

@@ -35,3 +35,8 @@ export const HomePageYear = [
   { name: "2025", value: "2025" },
   { name: "2024", value: "2024" },
 ];
+
+export const Role = [
+  { name: "Admin", value: "admin" },
+  { name: "Clerk", value: "clerk" },
+];

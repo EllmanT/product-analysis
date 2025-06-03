@@ -16,13 +16,40 @@ import { FilterIcon, StoreIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AutoComplete } from "@/components/Autocomplete";
-import { useState } from "react";
+import { startTransition, useState } from "react";
 import DownloadCenterCard from "@/components/cards/DownloadCenterCard";
+import { api } from "@/lib/api";
+import { downloadExport } from "@/app/api/products/downloadexcel";
 
 export default function Page() {
     const queryClient = new QueryClient()
     const [searchValue, setSearchValue] = useState<string>("");
   const [selectedValue, setSelectedValue] = useState<string>("");
+
+const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
+   e.preventDefault()
+  const params = new URLSearchParams(window.location.search);
+  const month = params.get("month");
+  const week = params.get("week") || "1";
+  const year = params.get("year") || "2025";
+
+  if (!month || !week || !year) {
+    console.warn("❗ Missing filter values (month/week/year)");
+    return;
+  }
+
+  startTransition(async () => {
+  try {
+    await downloadExport(month, year, week);
+    console.log("✅ Export triggered successfully");
+    // Optional: show toast or notification
+  } catch (err) {
+    console.error("❌ Export failed:", err);
+    // Optional: show error toast
+  }
+  });
+};
+
 
   return (
     <div className="flex flex-1 flex-col">
@@ -63,6 +90,7 @@ export default function Page() {
           filters={HomePageBranchesFilters}
           // otherClasses="min-h-[56px] sm:min-w-[170px]"
           containerClasses="  max-md:flex"
+          queryKey="branch"
         />
           <GlobalFilter
                    label="Week"
@@ -70,24 +98,28 @@ export default function Page() {
           filters={HomePageWeek}
           // otherClasses="min-h-[56px] sm:min-w-[170px]"
           containerClasses="  max-md:flex"
+          queryKey="week"
         />
           <GlobalFilter
                    label="Month"
           filters={HomePageMonth}
           // otherClasses="min-h-[56px] sm:min-w-[170px]"
           containerClasses="  max-md:flex"
+          queryKey="month"
         />
          <GlobalFilter
          label="Year"
           filters={HomePageYear}
           // otherClasses="min-h-[56px] sm:min-w-[170px]"
           containerClasses="  max-md:flex"
+          queryKey="year"
         />
          
                   
  <Button
           className="mt-5 primary-gradient h-9 px-4 py-1 !text-light-900 bg-blue-500"
           // asChild
+          onClick={handleApplyFilter}
         >
           <FilterIcon/>
           <Link href="/">Apply filter</Link>

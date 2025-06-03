@@ -179,7 +179,7 @@ for (const line of sortedLines) {
     { session }
   );
 
-  totalProducts += 1*qty;
+  totalProducts += qty;
   estimatedValue += qty * price;
 
   // === Weekly Summary Logic ===
@@ -200,6 +200,7 @@ for (const line of sortedLines) {
         code: code,
         week: week,
         year: year,
+        price:price,
         startQuantity: qty,
         endQuantity: null,
         estimatedSales: mongoose.Types.Decimal128.fromString("0.00"),
@@ -248,6 +249,7 @@ for (const line of sortedLines) {
           code: code,
           week:week,
           year:year,
+          price:price,
           startQuantity: qty,
           endQuantity: null,
           estimatedSales: mongoose.Types.Decimal128.fromString("0.00"),

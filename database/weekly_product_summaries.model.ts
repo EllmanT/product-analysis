@@ -10,6 +10,7 @@ export interface IWeeklyProductSummaries {
   year:number;
   startQuantity:number;
   endQuantity:number;
+  price:Decimal128;
   estimatedSales:Decimal128;
   restocked:boolean;
   restockAmount:number;
@@ -27,6 +28,7 @@ const WeeklyProductSummariesSchema = new Schema<IWeeklyProductSummaries>(
     year: { type: Number, required: true },
     startQuantity: { type: Number, required: true },
     endQuantity: { type: Number, required: false , default:null},
+        price: { type: Schema.Types.Decimal128, required: true },
     estimatedSales: { type: Schema.Types.Decimal128, required: false, default: Types.Decimal128.fromString("0.00") },
     restocked: { type: Boolean, required: true },
     restockAmount: { type: Number, required: true },

@@ -11,10 +11,10 @@ export const HomePageBranchesFilters = [
   { name: "Mabereign", value: "mb" },
 ];
 export const HomePageWeek = [
-  { name: "Week 1", value: "week1" },
-  { name: "Week 2", value: "week2" },
-  { name: "Week 3", value: "week3" },
-  { name: "Week 4", value: "week4" },
+  { name: "Week 1", value: "1" },
+  { name: "Week 2", value: "2" },
+  { name: "Week 3", value: "3" },
+  { name: "Week 4", value: "4" },
 ];
 export const HomePageMonth = [
   { name: "January", value: "january" },

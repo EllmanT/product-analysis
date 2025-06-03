@@ -26,6 +26,7 @@ interface Props {
   filters: Filter[];
   otherClasses?: string;
   containerClasses?: string;
+  queryKey:string
 }
 
 const GlobalFilter = ({
@@ -33,17 +34,19 @@ const GlobalFilter = ({
   filters,
   otherClasses = "",
   containerClasses = "",
+  queryKey,
 }: Props) => {
   const router = useRouter();
 
   const searchParams = useSearchParams();
 
-  const paramsFilter = searchParams.get("filter");
+  // const paramsFilter = searchParams.get("filter");
+  const selected = searchParams.get(queryKey); // <-- Get value for that key
 
   const handleUpdateParams = (value: string) => {
     const newUrl = formUrlQuery({
       params: searchParams.toString(),
-      key: "filter",
+      key: queryKey,
       value,
     });
     router.push(newUrl, { scroll: false });
@@ -54,7 +57,7 @@ const GlobalFilter = ({
       <Label className="justify-center m-1">{label}</Label>
       <Select
         onValueChange={handleUpdateParams}
-        defaultValue={paramsFilter || undefined}
+        defaultValue={selected || undefined}
       >        <SelectTrigger
           className={cn(
             "body-regular no-focus light-border background-light800_dark300 text-dark500_light700 border px-5 py-2.5",

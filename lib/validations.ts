@@ -129,3 +129,17 @@ export const PaginatedSearchParamsSchema = z.object({
 export const GetTagQuestionsSchema = PaginatedSearchParamsSchema.extend({
   tagId: z.string().min(1, { message: "Tag ID is required" }),
 });
+
+const fileSizeLimit = 100 * 1024 * 1024; // 100MB
+// Document Schema
+export const uploadProductsSchema = z.object({
+  file:
+  z
+.instanceof(File)
+  .refine((file) => file.type === "text/plain", {
+    message: "Only .txt files are allowed",
+  })
+  .refine((file) => file.size <= fileSizeLimit, {
+    message: "File size should not exceed 100MB",
+  })
+})

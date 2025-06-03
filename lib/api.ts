@@ -47,6 +47,12 @@ export const api = {
         method: "DELETE",
       }),
   },
+  products:{
+    upload:(formData:FormData)=>fetchHandler(`${API_BASE_URL}/products/upload`,{
+      method:"POST",
+      body:formData
+    })
+  },
   accounts: {
     getAll: () => fetchHandler(`${API_BASE_URL}/accounts`),
     getById: (id: string) => fetchHandler(`${API_BASE_URL}/accounts/${id}`),

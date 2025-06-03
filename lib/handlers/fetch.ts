@@ -1,3 +1,7 @@
+import logger from "../logger";
+import handleError from "./error";
+import { RequestError } from "../http-errors";
+
 interface FetchOptions extends RequestInit {
   timeOut?: number;
 }
@@ -6,10 +10,6 @@ function isError(error: unknown): error is Error {
   return error instanceof Error;
 }
 
-import logger from "../logger";
-import handleError from "./error";
-import { RequestError } from "../http-errors";
-
 export async function fetchHandler<T>(
   url: string,
   options: FetchOptions = {}
@@ -17,28 +17,33 @@ export async function fetchHandler<T>(
   const {
     timeOut = 5000,
     headers: customHeaders = {},
+    body,
     ...restOptions
   } = options;
 
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeOut);
 
-  const defaultHeaders: HeadersInit = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  };
+  const isFormData = body instanceof FormData;
 
-  const headers: HeadersInit = { ...defaultHeaders, ...customHeaders };
+  const headers: HeadersInit = isFormData
+    ? { ...customHeaders } // 🚫 Don't override Content-Type
+    : {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...customHeaders,
+      };
 
   const config: RequestInit = {
     ...restOptions,
+    method: restOptions.method || "GET",
     headers,
+    body: isFormData ? body : body ? JSON.stringify(body) : undefined,
     signal: controller.signal,
   };
 
   try {
     const response = await fetch(url, config);
-
     clearTimeout(id);
 
     if (!response.ok) {
@@ -47,7 +52,14 @@ export async function fetchHandler<T>(
         `HTTP ERROR : ${response.status}`
       );
     }
-    return await response.json();
+
+    const contentType = response.headers.get("Content-Type") || "";
+
+    if (contentType.includes("application/json")) {
+      return await response.json();
+    }
+
+    return {} as ActionResponse<T>;
   } catch (error) {
     const err = isError(error) ? error : new Error("An unknown error occurred");
 

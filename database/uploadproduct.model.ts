@@ -9,6 +9,11 @@ export interface IUploadProduct {
   code:string;
   qty:number;
   price:Decimal128;
+    upload_date:Date;
+  week: number;
+  month:string;
+  year: number;
+
  
  
 }
@@ -24,6 +29,11 @@ const UploadProductSchema = new Schema<IUploadProduct>(
     code: { type: String, required: true },
     qty: { type: Number, required: true },
     price: { type: Schema.Types.Decimal128, required: true },
+        upload_date: { type: Date, required: true },
+    week: { type: Number, required: true },
+    month: { type: String, required: true },
+    year: { type: Number, required: true },
+
   },
   {
     timestamps: true,

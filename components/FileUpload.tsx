@@ -1,89 +1,113 @@
 "use client"
-import React, { useState } from 'react'
+import React, { startTransition, useState, useTransition } from 'react'
+import { Button } from './ui/button';
+import { z } from 'zod';
+import { uploadFileSchema, uploadProductsSchema } from '@/lib/validations';
+import { uploadProducts } from '@/lib/actions/product.action';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
+import { Input } from './ui/input';
+import { LoaderPinwheelIcon } from 'lucide-react';
+import { api } from '@/lib/api';
+import { auth } from '@/auth';
 
-const FileUpload = () => {
+
+const FileUpload = ({userId}:{userId:string}) => {
+
     const [file, setFile] = useState<File | null>(null);
-    const [extractedText, setExtractedText] = useState<string>("");
-    const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-    const [uploadingFile, setUploadingFile]= useState(false);
+        const [extractedText, setExtractedText] = useState<string>("");
+        const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+        const [uploadingFile, setUploadingFile]= useState(false);
+
+
+  const [isPending, startTransition] = useTransition();
+  const form = useForm<z.infer<typeof uploadProductsSchema>>({
+    resolver: zodResolver(uploadProductsSchema),
+    defaultValues: {
+      file:undefined
+    },
+  });
   
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-      if (event.target.files && event.target.files.length > 0) {
-        setFile(event.target.files[0]);
-      }
+
   
-      console.log(file)
-    };
-  
-    const handleFileUpload = async () => {
-      setUploadingFile(true)
-      if (!file) return alert("Please select a file first");
-  
-      const formData = new FormData();
-      formData.append("file", file);
-  
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await response.json();
-  
-      console.log("data", data)
-      console.log("data content", data.content)
-  
-      const stringData = data.content
-      if (response.ok) {
-  
-        console.log("This is the body:",response.body)
-        setExtractedText(stringData)
-        setDownloadUrl(data.downloadUrl);
-        setUploadingFile(false)
-      } else {
-        alert("Error processing the file");
-      }
-    };
+
+const handleUploadProducts = async (
+  data: z.infer<typeof uploadProductsSchema>
+) => {
+  const formData = new FormData();
+  formData.append("file", data.file);
+  // Append userId
+formData.append("userId", userId);
+
+  startTransition(async () => {
+    const { success, data: responseData, error } = await api.products.upload(formData);
+
+    if (success) {
+      console.log("Upload successful:", responseData);
+      // Maybe show toast or redirect
+    } else {
+      console.error("Upload failed:", error);
+      // Show error to user
+    }
+  });
+};
+    
   return (
-    <div className="flex  items-center justify-center min-h-screen bg-gray-100">
+     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="p-6 flex flex-col bg-white shadow-lg rounded-xl w-96 text-center">
         <h2 className="text-xl font-semibold mb-4">Upload TXT File</h2>
-        <label className="border-2 border-dashed border-gray-300 p-6 w-full rounded-lg cursor-pointer hover:bg-gray-50">
-          <input type="file" accept=".txt" className="hidden" onChange={handleFileChange} />
-          <span className="text-gray-500">Click or drag to upload txt file</span>
-        </label>
-        {file && <p className="mt-4 text-sm text-gray-600">Selected: {file.name}</p>}
 
-       
-        {extractedText && <p className="mt-4 text-sm text-gray-600">Extracted: {extractedText}</p>}
-   
-        
-      
-        <button className={`mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 ${uploadingFile ?"  cursor-pointer":""}`}
-        onClick={handleFileUpload}
-        disabled={uploadingFile}
-        >
-         {uploadingFile ?  
-         "Uploading....": "Upload Text File"}
-        </button>
-       
-        
-        {downloadUrl && (
-        <div className="mt-3">
-          <button 
-        className="bg-green-500 text-white px-4 py-2 rounded-lg mt-4"
-        >
-          <a 
-            href={downloadUrl} 
-            download 
-            className=""
-            // onClick={handleReset}
-          >
-            Download Excel File
-          </a>
-          </button>
-        </div>
-      )}
-        
-       
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleUploadProducts)} className="flex flex-col gap-6">
+            <FormField
+              control={form.control}
+              name="file"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-700">Select a .txt file</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="file"
+                      accept=".txt"
+                      onChange={(e) => field.onChange(e.target.files?.[0])}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {form.watch("file") && (
+              <p className="text-sm text-gray-600">Selected: {form.watch("file")?.name}</p>
+            )}
+
+            {extractedText && (
+              <p className="text-sm text-gray-600">Extracted: {extractedText}</p>
+            )}
+
+            <Button
+              type="submit"
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              disabled={isPending}
+            >
+              {isPending ? (
+                <>
+                  <LoaderPinwheelIcon className="mr-2 size-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                "Upload Text File"
+              )}
+            </Button>
+
+            {downloadUrl && (
+              <a href={downloadUrl} download className="mt-2 text-green-600 underline">
+                Download Excel File
+              </a>
+            )}
+          </form>
+        </Form>
       </div>
     </div>
   )

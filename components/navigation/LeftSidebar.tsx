@@ -15,10 +15,13 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { IconInnerShadowTop } from "@tabler/icons-react"
-import { mainSidebarLinks, secondarySidebarLinks, user } from "@/constants/constants"
+import { mainSidebarLinks, secondarySidebarLinks } from "@/constants/constants"
+import { auth } from "@/auth"
 
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  // const session = await auth();
+  // const user = session?.user
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -41,7 +44,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={secondarySidebarLinks} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={user} />
+        {/* <NavUser user={user||undefined} /> */}
       </SidebarFooter>
     </Sidebar>
   )

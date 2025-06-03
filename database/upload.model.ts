@@ -1,33 +1,39 @@
-import { Document, model, models, Schema, Types } from "mongoose";
-import ProductMaster, { IProductMaster } from "./productmaster.model";
+import { Decimal128, Document, model, models, Schema, Types } from "mongoose";
 
 // validation for the ide 
 // validation for the developer while we type code
 export interface IUpload {
-  uploaded_by:Types.ObjectId;
-  branchId:Types.ObjectId;
+  uploadedBy:Types.ObjectId;
   upload_date:Date;
   week: number;
   month:string;
   year: number;
-  file_name:string;
-  products: IProductMaster[]
+  fileName:string;
+  contentHash:string;
+  products: [{ type: Schema.Types.ObjectId, ref: "UploadProduct", required: true }],
+  totalProducts:number;
+  estimatedValue:Decimal128;
  
 }
+
 
 export interface IUploadDoc extends IUpload, Document {}
 // validation for the backend
 // validation for the mongoose schema
 const UploadSchema = new Schema<IUpload>(
   {
-    uploaded_by: { type: Schema.Types.ObjectId, required: true, ref: "User" },
-    branchId: { type: Schema.Types.ObjectId, required: true, ref: "Branch" },
+    uploadedBy: { type: Schema.Types.ObjectId, required: true, ref: "User" },
+    // branchId: { type: Schema.Types.ObjectId, required: true, ref: "Branch" },
     upload_date: { type: Date, required: true },
     week: { type: Number, required: true },
     month: { type: String, required: true },
     year: { type: Number, required: true },
-    file_name: { type: String, required: true },
-    products: { type: [ProductMaster], required: true },
+    fileName: { type: String, required: true },
+    contentHash: { type: String,required: true, unique: true}, // enforce one-time uploads for same content
+    products: [{ type: Schema.Types.ObjectId, ref: "UploadProduct", required: true }],
+    totalProducts:{type:Number, required:true},
+    estimatedValue:{type:Schema.Types.Decimal128, required:true}
+
   },
   {
     timestamps: true,

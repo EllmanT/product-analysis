@@ -13,4 +13,8 @@ interface AuthCredentials {
       image?: string;
     };
   }
+
+export interface UploadProductsParams {
+  file: File;
+}
   

@@ -33,3 +33,28 @@ type SuccessResponse<T = null> = ActionResponse<T> & {sucess:true};
 
 type APIErrorResponse = NextResponse<ErrorResponse>;
 type APIResponse<T = null> = NextResponse<SuccessResponse<T> | ErrorResponse>;
+
+
+interface Upload{
+  _id:string;
+  uploaded_by:Uploader;
+  upload_date:Date;
+  week:number;
+  month:string;
+  year:number;
+  file_name:string;
+  products:Product[];
+}
+
+
+interface Product{
+  _id:string;
+  name:string;
+  standardCode:string;
+  aliases?:string;
+}
+
+interface Uploader{
+  _id:string;
+  name:string;
+}

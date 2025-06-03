@@ -15,7 +15,7 @@ const ProductMasterSchema = new Schema<IProductMaster>(
   {
     name: { type: String, required: true },
     standardCode:{type:String, required:true},
-    aliases:{types:[String], default:[]}
+    aliases:{type:[String], default:[]}
   },
   {
     timestamps: true,

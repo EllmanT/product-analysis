@@ -93,7 +93,10 @@ export async function POST(req: Request) {
     console.log("user", user)
     const branch_id = formData.get("branch_id")?.toString() || "unknown_branch";
     const upload_date = new Date();
+    upload_date.setDate(upload_date.getDate() + 14);
 
+   
+    console.log("date format 2",upload_date);
     const week = getWeekNumber(upload_date);
     const year = upload_date.getFullYear();
     const month = getMonthName(upload_date);
@@ -104,7 +107,7 @@ export async function POST(req: Request) {
         {
           uploadedBy:user._id,
         //   branch_id,
-          upload_date: Date.now(),
+          upload_date: upload_date,
           month:month,
           week: week,
           year:year,
@@ -139,6 +142,7 @@ for (const line of sortedLines) {
   }
 
   let product = await ProductMaster.findOne({ standardCode: code }).session(session);
+  console.log("product", product)
 
   if (!product) {
     const created = await ProductMaster.create(
@@ -167,7 +171,7 @@ for (const line of sortedLines) {
       name,
       qty,
       price,
-      upload_date: Date.now(),
+      upload_date: upload_date,
       month,
       week,
       year,
@@ -175,14 +179,18 @@ for (const line of sortedLines) {
     { session }
   );
 
-  totalProducts += 1;
+  totalProducts += 1*qty;
   estimatedValue += qty * price;
 
   // === Weekly Summary Logic ===
   const previousUpload = await UploadProduct.findOne({
     productId: product._id,
-    createdAt: { $lt: currentUpload[0].createdAt },
+    // createdAt: { $lt: currentUpload[0].createdAt },//this would be ideal
+    upload_date: { $lt: currentUpload[0].upload_date },//this is for testing purposes
+
   }).sort({ createdAt: -1 }).session(session);
+
+  console.log("previous upload",previousUpload);
 
   if (!previousUpload) {
     // First upload for this product
@@ -202,11 +210,15 @@ for (const line of sortedLines) {
     );
   } else {
     const prevQty = previousUpload.qty;
-    const sales = prevQty - qty;
+    const sales = (prevQty - qty)*price;
     const restocked = sales < 0;
-    const summaryWeek = getISOWeek(previousUpload.createdAt);
-    const summaryYear = previousUpload.createdAt.getFullYear();
-
+    const summaryWeek = getWeekNumber(previousUpload.upload_date);
+    const summaryYear = previousUpload.upload_date.getFullYear();
+    console.log("sales", sales)
+    console.log("qty", qty)
+    console.log(summaryWeek)
+    console.log(summaryYear)
+    console.log("product id",product._id)
     await WeeklyProductSummaries.updateOne(
       { productId: product._id, week: summaryWeek, year: summaryYear },
       {
@@ -219,6 +231,8 @@ for (const line of sortedLines) {
       },
       { upsert: true, session }
     );
+    console.log("sales", sales)
+    console.log("qty", qty)
 
     // Also check if a summary already exists for current week (if not, insert it with startQuantity)
     const currentSummary = await WeeklyProductSummaries.findOne({
@@ -232,8 +246,8 @@ for (const line of sortedLines) {
         [{
           productId: product._id,
           code: code,
-          week,
-          year,
+          week:week,
+          year:year,
           startQuantity: qty,
           endQuantity: null,
           estimatedSales: mongoose.Types.Decimal128.fromString("0.00"),

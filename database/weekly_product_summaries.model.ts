@@ -21,7 +21,7 @@ export interface IWeeklyProductSummariesDoc extends IWeeklyProductSummaries, Doc
 const WeeklyProductSummariesSchema = new Schema<IWeeklyProductSummaries>(
   {
     // branchId: { type: Schema.Types.ObjectId, required: true, ref: "Branch" },
-    productId: { type: Schema.Types.ObjectId, required: true, ref: "Product" },
+    productId: { type: Schema.Types.ObjectId, required: true, ref: "ProductMaster" },
     code: { type: String, required: true },
     week: { type: Number, required: true },
     year: { type: Number, required: true },

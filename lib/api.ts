@@ -2,6 +2,7 @@ import ROUTES from "@/constants/route";
 import { IAccount } from "@/database/account.model";
 import { IUser } from "@/database/user.model";
 import { fetchHandler } from "./handlers/fetch";
+import { SignInWithOAuthParams } from "@/types/action";
 
 // Scalable approach
 const API_BASE_URL =
@@ -60,10 +61,10 @@ export: (month: string, year: string, week: string) =>
   accounts: {
     getAll: () => fetchHandler(`${API_BASE_URL}/accounts`),
     getById: (id: string) => fetchHandler(`${API_BASE_URL}/accounts/${id}`),
-    getByProvider: (providerAccountId: string) =>
+    getByProvider: (providerId: string) =>
       fetchHandler(`${API_BASE_URL}/accounts/provider`, {
         method: "POST",
-        body: JSON.stringify({ providerAccountId }),
+        body: JSON.stringify({ providerId }),
       }),
     create: (accountData: Partial<IAccount>) =>
       fetchHandler(`${API_BASE_URL}/accounts`, {

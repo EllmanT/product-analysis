@@ -15,6 +15,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Google,
     Credentials({
       async authorize(credentials) {
+
         const validatedFields = SignInSchema.safeParse(credentials);
 
         if (validatedFields.success) {
@@ -23,10 +24,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const { data: existingAccount } = (await api.accounts.getByProvider(
             email
           )) as ActionResponse<IAccountDoc>;
+                console.log("in the sign in 03")
+
           if (!existingAccount) return null;
           const { data: existingUser } = (await api.users.getById(
             existingAccount.userId.toString()
           )) as ActionResponse<IUserDoc>;
+      console.log("in the sign in 04")
 
           if (!existingUser) return null;
 
@@ -34,6 +38,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             password,
             existingAccount.password!
           );
+                console.log("in the sign in 05")
+
 
           if (isValidPassword) {
             return {
@@ -72,8 +78,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async signIn({ user, profile, account }) {
+      console.log("in the sign in 1")
       if (account?.type === "credentials") return true;
+            console.log("in the sign in 2")
+
       if (!account || !user) return false;
+      console.log("in the sign in 3")
 
       const userInfo = {
         name: user.name!,
@@ -84,6 +94,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             ? (profile?.login as string)
             : (user.name?.toLowerCase() as string),
       };
+            console.log("in the sign in 4")
+
 
       const { success } = (await api.auth.oAuthSignIn({
         user: userInfo,

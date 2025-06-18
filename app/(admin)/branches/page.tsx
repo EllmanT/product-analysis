@@ -19,12 +19,19 @@ import { columnAllUsers } from "@/components/data-table/columns/columnAllUsers";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { AutoComplete } from "@/components/Autocomplete";
+import GenericForm, { AddGenericPopup } from "@/components/popup/AddGenericPopup";
+import { AddBranchSchema } from "@/lib/validations";
+import { addBranch } from "@/lib/actions/branch.action";
 
 export default function Page() {
       const queryClient = new QueryClient()
     const [searchValue, setSearchValue] = useState<string>("");
   const [selectedValue, setSelectedValue] = useState<string>("");
+  const [isOpen, setIsOpen]=useState(false)
 
+  const handleOpenPopup = ()=>{
+
+  }
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6 justify-between">
@@ -52,10 +59,15 @@ export default function Page() {
     </QueryClientProvider>
   </div>
 
-
+  <GenericForm
+      title="Add New Branch"
+      schema={AddBranchSchema}
+      defaultValues={{ branch_name: "", location: ""}}
+      onSubmit={addBranch}
+      submitText="Create Branch"
+    />
 </section>
-
-       
+    
    
           
       <div className="@container/main flex flex-1 flex-col gap-2">

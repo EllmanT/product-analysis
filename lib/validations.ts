@@ -28,6 +28,13 @@ export const SignUpSchema = z.object({
     .regex(/^[a-zA-Z\s]+$/, {
       message: "Name can only contain letters and spaces.",
     }),
+  store: z
+    .string()
+    .min(1, { message: "Store Name is required." })
+    .max(50, { message: "Store Name cannot exceed 50 characters." })
+    .regex(/^[a-zA-Z\s]+$/, {
+      message: "Name can only contain letters and spaces.",
+    }),
 
   email: z
     .string()
@@ -143,3 +150,26 @@ export const uploadProductsSchema = z.object({
     message: "File size should not exceed 100MB",
   })
 })
+
+
+export const AddBranchSchema = z.object({
+  branch_name: z
+    .string()
+    .min(3, { message: "Branch name must be at least 3 characters long." })
+    .max(30, { message: "Branch name cannot exceed 30 characters." })
+    .regex(/^[a-zA-Z\s]+$/, {
+      message: "Branch name can only contain letters and spaces.",
+    }),
+
+  location: z
+    .string()
+    .min(1, { message: "Location is required." })
+    .max(50, { message: "Location cannot exceed 50 characters." })
+    .regex(/^[a-zA-Z\s]+$/, {
+      message: "Location can only contain letters and spaces.",
+    }),
+
+
+
+
+});

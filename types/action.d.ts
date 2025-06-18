@@ -1,9 +1,10 @@
 interface AuthCredentials {
-    name: string;
-    surname: string;
-    email: string;
-    password: string;
-  }
+  name: string;
+  surname: string;
+  store:string;
+  email: string;
+  password: string;
+}
   interface SignInWithOAuthParams {
     provider: "github" | "google";
     providerAccountId: string;
@@ -16,5 +17,10 @@ interface AuthCredentials {
 
 export interface UploadProductsParams {
   file: File;
+}
+
+interface CreateBranchParams{
+  branch_name:string;
+  location:string
 }
   

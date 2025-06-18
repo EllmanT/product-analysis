@@ -8,18 +8,19 @@ import { AccountSchema } from "@/lib/validations";
 
 //POST api/users/email
 export async function POST(request: Request) {
-  const { providerAccountId } = await request.json();
+  const{providerId} = await request.json()
 
   try {
     await dbConnect();
     const validatedData = AccountSchema.partial().safeParse({
-      providerAccountId,
+      providerId,
     });
 
     if (!validatedData.success) {
       throw new ValidationError(validatedData.error.flatten().fieldErrors);
     }
-    const account = await Account.findOne({ providerAccountId });
+
+    const account = await Account.findOne({ providerId });
     if (!account) throw new NotFoundError("User not found");
 
     return NextResponse.json({ success: true, data: account }, { status: 200 });

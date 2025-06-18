@@ -49,21 +49,23 @@ const AuthForm = <T extends FieldValues>({
     const result = (await onSubmit(data)) as ActionResponse;
 
     if (result?.success) {
-    //   toast({
-    //     title: "Success",
-    //     description:
-    //       formType === "SIGN_IN"
-    //         ? "You have successfully signed in"
-    //         : "You have successfully signed up",
-    //   });
+      // toast({
+      //   title: "Success",
+      //   description:
+      //     formType === "SIGN_IN"
+      //       ? "You have successfully signed in"
+      //       : "You have successfully signed up",
+      // });
+      console.log(result?.status)
 
       router.push(ROUTES.HOME);
     } else {
-    //   toast({
-    //     title: `Error ${result?.status}`,
-    //     description: result?.error?.message,
-    //     variant: "destructive",
-    //   });
+      // toast({
+      //   title: `Error ${result?.status}`,
+      //   description: result?.error?.message,
+      //   variant: "destructive",
+      // });
+      console.log(result?.status)
     }
   };
 

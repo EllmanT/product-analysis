@@ -11,6 +11,8 @@ import action from "../handlers/action";
 import handleError from "../handlers/error";
 import { NotFoundError } from "../http-errors";
 import { SignInSchema, SignUpSchema } from "../validations";
+import { Store } from "@/database";
+import { AuthCredentials } from "@/types/action";
 
 export async function signUpWithCredentials(
   params: AuthCredentials
@@ -21,7 +23,7 @@ export async function signUpWithCredentials(
     return handleError(validationResult) as ErrorResponse;
   }
 
-  const { name, surname, email, password } = validationResult.params!;
+  const { name, surname, store, email, password } = validationResult.params!;
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -53,14 +55,19 @@ export async function signUpWithCredentials(
       ],
       { session }
     );
-    console.log("here")
+
+    await Store.create([{
+      name:store,
+      userId:newUser._id,
+
+    }],{
+        session
+      })
+   
 
     await session.commitTransaction();
-
     console.log("Here 2")
     await signIn("credentials", { email, password, redirect: false });
-    console.log("Here 3")
-
     return { success: true };
   } catch (error) {
     await session.abortTransaction();

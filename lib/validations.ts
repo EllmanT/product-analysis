@@ -153,7 +153,7 @@ export const uploadProductsSchema = z.object({
 
 
 export const AddBranchSchema = z.object({
-  branch_name: z
+  name: z
     .string()
     .min(3, { message: "Branch name must be at least 3 characters long." })
     .max(30, { message: "Branch name cannot exceed 30 characters." })

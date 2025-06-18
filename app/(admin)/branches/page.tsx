@@ -1,37 +1,25 @@
 "use client"
-import { ChartAreaInteractive } from "@/components/charts/LineChartInteractive";
-import { SectionCards } from "@/components/statistics/StatisticsSection";
 
 // import data from "./data.json";
 import { projects} from "@/app/data";
-import { columns } from "@/components/data-table/columns/columns";
 import { DataTable } from "@/components/data-table/index";
-import DataTableTopHeader from "@/components/data-table/Header";
-import GlobalFilter from "@/components/filter/GlobalFilter";
-import { HomePageBranchesFilters,  HomePageMonth, HomePageWeek, HomePageYear, Role } from "@/constants/filter";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { FilterIcon } from "lucide-react";
-import { columnsBranchesUp } from "@/components/data-table/columns/columnsBranchesUp";
 import { Separator } from "@/components/ui/separator";
-import { columnsAllUploads } from "@/components/data-table/columns/columnAllUploads";
 import { columnAllUsers } from "@/components/data-table/columns/columnAllUsers";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { AutoComplete } from "@/components/Autocomplete";
-import GenericForm, { AddGenericPopup } from "@/components/popup/AddGenericPopup";
+import GenericForm from "@/components/forms/GenericForm";
 import { AddBranchSchema } from "@/lib/validations";
 import { addBranch } from "@/lib/actions/branch.action";
+import { Dialog, DialogClose, DialogContent, DialogFooter,DialogTrigger } from "@/components/ui/dialog";
 
 export default function Page() {
       const queryClient = new QueryClient()
     const [searchValue, setSearchValue] = useState<string>("");
   const [selectedValue, setSelectedValue] = useState<string>("");
-  const [isOpen, setIsOpen]=useState(false)
 
-  const handleOpenPopup = ()=>{
 
-  }
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6 justify-between">
@@ -57,15 +45,36 @@ export default function Page() {
         emptyMessage="No pokemon found."
       />
     </QueryClientProvider>
+   
   </div>
+   <div>
+     
+    </div>
 
-  <GenericForm
+    <Dialog>
+      <form>
+        <DialogTrigger asChild>
+          <Button variant="outline">Add Branch</Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+        <GenericForm
       title="Add New Branch"
       schema={AddBranchSchema}
-      defaultValues={{ branch_name: "", location: ""}}
+      defaultValues={{name: "", location: ""}}
       onSubmit={addBranch}
       submitText="Create Branch"
     />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" className="w-full bg-amber-600 hover:cursor-pointer">Cancel</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </form>
+    </Dialog>
+
+
+
 </section>
     
    

@@ -27,6 +27,7 @@ console.log("here")
   return (
     <html lang="en">
       <SessionProvider session={session}>
+        
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

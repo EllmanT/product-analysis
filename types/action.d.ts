@@ -20,7 +20,7 @@ export interface UploadProductsParams {
 }
 
 interface CreateBranchParams{
-  branch_name:string;
+  name:string;
   location:string
 }
   

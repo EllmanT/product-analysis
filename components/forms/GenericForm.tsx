@@ -7,16 +7,13 @@ import { z, ZodType } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-
-// import { toast } from "@/hooks/use-toast";
+// import { useRouter } from "next/navigation";
 
 interface GenericFormProps<T extends FieldValues> {
   title?: string;
   schema: ZodType<T>;
   defaultValues: T;
-  onSubmit: (data: T) => Promise<ActionResponse>;
+  onSubmit: (data: T) => Promise<ActionResponse<T>>;
   submitText?: string;
 }
 
@@ -28,13 +25,13 @@ const GenericForm = <T extends FieldValues>({
   submitText = "Submit",
 }: GenericFormProps<T>) => {
   // 1. Define your form.
-  const router = useRouter();
+  // const router = useRouter();
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues as DefaultValues<T>,
   });
   const handleSubmit: SubmitHandler<T> = async (data) => {
-    const result = (await onSubmit(data)) as ActionResponse;
+    const result = (await onSubmit(data)) as ActionResponse<T>;
 
     if (result?.success) {
       // toast({ title: "Success", description: "Action successful!" });
@@ -77,7 +74,7 @@ const GenericForm = <T extends FieldValues>({
 
         <Button
           disabled={form.formState.isSubmitting}
-          className="w-full rounded-md bg-primary px-4 py-3 text-white"
+          className="w-full rounded-md bg-primary px-4 py-3 text-white hover:cursor-pointer"
           type="submit"
         >
           {form.formState.isSubmitting ? "Submitting..." : submitText}

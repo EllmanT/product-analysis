@@ -1,7 +1,7 @@
 interface AuthCredentials {
   name: string;
   surname: string;
-  store:string;
+  store?:string;
   email: string;
   password: string;
 }
@@ -23,4 +23,11 @@ interface CreateBranchParams{
   name:string;
   location:string
 }
-  
+  interface GetBranchesByStoreParams {
+  storeId: string;
+}
+
+
+interface GetUserParams {
+  userId: string;
+}

@@ -54,7 +54,24 @@ interface Product{
   aliases?:string;
 }
 
+interface Branch{
+  _id:string;
+  name:string;
+  storeId:string;
+  location:string;
+}
+
 interface Uploader{
   _id:string;
   name:string;
+}
+
+interface User {
+  _id: string;
+  name: string;
+  surname: string;
+  email: string;
+  image?:string;
+  storeId?:string;
+  branchId?:string;
 }

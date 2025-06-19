@@ -3,9 +3,9 @@
 import { Branch, Store } from "@/database"
 import action from "../handlers/action"
 import handleError from "../handlers/error"
-import { AddBranchSchema } from "../validations"
+import { AddBranchSchema, GetBranchesByStoreSchema } from "../validations"
 import mongoose from "mongoose"
-import { CreateBranchParams } from "@/types/action"
+import { CreateBranchParams, GetBranchesByStoreParams } from "@/types/action"
 import { IBranchDoc } from "@/database/branch.model"
 
 export async function addBranch(
@@ -53,4 +53,41 @@ params:CreateBranchParams
     }finally{
         await session.endSession();
     }
+}
+
+export async function getBranchesByStore(
+  params: GetBranchesByStoreParams
+): Promise<ActionResponse<{ branches: Branch[] }>> {
+  const validationResult = await action({
+    params,
+    schema: GetBranchesByStoreSchema,
+    authorize: true,
+  });
+
+  if (validationResult instanceof Error) {
+    return handleError(validationResult) as ErrorResponse;
+  }
+
+  const { storeId } = validationResult.params!;
+
+  try {
+    const branches = await Branch.find({ storeId })
+    .populate("storeId", "name")
+    .lean()
+    ;
+
+    if (!branches || branches.length === 0) {
+      throw new Error("Branches not found");
+    }
+
+    console.log("branches before", branches)
+    return {
+      success: true,
+      data: {
+        branches: JSON.parse(JSON.stringify(branches)), // serializes deeply
+      },
+    };
+  } catch (error) {
+    return handleError(error) as ErrorResponse;
+  }
 }

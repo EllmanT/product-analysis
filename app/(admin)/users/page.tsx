@@ -1,30 +1,40 @@
-"use client"
-import { ChartAreaInteractive } from "@/components/charts/LineChartInteractive";
-import { SectionCards } from "@/components/statistics/StatisticsSection";
+
 
 // import data from "./data.json";
 import { projects} from "@/app/data";
-import { columns } from "@/components/data-table/columns/columns";
 import { DataTable } from "@/components/data-table/index";
-import DataTableTopHeader from "@/components/data-table/Header";
 import GlobalFilter from "@/components/filter/GlobalFilter";
-import { HomePageBranchesFilters,  HomePageMonth, HomePageWeek, HomePageYear, Role } from "@/constants/filter";
+import { HomePageBranchesFilters, Role } from "@/constants/filter";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FilterIcon } from "lucide-react";
-import { columnsBranchesUp } from "@/components/data-table/columns/columnsBranchesUp";
 import { Separator } from "@/components/ui/separator";
-import { columnsAllUploads } from "@/components/data-table/columns/columnAllUploads";
 import { columnAllUsers } from "@/components/data-table/columns/columnAllUsers";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
 import { AutoComplete } from "@/components/Autocomplete";
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { signUpWithCredentials } from "@/lib/actions/auth.action";
+import { SignUpSchema, UserSchema } from "@/lib/validations";
+import AuthForm from "@/components/forms/AuthForm";
+import GenericForm from "@/components/forms/GenericForm";
+import { addBranch, getBranchesByStore } from "@/lib/actions/branch.action";
+import { auth } from "@/auth";
+import { notFound, redirect } from "next/navigation";
+import ROUTES from "@/constants/route";
+import { getUser } from "@/lib/actions/user.action";
 
-export default function Page() {
-      const queryClient = new QueryClient()
-    const [searchValue, setSearchValue] = useState<string>("");
-  const [selectedValue, setSelectedValue] = useState<string>("");
+export default async function Page() {
+   const session = await auth();
+  if (!session?.user?.id) redirect(ROUTES.SIGN_IN);
+  
+    const { success, data } = await getUser({ userId: session.user.id });
+    console.log("success", success)
+    console.log("data", data)
+  if (!success) redirect(ROUTES.SIGN_IN);
 
+  if(!data?.user.storeId) return notFound();
+  const {data:newData } = await getBranchesByStore({storeId:data.user.storeId!})
+
+  console.log("branches" ,newData?.branches)
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6 justify-between">
@@ -38,19 +48,7 @@ export default function Page() {
   </div>
 <section className="ml-6 mr-6 mt-5 flex justify-between gap-4 max-sm:flex-col sm:items-center bg-white rounded-md p-4">
   {/* Left side: AutoComplete */}
-  <div className="w-[200px]">
-    <QueryClientProvider client={queryClient}>
-      <AutoComplete
-        selectedValue={selectedValue}
-        onSelectedValueChange={setSelectedValue}
-        searchValue={searchValue}
-        onSearchValueChange={setSearchValue}
-        items={[]}
-        isLoading={false}
-        emptyMessage="No pokemon found."
-      />
-    </QueryClientProvider>
-  </div>
+
 
   {/* Right side: Filters + Button */}
   <div className="flex flex-wrap items-center gap-2 justify-end">
@@ -69,6 +67,30 @@ export default function Page() {
       <Link href="/">Apply filter</Link>
     </Button>
   </div>
+
+  
+    <Dialog>
+      <form>
+        <DialogTrigger asChild>
+          <Button variant="outline">Add Branch</Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+        {/* <GenericForm
+      title="Add New Branch"
+      schema={UserSchema}
+      defaultValues={{name: "", location: "", surname:"", email:"", branchId:""}}
+      onSubmit={addBranch}
+      submitText="Create Branch"
+    /> */}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" className="w-full bg-amber-600 hover:cursor-pointer">Cancel</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </form>
+    </Dialog>
+
 </section>
 
        

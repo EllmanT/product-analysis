@@ -19,7 +19,8 @@ export const SignUpSchema = z.object({
     .max(30, { message: "Surname cannot exceed 30 characters." })
     .regex(/^[a-zA-Z0-9_]+$/, {
       message: "Surname can only contain letters, numbers, and underscores.",
-    }),
+    })
+        ,
 
   name: z
     .string()
@@ -76,6 +77,8 @@ export const UserSchema = z.object({
     .string()
     .min(1, { message: "Email is required." })
     .email({ message: "Please provide a valid email address." }),
+  branchId: z.string().min(1, { message: "Branch ID is required" }).optional(),
+
   image: z.string().url({ message: "Please provide a valid URL" }).optional(),
   location: z.string().optional(),
 });
@@ -172,4 +175,12 @@ export const AddBranchSchema = z.object({
 
 
 
+});
+
+export const GetBranchesByStoreSchema = z.object({
+  storeId: z.string().min(1, "Question ID is required"),
+});
+
+export const GetUserSchema = z.object({
+  userId: z.string().min(1, { message: "User ID is required" }),
 });

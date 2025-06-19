@@ -1,4 +1,4 @@
-import { Document, model, models, Schema } from "mongoose";
+import { Document, model, models, Schema, Types } from "mongoose";
 
 // validation for the ide 
 // validation for the developer while we type code
@@ -7,7 +7,8 @@ export interface IUser {
   surname: string;
   email: string;
   image?: string;
-  location?: string;
+  storeId?:Types.ObjectId;
+  branchId?:Types.ObjectId;
 }
 
 export interface IUserDoc extends IUser, Document {}
@@ -19,7 +20,9 @@ const UserSchema = new Schema<IUser>(
     surname: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     image: { type: String },
-    location: { type: String },
+    storeId: { type: Schema.Types.ObjectId, ref: "Store" },
+    branchId: { type: Schema.Types.ObjectId, ref: "Branch" },
+
   },
   {
     timestamps: true,

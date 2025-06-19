@@ -37,35 +37,46 @@ export async function signUpWithCredentials(
 
   
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+const hashedPassword = await bcrypt.hash(password, 12);
 
-    const [newUser] = await User.create([{ surname, name, email }], {
-      session,
-    });
+const [newUser] = await User.create(
+  [{ surname, name, email }],
+  { session }
+);
 
-    await Account.create(
-      [
-        {
-          userId: newUser._id,
-          name,
-          provider: "credentials",
-          providerAccountId: email,
-          password: hashedPassword,
-        },
-      ],
-      { session }
-    );
+await Account.create(
+  [
+    {
+      userId: newUser._id,
+      name,
+      provider: "credentials",
+      providerAccountId: email,
+      password: hashedPassword,
+    },
+  ],
+  { session }
+);
 
-    await Store.create([{
-      name:store,
-      userId:newUser._id,
+const [newStore] = await Store.create(
+  [
+    {
+      name: store,
+      userId: newUser._id,
+    },
+  ],
+  { session }
+);
 
-    }],{
-        session
-      })
-   
+// Update the newly created user with the storeId
+await User.updateOne(
+  { _id: newUser._id },
+  { $set: { storeId: newStore._id } },
+  { session }
+);
 
-    await session.commitTransaction();
+// Commit the transaction
+await session.commitTransaction();
+
     console.log("Here 2")
     await signIn("credentials", { email, password, redirect: false });
     return { success: true };
@@ -107,6 +118,9 @@ export async function signInWithCredentials(
     );
 
     if (!passwordMatch) throw new Error("Invalid password");
+    
+    await signIn("credentials", { email, password, redirect: false });
+
     return { success: true };
   } catch (error) {
     return handleError(error) as ErrorResponse;

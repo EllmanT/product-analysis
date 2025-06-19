@@ -14,7 +14,7 @@ export interface IBranchDoc extends IBranch, Document {}
 const BranchSchema = new Schema<IBranch>(
   {
     name: { type: String, required: true },
-        storeId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        storeId: { type: Schema.Types.ObjectId, ref: "Store", required: true },
         location:{type:String, required:true}
 
   },

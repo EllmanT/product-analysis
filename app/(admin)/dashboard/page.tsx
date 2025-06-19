@@ -13,7 +13,8 @@ import Link from "next/link";
 import { FilterIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
-export default function Page() {
+export default async function Page() {
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6 justify-between">

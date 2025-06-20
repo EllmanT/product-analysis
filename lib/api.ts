@@ -61,10 +61,11 @@ export: (month: string, year: string, week: string) =>
   accounts: {
     getAll: () => fetchHandler(`${API_BASE_URL}/accounts`),
     getById: (id: string) => fetchHandler(`${API_BASE_URL}/accounts/${id}`),
-    getByProvider: (providerId: string) =>
+    getByProvider: (providerEmail: string) =>
       fetchHandler(`${API_BASE_URL}/accounts/provider`, {
         method: "POST",
-        body: JSON.stringify({ providerId }),
+       
+        body:  providerEmail ,
       }),
     create: (accountData: Partial<IAccount>) =>
       fetchHandler(`${API_BASE_URL}/accounts`, {

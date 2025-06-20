@@ -21,8 +21,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (validatedFields.success) {
           const { email, password } = validatedFields.data!;
 
+          console.log("email", email)
+          const newVariable=email;
+          console.log("new variable", newVariable)
           const { data: existingAccount } = (await api.accounts.getByProvider(
-            email
+            newVariable
           )) as ActionResponse<IAccountDoc>;
                 console.log("in the sign in 03")
 
@@ -38,6 +41,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             password,
             existingAccount.password!
           );
+
+          console.log("isValidPassword", isValidPassword)
                 console.log("in the sign in 05")
 
 

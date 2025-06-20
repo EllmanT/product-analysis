@@ -18,13 +18,17 @@ export async function signUpWithCredentials(
   params: AuthCredentials
 ): Promise<ActionResponse> {
   const validationResult = await action({ params, schema: SignUpSchema });
-
+console.log("now in here")
   if (validationResult instanceof Error) {
     return handleError(validationResult) as ErrorResponse;
   }
+  console.log("params",params)
+console.log("now in here 2")
 
-  const { name, surname, store, email, password } = validationResult.params!;
+  const { name, surname, store, email, password, branchId, storeId } = validationResult.params!;
 
+  console.log("branchId", branchId)
+  console.log("branchId", storeId)
   const session = await mongoose.startSession();
   session.startTransaction();
 
@@ -39,6 +43,8 @@ export async function signUpWithCredentials(
 
 const hashedPassword = await bcrypt.hash(password, 12);
 
+
+if(store){
 const [newUser] = await User.create(
   [{ surname, name, email }],
   { session }
@@ -66,7 +72,6 @@ const [newStore] = await Store.create(
   ],
   { session }
 );
-
 // Update the newly created user with the storeId
 await User.updateOne(
   { _id: newUser._id },
@@ -74,12 +79,44 @@ await User.updateOne(
   { session }
 );
 
+
 // Commit the transaction
 await session.commitTransaction();
 
-    console.log("Here 2")
-    await signIn("credentials", { email, password, redirect: false });
-    return { success: true };
+await signIn("credentials", { email, password, redirect: false });
+return { success: true };
+
+}else{
+
+const [newUser] = await User.create(
+  [{ surname, name, email,branchId, storeId }],
+  { session }
+);
+
+await Account.create(
+  [
+    {
+      userId: newUser._id,
+      name,
+      provider: "credentials",
+      providerAccountId: email,
+      password: hashedPassword,
+    },
+  ],
+  { session }
+);
+
+
+
+
+// Commit the transaction
+await session.commitTransaction();
+
+await signIn("credentials", { email, password, redirect: false });
+return { success: true };
+
+}
+
   } catch (error) {
     await session.abortTransaction();
     console.log("Here 3", error)

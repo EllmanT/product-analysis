@@ -25,12 +25,14 @@ import { Input } from "@/components/ui/input";
 
 // import { toast } from "@/hooks/use-toast";
 import ROUTES from "@/constants/route";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "../ui/select";
 
 interface AuthFormProps<T extends FieldValues> {
   schema: ZodType<T>;
   defaultValues: T;
   onSubmit: (data: T) => Promise<ActionResponse>;
   formType: "SIGN_IN" | "SIGN_UP";
+  menuItems?:Branch[]
 }
 
 const AuthForm = <T extends FieldValues>({
@@ -38,6 +40,7 @@ const AuthForm = <T extends FieldValues>({
   defaultValues,
   formType,
   onSubmit,
+  menuItems
 }: AuthFormProps<T>) => {
   // 1. Define your form.
   const router = useRouter();
@@ -45,7 +48,12 @@ const AuthForm = <T extends FieldValues>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues as DefaultValues<T>,
   });
+    console.log("here now 1")
+    console.log(defaultValues)
+  console.log(menuItems)
   const handleSubmit: SubmitHandler<T> = async (data) => {
+  console.log("here now !!!!!!")
+    console.log("data", data)
     const result = (await onSubmit(data)) as ActionResponse;
 
     if (result?.success) {
@@ -87,16 +95,42 @@ const AuthForm = <T extends FieldValues>({
                 <FormLabel className="paragraph-medium text-dark400_light700">
                   {field.name === "email"
                     ? "Email Address"
-                    : field.name.charAt(0).toUpperCase() + field.name.slice(1)}
+                    : field.name !=="storeId" &&field.name.charAt(0).toUpperCase() + field.name.slice(1)}
                 </FormLabel>
-                <FormControl>
+               <FormControl>
+              {/* 👇 Conditionally render a dropdown for `branchId`, otherwise Input */}
+              {field.name === "branchId" ? (
+                
+                 <Select onValueChange={field.onChange} defaultValue={field.value}
+                 value={field.value}
+                 >
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Select" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+           {menuItems &&menuItems.map((item)=>(
+                    <SelectItem key={item._id} value={item._id}>{item.name} {item.location}</SelectItem>
+
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+ 
+               
+              ) : (
+                field.name !=="storeId"&& (
                   <Input
-                    required
-                    type={field.name === "password" ? "password" : "text"}
-                    className="paragraph-regular background-light900_dark300 light-border-2 text-dark300_light700 no-focus min-h-12 rounded-1.5 border"
-                    {...field}
-                  />
-                </FormControl>
+                  required
+                  type={field.name === "password" ? "password" : "text"}
+                  className="paragraph-regular background-light900_dark300 light-border-2 text-dark300_light700 no-focus min-h-12 rounded-1.5 border"
+                  {...field}
+                />
+                
+                )
+              
+              )}
+            </FormControl>
 
                 <FormMessage />
               </FormItem>
@@ -105,9 +139,10 @@ const AuthForm = <T extends FieldValues>({
         ))}
 
         <Button
-          disabled={form.formState.isSubmitting}
+          // disabled={form.formState.isSubmitting}
           className="primary-gradient paragraph-medium min-h-12 w-full rounded-2 px-4 py-3 font-inter !text-light-900"
           type="submit"
+          // onClick={handleClick}
         >
           {form.formState.isSubmitting
             ? buttonText === "Sign In"

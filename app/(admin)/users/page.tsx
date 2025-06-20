@@ -1,4 +1,4 @@
-
+"use client"
 
 // import data from "./data.json";
 import { projects} from "@/app/data";
@@ -10,31 +10,46 @@ import Link from "next/link";
 import { FilterIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { columnAllUsers } from "@/components/data-table/columns/columnAllUsers";
-import { AutoComplete } from "@/components/Autocomplete";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { signUpWithCredentials } from "@/lib/actions/auth.action";
-import { SignUpSchema, UserSchema } from "@/lib/validations";
+import { CreateUserSchema, SignUpSchema } from "@/lib/validations";
 import AuthForm from "@/components/forms/AuthForm";
-import GenericForm from "@/components/forms/GenericForm";
-import { addBranch, getBranchesByStore } from "@/lib/actions/branch.action";
-import { auth } from "@/auth";
-import { notFound, redirect } from "next/navigation";
-import ROUTES from "@/constants/route";
-import { getUser } from "@/lib/actions/user.action";
+import { useEffect, useState } from "react";
 
-export default async function Page() {
-   const session = await auth();
-  if (!session?.user?.id) redirect(ROUTES.SIGN_IN);
-  
-    const { success, data } = await getUser({ userId: session.user.id });
-    console.log("success", success)
-    console.log("data", data)
-  if (!success) redirect(ROUTES.SIGN_IN);
+export default  function Page() {
+const [branches, setBranches] = useState<Branch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [storeId, setStoreId]= useState("");
 
-  if(!data?.user.storeId) return notFound();
-  const {data:newData } = await getBranchesByStore({storeId:data.user.storeId!})
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        console.log("here")
+        const res = await fetch("/api/branches");
+        if (!res.ok) throw new Error("Failed to fetch branches");
 
-  console.log("branches" ,newData?.branches)
+        const {data} = await res.json();
+
+        console.log("data", data)
+        console.log("data branches", data.branches)
+        setBranches(data.branches);
+        setStoreId(data.branches[0].storeId._id)
+        
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBranches();
+  }, []);
+
+          console.log("branches",branches)
+          console.log("storeId",storeId)
+
+  if (loading) return <div>Loading branches...</div>;
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6 justify-between">
@@ -67,28 +82,28 @@ export default async function Page() {
       <Link href="/">Apply filter</Link>
     </Button>
   </div>
-
+      
   
     <Dialog>
-      <form>
         <DialogTrigger asChild>
-          <Button variant="outline">Add Branch</Button>
+          <Button variant="outline">Add User</Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
-        {/* <GenericForm
-      title="Add New Branch"
-      schema={UserSchema}
-      defaultValues={{name: "", location: "", surname:"", email:"", branchId:""}}
-      onSubmit={addBranch}
-      submitText="Create Branch"
-    /> */}
+        <DialogContent className="sm:max-w-[425px]">      
+
+     <AuthForm
+      formType="SIGN_UP"
+      schema={SignUpSchema}
+      defaultValues={{ email: "", password: "", name: "", surname: "", branchId:"", storeId:storeId }}
+      onSubmit={signUpWithCredentials}
+      menuItems={branches}
+
+    />
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline" className="w-full bg-amber-600 hover:cursor-pointer">Cancel</Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>
-      </form>
     </Dialog>
 
 </section>

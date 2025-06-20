@@ -3,18 +3,20 @@
 import { Account, User } from "@/database"
 import action from "../handlers/action"
 import handleError from "../handlers/error"
-import { GetUserSchema, SignUpSchema } from "../validations"
+import { CreateUserSchema, GetUserSchema,   } from "../validations"
 import mongoose from "mongoose"
-import { AuthCredentials, GetUserParams} from "@/types/action"
+import { CreateUserParams, GetUserParams} from "@/types/action"
 import bcrypt from "bcryptjs"
+import { IUserDoc } from "@/database/user.model"
+
 
 export async function addUser(
-params:AuthCredentials
-): Promise<ActionResponse>
+params:CreateUserParams
+): Promise<ActionResponse<IUserDoc>>
 {
     const validationResult = await action({
         params,
-        schema:SignUpSchema,
+        schema:CreateUserSchema,
         authorize:true
     })
     if(validationResult instanceof Error){
@@ -22,7 +24,7 @@ params:AuthCredentials
 
     }
 
-  const { name, surname, email, password } = validationResult.params!;
+  const { name, surname, email, password, branchId, storeId} = validationResult.params!;
 
     const userId = validationResult?.session?.user?.id;
 
@@ -40,7 +42,7 @@ params:AuthCredentials
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    const [newUser] = await User.create([{ surname, name, email}], {
+    const [newUser] = await User.create([{ surname, name, email, branchId, storeId}], {
       session,
     });
 
@@ -59,7 +61,7 @@ params:AuthCredentials
     );
 
     await session.commitTransaction();
-    return { success: true };
+    return { success: true, data:JSON.parse(JSON.stringify(newUser)) };
   } catch (error) {
     await session.abortTransaction();
 

@@ -54,7 +54,8 @@ export const api = {
       body:formData
     }),
 export: (month: string, year: string, week: string) =>
-  fetchHandler(`${API_BASE_URL}/products/export?month=${month}&year=${year}&week=${week}`, {
+  fetchHandler(`${API_BASE_URL}/products/export?month=${month}&year=${year}&week=${week}`, 
+    {
     method: "GET"
   }),
   },

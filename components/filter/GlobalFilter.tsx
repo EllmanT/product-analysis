@@ -53,8 +53,8 @@ const GlobalFilter = ({
   };
 
   return (
-    <div className={cn("relative", containerClasses)}>
-      <Label className="justify-center m-1">{label}</Label>
+    <div className={cn("relative max-w-[60px]", containerClasses)}>
+      <Label className="justify-center m-1 ml-10">{label}</Label>
       <Select
         onValueChange={handleUpdateParams}
         defaultValue={selected || undefined}

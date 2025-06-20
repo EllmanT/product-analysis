@@ -7,13 +7,27 @@ export async function GET(req: NextRequest) {
   console.log("📥 Incoming export request...");
 
   const { searchParams } = new URL(req.url);
-  const month = searchParams.get("month");
-  const year = searchParams.get("year");
-  const week = searchParams.get("week");
+  const frommonth = searchParams.get("frommonth");
+  // const year = searchParams.get("year");
+  // const year = searchParams.get("year");
+  // const year = searchParams.get("year");
+  const startDate = searchParams.get("startDate");
+  const endDate = searchParams.get("endDate");
+// Convert to Date object if needed
+const start = new Date(startDate as string);
+const end = new Date(endDate as string);
 
-  console.log("🔍 Query params:", { month, year, week });
+console.log("start", start)
+console.log("end", end)
 
-  if (!month || !year || !week) {
+  const fromweek = searchParams.get("fromweek");
+    const tomonth = searchParams.get("tomonth");
+  const toweek = searchParams.get("toweek");
+
+
+  // console.log("🔍 Query params:", { frommonth, year, fromweek, tomonth,toweek});
+
+  if (!start || !end) {
     console.warn("⚠️ Missing required query parameters.");
     return new Response("Missing month, year or week", { status: 400 });
   }
@@ -24,29 +38,16 @@ export async function GET(req: NextRequest) {
     console.log("✅ MongoDB connected.");
 
     // Convert month to index and week number
-    const monthIndex = new Date(`${month} 1, ${year}`).getMonth();
-    const weekNumber = parseInt(week.replace("week", ""));
-    console.log("📅 Calculated monthIndex:", monthIndex, "weekNumber:", weekNumber);
 
-    const startOfMonth = new Date(parseInt(year), monthIndex, 1);
-    const from = new Date(startOfMonth);
-    from.setDate(1 + (weekNumber - 1) * 7);
 
-    const to = new Date(from);
-    to.setDate(from.getDate() + 6);
-
-    const format = (d: Date) => d.toISOString().split("T")[0];
-    const fromStr = format(from);
-    const toStr = format(to);
-
-    console.log("🗓️ Date range for export:", { fromStr, toStr });
+    console.log("🗓️ Date range for export:", { start, end });
 
     // Fetch summaries from database
     console.log("📦 Fetching product summaries from DB...");
     const summaries = await WeeklyProductSummaries.find({
-      createdAt: {
-        $gte: new Date(fromStr),
-        $lte: new Date(toStr),
+        uploadedAt: {
+        $gte: new Date(start),
+        $lte: new Date(end),
       },
     }).populate("productId");
 
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
     const dataByWeek = new Map<string, any[]>();
     const weekLabels = new Set<string>();
 
-    summaries.forEach((entry, index) => {
+    summaries.forEach((entry) => {
       const weekKey = `${entry.year}-W${entry.week}`;
       weekLabels.add(weekKey);
 
@@ -80,7 +81,7 @@ export async function GET(req: NextRequest) {
 
       });
 
-      console.log(`🔄 [${index}] ${weekKey} - ${productName}, ${productPrice}, ${entry.startQuantity}, ${entry.startQuantity}`);
+      // console.log(`🔄 [${index}] ${weekKey} - ${productName}, ${productPrice}, ${entry.startQuantity}, ${entry.startQuantity}`);
     });
 
     const sortedWeeks = Array.from(weekLabels).sort();
@@ -91,7 +92,7 @@ export async function GET(req: NextRequest) {
     const sheet = workbook.addWorksheet("Product Weekly Summary");
 
     console.log("📄 Generating Excel sheet...");
-    let startCol = 1;
+    const startCol = 1;
 
     sortedWeeks.forEach((week, i) => {
       const col = startCol + i * 7;
@@ -119,18 +120,20 @@ export async function GET(req: NextRequest) {
       console.log(`🧾 Sheet data written for week: ${week}, entries: ${weekData.length}`);
     });
 
-    // Return Excel as buffer
-    const buffer = await workbook.xlsx.writeBuffer();
-    console.log("📤 Excel file prepared. Returning as response...");
+  const buffer = await workbook.xlsx.writeBuffer();
+console.log("📤 Excel file prepared. Returning as response.....");
 
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": "attachment; filename=products-summary.xlsx",
-      },
-    });
+return new NextResponse(Buffer.from(buffer), {
+  status: 200,
+  headers: {
+    "Content-Type":
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "Content-Disposition": "attachment; filename=products-summary.xlsx",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "Content-Length": buffer.byteLength.toString(),
+  },
+});
+
 
   } catch (error: any) {
     console.error("❌ Error occurred during export:", error);

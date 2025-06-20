@@ -94,7 +94,7 @@ export async function POST(req: Request) {
     console.log("user", user)
     const branch_id = formData.get("branch_id")?.toString() || "unknown_branch";
     const upload_date = new Date();
-    upload_date.setDate(upload_date.getDate() + 28);
+    upload_date.setDate(upload_date.getDate() + 35);
 
    
     console.log("date format 2",upload_date);

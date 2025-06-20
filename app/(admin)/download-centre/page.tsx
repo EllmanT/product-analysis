@@ -16,31 +16,46 @@ import { FilterIcon, StoreIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AutoComplete } from "@/components/Autocomplete";
-import { startTransition, useState } from "react";
+import React, { startTransition, useState } from "react";
 import DownloadCenterCard from "@/components/cards/DownloadCenterCard";
 import { api } from "@/lib/api";
-import { downloadExport } from "@/app/api/products/downloadexcel";
+import {  downloadExportAll } from "@/app/api/products/downloadexcel";
+import { Calendar } from "@/components/ui/calendar";
+import { Calendar22 } from "@/components/Calendat";
 
 export default function Page() {
     const queryClient = new QueryClient()
     const [searchValue, setSearchValue] = useState<string>("");
-  const [selectedValue, setSelectedValue] = useState<string>("");
-
+  const [open, setOpen] = React.useState(false)
+const [date, setDate] = React.useState<Date>(new Date());
+const [endDate, setEndDate] = React.useState<Date>(new Date());
+  const handleStartDateChange = (date: Date) => {
+    console.log("Selected Date:", date)
+    setDate(date)
+  }
+    const handleEndDateChange = (enddate: Date) => {
+    console.log("Selected Date:", enddate)
+    setEndDate(enddate)
+  }
+console.log("date here", date)
 const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
    e.preventDefault()
   const params = new URLSearchParams(window.location.search);
-  const month = params.get("month");
-  const week = params.get("week") || "1";
+  const frommonth = params.get("frommonth")|| "1";
+  const fromweek = params.get("fromweek") || "1";
+    const tomonth = params.get("tomonth")|| "1";
+  const toweek = params.get("toweek") || "1";
   const year = params.get("year") || "2025";
 
-  if (!month || !week || !year) {
+  console.log(date)
+  if (!frommonth || !fromweek || !year) {
     console.warn("❗ Missing filter values (month/week/year)");
     return;
   }
 
   startTransition(async () => {
   try {
-    await downloadExport(month, year, week);
+    await downloadExportAll(date, endDate);
     console.log("✅ Export triggered successfully");
     // Optional: show toast or notification
   } catch (err) {
@@ -69,7 +84,7 @@ const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
           // otherClasses="min-h-[56px] sm:min-w-[170px]"
           containerClasses="  max-md:flex"
         /> */}
-        <div className="">
+        {/* <div className="">
            <QueryClientProvider client={queryClient}>
           <AutoComplete
             selectedValue={selectedValue}
@@ -83,7 +98,9 @@ const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
           />
           </QueryClientProvider>
           
-        </div>
+        </div> */}
+        <Calendar22 label={"From"}  onDateChange={handleStartDateChange}/>
+        <Calendar22 label={"To"}  onDateChange={handleEndDateChange}/>
         <GlobalFilter
                  label="Branch"
 
@@ -92,21 +109,38 @@ const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
           containerClasses="  max-md:flex"
           queryKey="branch"
         />
-          <GlobalFilter
-                   label="Week"
+       
+          {/* <GlobalFilter
+                   label="Week(From)"
 
           filters={HomePageWeek}
           // otherClasses="min-h-[56px] sm:min-w-[170px]"
           containerClasses="  max-md:flex"
-          queryKey="week"
+          queryKey="fromweek"
         />
           <GlobalFilter
-                   label="Month"
+                   label="Month(From)"
+          filters={HomePageMonth}
+          // otherClasses="min-h-[56px] sm:min-w-[170px]"
+          containerClasses="  max-md:flex "
+          queryKey="frommonth"
+        />
+         
+         <GlobalFilter
+                   label="Week(To)"
+
+          filters={HomePageWeek}
+          // otherClasses="min-h-[56px] sm:min-w-[170px]"
+          containerClasses="  max-md:flex"
+          queryKey="toweek"
+        />
+          <GlobalFilter
+                   label="Month(To)"
           filters={HomePageMonth}
           // otherClasses="min-h-[56px] sm:min-w-[170px]"
           containerClasses="  max-md:flex"
-          queryKey="month"
-        />
+          queryKey="tomonth"
+        /> */}
          <GlobalFilter
          label="Year"
           filters={HomePageYear}
@@ -122,7 +156,7 @@ const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
           onClick={handleApplyFilter}
         >
           <FilterIcon/>
-          <Link href="/">Apply filter</Link>
+       Filter
         </Button>
         
       </section>
@@ -133,6 +167,7 @@ const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
           {/* Statistics cards section */}
           <div className="flex-col">
+
                             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
 
             <DownloadCenterCard

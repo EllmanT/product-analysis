@@ -8,6 +8,7 @@ export interface IWeeklyProductSummaries {
   code:string;
   week:number;
   year:number;
+  upload_date:Date;
   startQuantity:number;
   endQuantity:number;
   price:Decimal128;
@@ -26,6 +27,7 @@ const WeeklyProductSummariesSchema = new Schema<IWeeklyProductSummaries>(
     code: { type: String, required: true },
     week: { type: Number, required: true },
     year: { type: Number, required: true },
+    upload_date: { type: Date, required: true },
     startQuantity: { type: Number, required: true },
     endQuantity: { type: Number, required: false , default:null},
         price: { type: Schema.Types.Decimal128, required: true },

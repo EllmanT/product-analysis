@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file");
     const userId = formData.get("userId");
+    const branchId= formData.get("branchId")
 
     console.log("iser id", userId)
 
@@ -93,7 +94,7 @@ export async function POST(req: Request) {
     console.log("user", user)
     const branch_id = formData.get("branch_id")?.toString() || "unknown_branch";
     const upload_date = new Date();
-    upload_date.setDate(upload_date.getDate() + 14);
+    upload_date.setDate(upload_date.getDate() + 28);
 
    
     console.log("date format 2",upload_date);
@@ -105,8 +106,8 @@ export async function POST(req: Request) {
     const [upload] = await Upload.create(
       [
         {
-          uploadedBy:user._id,
-        //   branch_id,
+          uploadedBy:userId,
+          branchId: branchId,
           upload_date: upload_date,
           month:month,
           week: week,

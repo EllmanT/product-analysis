@@ -4,6 +4,7 @@ import { Decimal128, Document, model, models, Schema, Types } from "mongoose";
 // validation for the developer while we type code
 export interface IUpload {
   uploadedBy:Types.ObjectId;
+  branchId:Types.ObjectId;
   upload_date:Date;
   week: number;
   month:string;
@@ -23,7 +24,7 @@ export interface IUploadDoc extends IUpload, Document {}
 const UploadSchema = new Schema<IUpload>(
   {
     uploadedBy: { type: Schema.Types.ObjectId, required: true, ref: "User" },
-    // branchId: { type: Schema.Types.ObjectId, required: true, ref: "Branch" },
+    branchId: { type: Schema.Types.ObjectId, required: true, ref: "Branch" },
     upload_date: { type: Date, required: true },
     week: { type: Number, required: true },
     month: { type: String, required: true },

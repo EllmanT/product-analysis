@@ -1,13 +1,26 @@
 import { auth } from '@/auth'
 import FileUpload from '@/components/FileUpload'
+import ROUTES from '@/constants/route'
+import { getUser } from '@/lib/actions/user.action'
+import { redirect } from 'next/navigation'
 import React from 'react'
 
 const page = async() => {
   const session = await auth()
-const user = session?.user
+const sessionData = session?.user
+if(!sessionData?.id) redirect(ROUTES.SIGN_IN)
+
+  const { success, data } = await getUser({ userId: sessionData.id });
+    
+  const  user = data?.user;
+    if(!user?.branchId) redirect(ROUTES.SIGN_IN)
+
+      const branchId = user.branchId!
+      console.log("branchId", branchId)
+      console.log("user id", user._id)
   return (
 <div>
-              <FileUpload userId={user?.id}/>
+              <FileUpload userId={user._id}  branchId={branchId}/>
 
     
     </div>  )

@@ -13,14 +13,9 @@ import { api } from '@/lib/api';
 import { auth } from '@/auth';
 
 
-const FileUpload = ({userId}:{userId:string}) => {
-
-    const [file, setFile] = useState<File | null>(null);
-        const [extractedText, setExtractedText] = useState<string>("");
-        const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-        const [uploadingFile, setUploadingFile]= useState(false);
-
-
+const FileUpload = ({userId, branchId}:{userId:string, branchId:string}) => {
+    const [extractedText, setExtractedText] = useState<string>("");
+    const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const form = useForm<z.infer<typeof uploadProductsSchema>>({
     resolver: zodResolver(uploadProductsSchema),
@@ -39,6 +34,7 @@ const handleUploadProducts = async (
   formData.append("file", data.file);
   // Append userId
 formData.append("userId", userId);
+formData.append("branchId", branchId);
 
   startTransition(async () => {
     const { success, data: responseData, error } = await api.products.upload(formData);

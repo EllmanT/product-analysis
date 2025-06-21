@@ -13,7 +13,7 @@ import { api } from '@/lib/api';
 import { auth } from '@/auth';
 
 
-const FileUpload = ({userId, branchId}:{userId:string, branchId:string}) => {
+const FileUpload = ({userId, branchId, storeId}:{userId:string, branchId:string, storeId:string}) => {
     const [extractedText, setExtractedText] = useState<string>("");
     const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -35,6 +35,7 @@ const handleUploadProducts = async (
   // Append userId
 formData.append("userId", userId);
 formData.append("branchId", branchId);
+formData.append("storeId", storeId);
 
   startTransition(async () => {
     const { success, data: responseData, error } = await api.products.upload(formData);

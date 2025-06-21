@@ -10,17 +10,16 @@ const page = async() => {
 const sessionData = session?.user
 if(!sessionData?.id) redirect(ROUTES.SIGN_IN)
 
-  const { success, data } = await getUser({ userId: sessionData.id });
+  const { data } = await getUser({ userId: sessionData.id });
     
   const  user = data?.user;
     if(!user?.branchId) redirect(ROUTES.SIGN_IN)
 
       const branchId = user.branchId!
-      console.log("branchId", branchId)
-      console.log("user id", user._id)
+      const storeId = user.storeId!
   return (
 <div>
-              <FileUpload userId={user._id}  branchId={branchId}/>
+              <FileUpload userId={user._id}  branchId={branchId} storeId={storeId}/>
 
     
     </div>  )

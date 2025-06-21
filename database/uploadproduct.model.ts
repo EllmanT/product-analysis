@@ -4,7 +4,9 @@ import { Decimal128, Document, model, models, Schema, Types } from "mongoose";
 // validation for the developer while we type code
 export interface IUploadProduct {
   uploadId:Types.ObjectId;
+  storeId:Types.ObjectId;
   productId:Types.ObjectId;
+  branchId:Types.ObjectId;
   name:string;
   code:string;
   qty:number;
@@ -25,6 +27,8 @@ const UploadProductSchema = new Schema<IUploadProduct>(
   {
     uploadId: { type: Schema.Types.ObjectId, required: true, ref: "Upload" },
     productId: { type: Schema.Types.ObjectId, required: true, ref: "Product" },
+    storeId: { type: Schema.Types.ObjectId, required: true, ref: "Store" },
+    branchId: { type: Schema.Types.ObjectId, required: true, ref: "Branch" },
     name: { type: String, required: true },
     code: { type: String, required: true },
     qty: { type: Number, required: true },

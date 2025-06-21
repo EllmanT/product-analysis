@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
-import { Store, WeeklyProductSummaries } from "@/database";
+import { Branch, Store, WeeklyProductSummaries } from "@/database";
 import dbConnect from "@/lib/mongoose";
-import { addDays, startOfWeek } from "date-fns";
+import { getStartAndEndOfWeek } from "../route";
 
 export async function GET(req: NextRequest) {
   console.log("📥 Incoming export request...");
@@ -11,12 +11,12 @@ export async function GET(req: NextRequest) {
   // const year = searchParams.get("year");
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
-  const storeId = searchParams.get("storeId");
+  const branchId = searchParams.get("branchId");
 // Convert to Date object if needed
 const start = new Date(startDate as string);
 const end = new Date(endDate as string);
 
-  console.log("🔍 Query params:", { start , end});
+  console.log("🔍 Query params:", { start , end, branchId});
 
   if (!start || !end) {
     console.warn("⚠️ Missing required query parameters.");
@@ -28,14 +28,21 @@ const end = new Date(endDate as string);
     await dbConnect();
     console.log("✅ MongoDB connected.");
 
-        // getting the store id
-    
-        const store  = await Store.findById(storeId)
-    
-        if(!store){
-            return new Response("Failed to get the store details", { status: 400 });
-              }
+    // getting the store id
 
+    const branch = await Branch.findById(branchId)
+    console.log(branchId)
+    if(!branch){
+          return new Response("Failed to find the branch details", { status: 400 });
+    }
+
+    const storeId = branch.storeId;
+
+    const store  = await Store.findById(storeId)
+
+    if(!store){
+        return new Response("Failed to get the store details", { status: 400 });
+          }
     // Convert month to index and week number
 
 
@@ -48,6 +55,7 @@ const end = new Date(endDate as string);
         $gte: new Date(start),
         $lte: new Date(end),
       },
+      branchId:branchId,
       storeId:storeId,
     }).populate("productId");
 
@@ -57,55 +65,35 @@ const end = new Date(endDate as string);
     const dataByWeek = new Map<string, any[]>();
     const weekLabels = new Set<string>();
 
-  summaries.forEach((entry) => {
-  const { weekStart, weekEnd } = getStartAndEndOfWeek(entry.week, entry.year);
-  const formattedStart = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD
-  const formattedEnd = weekEnd.toISOString().split('T')[0];     // YYYY-MM-DD
-  const weekKey = `${entry.year}-W${entry.week}     ${formattedStart}---->${formattedEnd}`;
-  weekLabels.add(weekKey);
+    summaries.forEach((entry) => {
+            const { weekStart, weekEnd } = getStartAndEndOfWeek(entry.week, entry.year);
+ const formattedStart = weekStart.toISOString().split('T')[0]; // YYYY-MM-DD
+const formattedEnd = weekEnd.toISOString().split('T')[0];     // YYYY-MM-DD
+      const weekKey = `${entry.year}-W${entry.week}     ${formattedStart}---->${formattedEnd}`;
+      console.log(weekKey)
+      weekLabels.add(weekKey);
 
-  if (!dataByWeek.has(weekKey)) {
-    dataByWeek.set(weekKey, []);
-  }
-  // console.log("entry", entry)
+      if (!dataByWeek.has(weekKey)) {
+        dataByWeek.set(weekKey, []);
+      }
 
-  const weekData = dataByWeek.get(weekKey)!;
+      const productName = entry.productId?.name || "Unknown";
+      const productCode = entry.code ||"Unknown";
+      const estNoSales = entry.startQuantity-entry.endQuantity;
 
-  // console.log("weekData", weekData)
-  const productName = entry.productId?.name || "Unknown";
-  const productCode = entry.code || "Unknown";
-  const estNoSales = entry.startQuantity - entry.endQuantity;
-  const estimatedRevenue = parseFloat(entry.estimatedSales.toString());
-  const price = entry.price;
+      dataByWeek.get(weekKey)!.push({
+        code:productCode,
+        name: productName,
+        price: entry.price,
+        startQuantity: entry.startQuantity,
+        endQuantity: entry.endQuantity,
+        estimatedSales:estNoSales,
+        estimatedRevenue:entry.estimatedSales
 
-  // Try to find an existing entry for the same product and price
-  const existingProduct = weekData.find(item => (item.code === productCode) && Number(item.price) === Number(price));
-
-  console.log("existing product", existingProduct)
-  if (existingProduct) {
-    console.log("existing data found")
-    // Aggregate values
-    existingProduct.startQuantity += entry.startQuantity;
-    existingProduct.endQuantity += entry.endQuantity;
-    existingProduct.estimatedSales += estNoSales;
-existingProduct.estimatedRevenue = parseFloat(
-  (existingProduct.estimatedRevenue + estimatedRevenue).toFixed(2)
-);  } else {
-    // Push new product summary
-    weekData.push({
-      code: productCode,
-      name: productName,
-      price: price,
-      startQuantity: entry.startQuantity,
-      endQuantity: entry.endQuantity,
-      estimatedSales: estNoSales,
-      estimatedRevenue: estimatedRevenue
-    });
-  }
-});
+      });
 
       // console.log(`🔄 [${index}] ${weekKey} - ${productName}, ${productPrice}, ${entry.startQuantity}, ${entry.startQuantity}`);
- 
+    });
 
     const sortedWeeks = Array.from(weekLabels).sort();
     console.log("📊 Weeks found:", sortedWeeks);
@@ -117,6 +105,8 @@ existingProduct.estimatedRevenue = parseFloat(
     console.log("📄 Generating Excel sheet...");
     const startCol = 1;
       sheet.getRow(1).getCell(1).value = store.name;
+      sheet.getRow(2).getCell(1).value = branch.name;
+      sheet.getRow(2).getCell(3).value = branch.location;
       sheet.getRow(3).getCell(1).value = "";
 
     sortedWeeks.forEach((week, i) => {
@@ -163,19 +153,4 @@ return new NextResponse(Buffer.from(buffer), {
     console.error("❌ Error occurred during export:", error);
     return new Response("Internal server error during export.", { status: 500 });
   }
-}
-
-
-export function getStartAndEndOfWeek(week: number, year: number) {
-  // Jan 1st of the year
-  const jan1 = new Date(year, 0, 1);
-
-  // Get the date of the first Monday of the year
-  const firstMonday = startOfWeek(jan1, { weekStartsOn: 1 });
-
-  // Add (week - 1) * 7 days to get the Monday of that week
-  const weekStart = addDays(firstMonday, (week - 1) * 7);
-  const weekEnd = addDays(weekStart, 6);
-
-  return { weekStart, weekEnd };
 }

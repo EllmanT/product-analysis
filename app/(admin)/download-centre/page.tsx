@@ -1,32 +1,20 @@
 "use client"
 
-import { ChartAreaInteractive } from "@/components/charts/LineChartInteractive";
-import { SectionCards } from "@/components/statistics/StatisticsSection";
-
-// import data from "./data.json";
-import { projects} from "@/app/data";
-import { columns } from "@/components/data-table/columns/columns";
-import { DataTable } from "@/components/data-table/index";
-import DataTableTopHeader from "@/components/data-table/Header";
-import GlobalFilter from "@/components/filter/GlobalFilter";
-import { HomePageBranchesFilters,  HomePageMonth, HomePageWeek, HomePageYear } from "@/constants/filter";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { FilterIcon, StoreIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AutoComplete } from "@/components/Autocomplete";
-import React, { startTransition, useState } from "react";
+import React, { startTransition, useEffect, useState } from "react";
 import DownloadCenterCard from "@/components/cards/DownloadCenterCard";
-import { api } from "@/lib/api";
-import {  downloadExportAll } from "@/app/api/products/downloadexcel";
-import { Calendar } from "@/components/ui/calendar";
+import {  downloadExportAll, downloadExportBranch } from "@/app/api/products/downloadexcel";
 import { Calendar22 } from "@/components/Calendat";
+import BranchFilter from "@/components/filter/BranchFilter";
+import { getUser } from "@/lib/actions/user.action";
 
 export default function Page() {
-    const queryClient = new QueryClient()
-    const [searchValue, setSearchValue] = useState<string>("");
-  const [open, setOpen] = React.useState(false)
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [storeId, setStoreId]= useState("");
+
 const [date, setDate] = React.useState<Date>(new Date());
 const [endDate, setEndDate] = React.useState<Date>(new Date());
   const handleStartDateChange = (date: Date) => {
@@ -41,29 +29,69 @@ console.log("date here", date)
 const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
    e.preventDefault()
   const params = new URLSearchParams(window.location.search);
-  const frommonth = params.get("frommonth")|| "1";
-  const fromweek = params.get("fromweek") || "1";
-    const tomonth = params.get("tomonth")|| "1";
-  const toweek = params.get("toweek") || "1";
-  const year = params.get("year") || "2025";
+  const branch = params.get("branch")
 
   console.log(date)
-  if (!frommonth || !fromweek || !year) {
+  if (!date || !endDate) {
     console.warn("❗ Missing filter values (month/week/year)");
     return;
   }
 
   startTransition(async () => {
-  try {
-    await downloadExportAll(date, endDate);
-    console.log("✅ Export triggered successfully");
+        if(!branch || branch==="all"){
+       try {
+     
+    await downloadExportAll(date, endDate, storeId);
+    console.log("✅ Export all branches triggered successfully");
     // Optional: show toast or notification
   } catch (err) {
-    console.error("❌ Export failed:", err);
+    console.error("❌ Export all branches failed:", err);
     // Optional: show error toast
   }
+    }else{
+      try {
+
+        console.log(date)
+        console.log(endDate)
+    await downloadExportBranch(date, endDate, branch);
+    console.log(`✅ Export ${branch} triggered successfully`);
+    // Optional: show toast or notification
+  } catch (err) {
+    console.error(`❌ Export  ${branch} failed:`, err);
+    // Optional: show error toast
+  }
+    }
+ 
   });
 };
+
+
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        console.log("here")
+        const res = await fetch("/api/branches");
+        if (!res.ok) throw new Error("Failed to fetch branches");
+
+        const {data} = await res.json();
+        setBranches(data.branches);
+        setStoreId(data.branches[0].storeId._id)
+        
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBranches();
+  }, []);
+
+          console.log("branches",branches)
+          console.log("storeId",storeId)
+
+  if (loading) return <div>Loading branches...</div>;
 
 
   return (
@@ -78,77 +106,18 @@ const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
   </div>
   </div>
           <section className="ml-6 mr-6 mt-5 flex justify-between gap-2 max-sm:flex-col sm:items-center bg-white items-center rounded-md p-2">
-       {/* <GlobalFilter
-         label="Product Name"
-          filters={HomePageYear}
-          // otherClasses="min-h-[56px] sm:min-w-[170px]"
-          containerClasses="  max-md:flex"
-        /> */}
-        {/* <div className="">
-           <QueryClientProvider client={queryClient}>
-          <AutoComplete
-            selectedValue={selectedValue}
-        onSelectedValueChange={setSelectedValue}
-        searchValue={searchValue}
-        onSearchValueChange={setSearchValue}
-        items={ []}
-        isLoading={false}
-        emptyMessage="No pokemon found."
-
-          />
-          </QueryClientProvider>
-          
-        </div> */}
+   
         <Calendar22 label={"From"}  onDateChange={handleStartDateChange}/>
         <Calendar22 label={"To"}  onDateChange={handleEndDateChange}/>
-        <GlobalFilter
+        <BranchFilter
                  label="Branch"
 
-          filters={HomePageBranchesFilters}
+          filters={branches}
           // otherClasses="min-h-[56px] sm:min-w-[170px]"
           containerClasses="  max-md:flex"
           queryKey="branch"
         />
-       
-          {/* <GlobalFilter
-                   label="Week(From)"
 
-          filters={HomePageWeek}
-          // otherClasses="min-h-[56px] sm:min-w-[170px]"
-          containerClasses="  max-md:flex"
-          queryKey="fromweek"
-        />
-          <GlobalFilter
-                   label="Month(From)"
-          filters={HomePageMonth}
-          // otherClasses="min-h-[56px] sm:min-w-[170px]"
-          containerClasses="  max-md:flex "
-          queryKey="frommonth"
-        />
-         
-         <GlobalFilter
-                   label="Week(To)"
-
-          filters={HomePageWeek}
-          // otherClasses="min-h-[56px] sm:min-w-[170px]"
-          containerClasses="  max-md:flex"
-          queryKey="toweek"
-        />
-          <GlobalFilter
-                   label="Month(To)"
-          filters={HomePageMonth}
-          // otherClasses="min-h-[56px] sm:min-w-[170px]"
-          containerClasses="  max-md:flex"
-          queryKey="tomonth"
-        /> */}
-         <GlobalFilter
-         label="Year"
-          filters={HomePageYear}
-          // otherClasses="min-h-[56px] sm:min-w-[170px]"
-          containerClasses="  max-md:flex"
-          queryKey="year"
-        />
-         
                   
  <Button
           className="mt-5 primary-gradient h-9 px-4 py-1 !text-light-900 bg-blue-500"

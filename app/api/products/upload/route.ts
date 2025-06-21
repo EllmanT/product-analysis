@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     const file = formData.get("file");
     const userId = formData.get("userId");
     const branchId= formData.get("branchId")
+    const storeId= formData.get("storeId")
 
     console.log("iser id", userId)
 
@@ -51,11 +52,14 @@ export async function POST(req: Request) {
     const buffer = await file.arrayBuffer();
      // ✅ Compute hash of file content
 
-    const contentHash = await generateSHA256Hash(buffer);
-    console.log("content Hash", contentHash)
+    const ogcontentHash = await generateSHA256Hash(buffer);
+       const upload_date = new Date();
+    upload_date.setDate(upload_date.getDate()+14);
+    console.log("content Hash", ogcontentHash)
 
+const contentHash = `${ogcontentHash}_${userId}_${storeId}_${branchId}_${upload_date.toISOString().split('T')[0]}`;
  // 🔍 Check if this hash already exists
-    const existingUpload = await Upload.findOne({ contentHash: contentHash }).session(session);
+    const existingUpload = await Upload.findOne({ contentHash}).session(session);
     if (existingUpload) {
       console.log("♻️ Duplicate upload detected. Aborting...");
       return NextResponse.json({ message: "Duplicate upload. No changes made." }, { status: 200 });
@@ -89,14 +93,6 @@ export async function POST(req: Request) {
     const uploaded_by = formData.get("userId")?.toString() || "unknown_user";
     console.log("uploaded by", uploaded_by)
 
-    const user = await User.findById(uploaded_by);
-
-    console.log("user", user)
-    const branch_id = formData.get("branch_id")?.toString() || "unknown_branch";
-    const upload_date = new Date();
-    upload_date.setDate(upload_date.getDate() + 35);
-
-   
     console.log("date format 2",upload_date);
     const week = getWeekNumber(upload_date);
     const year = upload_date.getFullYear();
@@ -107,6 +103,7 @@ export async function POST(req: Request) {
       [
         {
           uploadedBy:userId,
+          storeId: storeId,
           branchId: branchId,
           upload_date: upload_date,
           month:month,
@@ -168,6 +165,8 @@ for (const line of sortedLines) {
     [{
       uploadId: upload._id,
       productId: product._id,
+      storeId:storeId,
+      branchId:branchId,
       code,
       name,
       qty,
@@ -186,6 +185,8 @@ for (const line of sortedLines) {
   // === Weekly Summary Logic ===
   const previousUpload = await UploadProduct.findOne({
     productId: product._id,
+    storeId:storeId,
+    branchId:branchId,
     // createdAt: { $lt: currentUpload[0].createdAt },//this would be ideal
     upload_date: { $lt: currentUpload[0].upload_date },//this is for testing purposes
 
@@ -201,6 +202,9 @@ for (const line of sortedLines) {
         code: code,
         week: week,
         year: year,
+        upload_date: upload_date,
+        storeId: storeId,
+        branchId: branchId,
         price:price,
         startQuantity: qty,
         endQuantity: null,
@@ -222,7 +226,7 @@ for (const line of sortedLines) {
     console.log(summaryYear)
     console.log("product id",product._id)
     await WeeklyProductSummaries.updateOne(
-      { productId: product._id, week: summaryWeek, year: summaryYear },
+      { productId: product._id, branchId:branchId,storeId:storeId, week: summaryWeek, year: summaryYear },
       {
         $set: {
           endQuantity: qty,
@@ -239,6 +243,8 @@ for (const line of sortedLines) {
     // Also check if a summary already exists for current week (if not, insert it with startQuantity)
     const currentSummary = await WeeklyProductSummaries.findOne({
       productId: product._id,
+      storeId:storeId,
+      branchId:branchId,
       week,
       year
     }).session(session);
@@ -251,6 +257,9 @@ for (const line of sortedLines) {
           week:week,
           year:year,
           price:price,
+          upload_date: upload_date,
+          storeId: storeId,
+          branchId: branchId,
           startQuantity: qty,
           endQuantity: null,
           estimatedSales: mongoose.Types.Decimal128.fromString("0.00"),
@@ -304,12 +313,19 @@ await Upload.updateOne(
 
 // Helper to get ISO week number
 function getWeekNumber(date: Date): number {
-  const target = new Date(date.valueOf());
-  const dayNr = (date.getDay() + 6) % 7;
-  target.setDate(target.getDate() - dayNr + 3);
-  const firstThursday = new Date(target.getFullYear(), 0, 4);
-  const diff = target.getTime() - firstThursday.getTime();
-  return 1 + Math.floor(diff / (7 * 24 * 3600 * 1000));
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  // Set to nearest Thursday: current date + 4 - current day number
+  // Make Sunday = 7
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+
+  // Get first day of the year
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+
+  // Calculate week number
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+
+  return weekNo;
 }
 function getMonthName(date:Date) {
   const monthNames = [

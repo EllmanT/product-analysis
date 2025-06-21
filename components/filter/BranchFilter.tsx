@@ -39,7 +39,6 @@ const BranchFilter = ({
   const router = useRouter();
 
   const searchParams = useSearchParams();
-  const all =useState("")
 
   // const paramsFilter = searchParams.get("filter");
   const selected = searchParams.get(queryKey); // <-- Get value for that key
@@ -61,7 +60,7 @@ const BranchFilter = ({
         defaultValue={selected || undefined}
       >        <SelectTrigger
           className={cn(
-            "body-regular no-focus light-border background-light800_dark300 text-dark500_light700 border px-5 py-2.5",
+            "body-regular no-focus light-border background-light800_dark300 text-dark500_light700 border px-1 py-2.5",
             otherClasses
           )}
         >
@@ -71,7 +70,7 @@ const BranchFilter = ({
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            <SelectItem value="all">
+            <SelectItem value="all" defaultValue="all">
                 All
             </SelectItem>
             {filters.map((item) => (

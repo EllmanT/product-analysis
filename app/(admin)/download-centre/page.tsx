@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button";
-import { FilterIcon, StoreIcon } from "lucide-react";
+import { FilterIcon, RefreshCcw, StoreIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import React, { startTransition, useEffect, useState } from "react";
 import DownloadCenterCard from "@/components/cards/DownloadCenterCard";
@@ -9,14 +9,16 @@ import {  downloadExportAll, downloadExportBranch } from "@/app/api/products/dow
 import { Calendar22 } from "@/components/Calendat";
 import BranchFilter from "@/components/filter/BranchFilter";
 import { getUser } from "@/lib/actions/user.action";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function Page() {
+  const router = useRouter();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId]= useState("");
 
-const [date, setDate] = React.useState<Date>(new Date());
-const [endDate, setEndDate] = React.useState<Date>(new Date());
+const [date, setDate] = React.useState<Date | undefined>(undefined);
+const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
   const handleStartDateChange = (date: Date) => {
     console.log("Selected Date:", date)
     setDate(date)
@@ -25,7 +27,6 @@ const [endDate, setEndDate] = React.useState<Date>(new Date());
     console.log("Selected Date:", enddate)
     setEndDate(enddate)
   }
-console.log("date here", date)
 const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
    e.preventDefault()
   const params = new URLSearchParams(window.location.search);
@@ -65,7 +66,9 @@ const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
   });
 };
 
-
+const handleResetFilters=()=>{
+   window.location.reload()
+} 
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -105,10 +108,12 @@ const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
     <h1 className="text-base font-medium">Download Center</h1>
   </div>
   </div>
-          <section className="ml-6 mr-6 mt-5 flex justify-between gap-2 max-sm:flex-col sm:items-center bg-white items-center rounded-md p-2">
-   
+          <section className="ml-6 mr-4 mt-5 flex justify-between gap-1 max-sm:flex-col sm:items-center bg-white items-center rounded-md p-2">
+    <div className="flex space-x-1">
         <Calendar22 label={"From"}  onDateChange={handleStartDateChange}/>
         <Calendar22 label={"To"}  onDateChange={handleEndDateChange}/>
+
+    </div>
         <BranchFilter
                  label="Branch"
 
@@ -118,8 +123,8 @@ const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
           queryKey="branch"
         />
 
-                  
- <Button
+         <div className="space-x-1">
+           <Button
           className="mt-5 primary-gradient h-9 px-4 py-1 !text-light-900 bg-blue-500"
           // asChild
           onClick={handleApplyFilter}
@@ -127,7 +132,17 @@ const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
           <FilterIcon/>
        Filter
         </Button>
-        
+                          
+ <Button
+          className="mt-5 primary-gradient h-9 py-1 !text-light-900 bg-orange-500"
+          // asChild
+          onClick={handleResetFilters}
+        >
+          <RefreshCcw/>
+       Filter
+        </Button>
+          </div>        
+
       </section>
        
    

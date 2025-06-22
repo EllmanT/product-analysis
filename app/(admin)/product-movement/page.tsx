@@ -8,20 +8,25 @@ import { FilterIcon, RefreshCcw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { ProductMovementLineChart } from "@/components/charts/productMovementLineChart";
 import { AutoComplete } from "@/components/Autocomplete";
-import React, { startTransition, useEffect, useState } from "react";
+import React, { startTransition, useEffect, useMemo, useState } from "react";
 import { getDetail, getList } from "@/lib/actions/product.action";
 import {QueryClient, QueryClientProvider, useQuery} from "@tanstack/react-query"
-import { Calendar22 } from "@/components/Calendat";
-import BranchFilter from "@/components/filter/BranchFilter";
+import { BranchSalesLineChart } from "@/components/charts/BranchSalesLineChart";
 import { downloadExportAll, downloadExportBranch } from "@/app/api/products/downloadexcel";
+import BranchFilter from "@/components/filter/BranchFilter";
+import { Calendar22 } from "@/components/Calendat";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function Page() {
+export default  function Page() {
   const queryClient = new QueryClient()
     const [searchValue, setSearchValue] = useState<string>("");
   const [selectedValue, setSelectedValue] = useState<string>("");
-  const [branches, setBranches] = useState<Branch[]>([]);
+
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [chartData, setChartData] = useState<[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId]= useState("");
+  const router = useRouter();
   
 
 const [date, setDate] = React.useState<Date | undefined>(undefined);
@@ -73,22 +78,21 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
     });
   };
   
-  const handleResetFilters=()=>{
-     window.location.reload()
+  const handleResetFilters=async()=>{
+      window.location.href = window.location.pathname // full page reload, no query params
   } 
 
   
     useEffect(() => {
-      const fetchBranches = async () => {
+
+         const fetchProducts = async () => {
         try {
-          console.log("here")
-          const res = await fetch("/api/branches");
-          if (!res.ok) throw new Error("Failed to fetch branches");
+         
+        const response = await fetch(`/api/analytics/products?storeId="test"&productId="test"`);
+          if (!response.ok) throw new Error("Failed to fetch branches");
   
-          const {data} = await res.json();
-          setBranches(data.branches);
-          setStoreId(data.branches[0].storeId._id)
-          
+          const {data:datas} = await response.json();
+          setChartData(datas)
         } catch (err) {
           console.error(err);
         } finally {
@@ -96,16 +100,49 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
         }
       };
   
-      fetchBranches();
+      fetchProducts();
+            // fetchBranches();
+
     }, []);
   
+            console.log("datas",chartData)
+
   
-    if (loading) return <div>Loading branches...</div>;
-  // const { data: pokemon, isLoading: isLoadingPokemon } = useQuery({
-  //   queryKey: ["pokemon", selectedValue],
-  //   queryFn: () => getDetail(selectedValue),
-  //   enabled: !!selectedValue,
-  // });
+  const searchParams = useSearchParams()
+  const branchId = searchParams.get('branch')
+
+  const selectedBranch = useMemo(() => {
+    return branches.find(branch => branch._id === branchId)
+  }, [branchId, branches])
+
+ const filteredData = React.useMemo(() => {
+  if (!selectedBranch) return chartData
+
+  const branchName = selectedBranch.location
+
+  return chartData.map(entry => {
+    const filteredEntry: { [key: string]: any } = { date: entry.date }
+
+    if (branchName in entry) {
+      filteredEntry[branchName] = entry[branchName]
+    } else {
+      filteredEntry[branchName] = 0 // or null if you prefer
+    }
+
+    return filteredEntry
+  })
+}, [chartData, selectedBranch])
+
+console.log("filteredData",filteredData)
+  useEffect(() => {
+    if (selectedBranch) {
+      console.log("Selected Branch Name:", selectedBranch.name)
+      console.log("Selected Branch Location:", selectedBranch.location)
+    }
+  }, [selectedBranch])
+
+      if (loading) return <div>Loading branches...</div>;
+
   return (
     <div className="flex flex-1 flex-col">
        <div className="flex w-full -ml-2 items-center gap-1 px-4 lg:gap-2 lg:px-6">
@@ -113,10 +150,10 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
-        <h1 className="text-base font-medium">Product Movement</h1>
+        <h1 className="text-base font-medium">Branch Analytics</h1>
        
       </div>
-       <div className="flex items-center justify-center w-full"> 
+       <div className="flex  justify-center w-full"> 
         <QueryClientProvider client={queryClient}>
           <AutoComplete
             selectedValue={selectedValue}
@@ -129,7 +166,7 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
 
           />
           </QueryClientProvider></div>
-         <section className="ml-6 mr-4 mt-5 flex justify-between gap-1 max-sm:flex-col sm:items-center bg-white items-center rounded-md p-2">
+     <section className="ml-6 mr-4 mt-5 flex justify-between gap-1 max-sm:flex-col sm:items-center bg-white items-center rounded-md p-2">
             <div className="flex space-x-1">
                 <Calendar22 label={"From"}  onDateChange={handleStartDateChange}/>
                 <Calendar22 label={"To"}  onDateChange={handleEndDateChange}/>
@@ -167,7 +204,6 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
                   </div>        
         
               </section>
-               
        
    
           
@@ -177,7 +213,7 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
          
           <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-12">
-             <ProductMovementLineChart/>
+             <BranchSalesLineChart branch={selectedBranch} startDate={date} endDate={endDate} chartData={filteredData}/>
             </div>
            
 

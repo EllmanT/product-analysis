@@ -15,7 +15,7 @@ import { BranchSalesLineChart } from "@/components/charts/BranchSalesLineChart";
 import { downloadExportAll, downloadExportBranch } from "@/app/api/products/downloadexcel";
 import BranchFilter from "@/components/filter/BranchFilter";
 import { Calendar22 } from "@/components/Calendat";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default  function Page() {
   const queryClient = new QueryClient()
@@ -26,6 +26,7 @@ export default  function Page() {
     const [chartData, setChartData] = useState<[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId]= useState("");
+  const router = useRouter();
   
 
 const [date, setDate] = React.useState<Date | undefined>(undefined);
@@ -77,8 +78,8 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
     });
   };
   
-  const handleResetFilters=()=>{
-     window.location.reload()
+  const handleResetFilters=async()=>{
+      window.location.href = window.location.pathname // full page reload, no query params
   } 
 
   
@@ -118,6 +119,25 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
     return branches.find(branch => branch._id === branchId)
   }, [branchId, branches])
 
+ const filteredData = React.useMemo(() => {
+  if (!selectedBranch) return chartData
+
+  const branchName = selectedBranch.location
+
+  return chartData.map(entry => {
+    const filteredEntry: { [key: string]: any } = { date: entry.date }
+
+    if (branchName in entry) {
+      filteredEntry[branchName] = entry[branchName]
+    } else {
+      filteredEntry[branchName] = 0 // or null if you prefer
+    }
+
+    return filteredEntry
+  })
+}, [chartData, selectedBranch])
+
+console.log("filteredData",filteredData)
   useEffect(() => {
     if (selectedBranch) {
       console.log("Selected Branch Name:", selectedBranch.name)
@@ -184,7 +204,7 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
          
           <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-12">
-             <BranchSalesLineChart branch={selectedBranch} startDate={date} endDate={endDate} chartData={chartData}/>
+             <BranchSalesLineChart branch={selectedBranch} startDate={date} endDate={endDate} chartData={filteredData}/>
             </div>
            
 

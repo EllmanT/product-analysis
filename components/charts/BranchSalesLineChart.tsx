@@ -150,7 +150,7 @@ tickLine={false}
               <Area
                 key={store}
                 dataKey={store}
-                type="natural"
+                type="linear"
                 fill="none"
                 stroke={color}
                 stackId="a"

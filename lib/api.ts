@@ -59,6 +59,14 @@ export: (month: string, year: string, week: string) =>
     method: "GET"
   }),
   },
+  analytics:{
+    
+branch: (storeId:string) =>
+  fetchHandler(`${API_BASE_URL}/products/export?storeId=${storeId}`, 
+    {
+    method: "GET"
+  }),
+  },
   accounts: {
     getAll: () => fetchHandler(`${API_BASE_URL}/accounts`),
     getById: (id: string) => fetchHandler(`${API_BASE_URL}/accounts/${id}`),

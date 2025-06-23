@@ -126,7 +126,7 @@ export async function getUsers(params:GetUserParams): Promise<
 const users = await User.find({
   storeId: storeId,
   _id: { $ne: adminId }, // $ne means "not equal"
-});
+}).populate("branchId", "name location");
 
     console.log("the users are", users)
     return {

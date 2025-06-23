@@ -119,7 +119,7 @@ const [branches, setBranches] = useState<Branch[]>([]);
          
            <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-12">
-      <DataTable data={projects} columns={columnAllUsers} isVisible={false} />
+      <DataTable data={users} columns={columnAllUsers} isVisible={false} />
 
               </div>
             </div>

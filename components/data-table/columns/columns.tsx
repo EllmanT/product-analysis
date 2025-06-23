@@ -4,7 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SortableHeader } from "@/components/data-table/SortableHeader";
 import { Project } from "../../../app/data";
-import ProjectName from "@/components/data-table/ProjectName";
+import ProjectName from "@/components/data-table/Name";
 // import ProjectManager from "@/components/data-table/ProjectManager";
 import ProjectStatus from "@/components/data-table/ProjectStatus";
 import ProjectLastUpdate from "@/components/data-table/ProjectLastUpdate";

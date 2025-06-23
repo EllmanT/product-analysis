@@ -3,15 +3,15 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SortableHeader } from "@/components/data-table/SortableHeader";
-import { Project } from "../../../app/data";
-import ProjectName from "@/components/data-table/ProjectName";
+import ProjectName from "@/components/data-table/Name";
 import ProjectStatus from "@/components/data-table/ProjectStatus";
 import { ProjectActions } from "@/components/data-table/ProjectActions";
+import Name from "@/components/data-table/Name";
 
 
 
 
-export const columnAllUsers: ColumnDef<Project>[] = [
+export const columnAllUsers: ColumnDef<User>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -42,33 +42,30 @@ export const columnAllUsers: ColumnDef<Project>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} title="Name" />
     ),
-    cell: ({ row }) => <ProjectName name={row.getValue("name")} />,
+    cell: ({ row }) => <Name name={row.getValue("name")} />,
     enableSorting: true,
   },
     {
-    accessorKey: "name",
+    accessorKey: "email",
     header: ({ column }) => (
       <SortableHeader column={column} title="email" />
     ),
-    cell: ({ row }) => <ProjectName name={row.getValue("name")} />,
+    cell: ({ row }) => <Name name={row.getValue("email")} />,
     enableSorting: true,
   },
 
+{
+  accessorKey: "branchId",
+  header: ({ column }) => (
+    <SortableHeader column={column} title="Branch" />
+  ),
+  cell: ({ row }) => {
+    const branch = row.getValue("branchId") as { name: string; location: string };
+    return <Name name={branch?.location} />;
+  },
+  enableSorting: true,
+},
 
-  
-  {
-    accessorKey: "status",
-    header: "Role",
-    cell: ({ row }) => <ProjectStatus status={row.getValue("status")} />,
-  },
-      {
-    accessorKey: "name",
-    header: ({ column }) => (
-      <SortableHeader column={column} title="Branch" />
-    ),
-    cell: ({ row }) => <ProjectName name={row.getValue("name")} />,
-    enableSorting: true,
-  },
 
    { 
     accessorKey: "actions",

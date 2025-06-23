@@ -101,3 +101,42 @@ export async function getUser(params: GetUserParams): Promise<
     return handleError(error) as ErrorResponse;
   }
 }
+
+
+export async function getUsers(params:GetUserParams): Promise<
+  ActionResponse<{
+    users: User[];
+  }>
+> {
+  const validationResult = await action({
+    params,
+    schema: GetUserSchema,
+  });
+
+  if (validationResult instanceof Error) {
+    return handleError(validationResult) as ErrorResponse;
+  }
+
+  const storeId = validationResult.params?.storeId
+  const adminId = validationResult.params?.userId
+
+
+  try {
+
+const users = await User.find({
+  storeId: storeId,
+  _id: { $ne: adminId }, // $ne means "not equal"
+});
+
+    console.log("the users are", users)
+    return {
+      success: true,
+      data: {
+        users: JSON.parse(JSON.stringify(users)),
+
+      },
+    };
+  } catch (error) {
+    return handleError(error) as ErrorResponse;
+  }
+}

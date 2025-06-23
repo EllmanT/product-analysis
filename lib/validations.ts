@@ -188,6 +188,7 @@ export const GetBranchesByStoreSchema = z.object({
 
 export const GetUserSchema = z.object({
   userId: z.string().min(1, { message: "User ID is required" }),
+  storeId: z.string().min(1, { message: "User ID is required" }).optional(),
 });
 
 

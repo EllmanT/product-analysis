@@ -6,16 +6,10 @@ import { SortableHeader } from "@/components/data-table/SortableHeader";
 import { Project } from "../../../app/data";
 import ProjectName from "@/components/data-table/ProjectName";
 import ProjectStatus from "@/components/data-table/ProjectStatus";
-import ProjectResources from "@/components/data-table/ProjectResources";
 import { ProjectActions } from "@/components/data-table/ProjectActions";
-import ProjectLastUpdate from "../ProjectLastUpdate";
 
-// function formatCurrency(amount: number) {
-//   if (amount >= 1000) {
-//     return `US$ ${(amount / 1000).toFixed(1)}k`;
-//   }
-//   return `US$ ${amount}`;
-// }
+
+
 
 export const columnAllUsers: ColumnDef<Project>[] = [
   {

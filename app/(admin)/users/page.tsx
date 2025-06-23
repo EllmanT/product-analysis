@@ -3,16 +3,12 @@
 // import data from "./data.json";
 import { projects} from "@/app/data";
 import { DataTable } from "@/components/data-table/index";
-import GlobalFilter from "@/components/filter/GlobalFilter";
-import { HomePageBranchesFilters, Role } from "@/constants/filter";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { FilterIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { columnAllUsers } from "@/components/data-table/columns/columnAllUsers";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { signUpWithCredentials } from "@/lib/actions/auth.action";
-import { CreateUserSchema, SignUpSchema } from "@/lib/validations";
+import {  SignUpSchema } from "@/lib/validations";
 import AuthForm from "@/components/forms/AuthForm";
 import { useEffect, useState } from "react";
 
@@ -20,6 +16,7 @@ export default  function Page() {
 const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId]= useState("");
+  const [users, setUsers] = useState<User[]>([])
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -42,11 +39,31 @@ const [branches, setBranches] = useState<Branch[]>([]);
       }
     };
 
+        const fetchUsers = async () => {
+      try {
+        console.log("here")
+        const res = await fetch("/api/users/all");
+        if (!res.ok) throw new Error("Failed to fetch users");
+
+        const {data} = await res.json();
+
+        console.log("data", data)
+        console.log("data branches", data.users)
+        setUsers(data.users);
+        
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchBranches();
+    fetchUsers();
   }, []);
 
           console.log("branches",branches)
-          console.log("storeId",storeId)
+          console.log("users",users)
 
   if (loading) return <div>Loading branches...</div>;
 
@@ -65,24 +82,6 @@ const [branches, setBranches] = useState<Branch[]>([]);
   {/* Left side: AutoComplete */}
 
 
-  {/* Right side: Filters + Button */}
-  <div className="flex flex-wrap items-center gap-2 justify-end">
-    <GlobalFilter
-      label="Branch"
-      filters={HomePageBranchesFilters}
-      containerClasses="max-md:flex"
-    />
-    <GlobalFilter
-      label="Role"
-      filters={Role}
-      containerClasses="max-md:flex"
-    />
-    <Button className="h-9 px-4 py-1  !text-light-900 bg-blue-500 mt-5 flex items-center gap-2">
-      <FilterIcon />
-      <Link href="/">Apply filter</Link>
-    </Button>
-  </div>
-      
   
     <Dialog>
         <DialogTrigger asChild>

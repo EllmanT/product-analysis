@@ -41,6 +41,7 @@ interface CreateUserParams{
 }
 interface GetUserParams {
   userId: string;
+  storeId?:string;
 }
 
 interface GlobalSearchParams {

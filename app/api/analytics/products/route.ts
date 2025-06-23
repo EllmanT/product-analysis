@@ -1,4 +1,3 @@
-import { NextApiRequest, NextApiResponse } from 'next'
 import mongoose, { Types } from 'mongoose'
 import { startOfISOWeek, addWeeks, format } from 'date-fns'
 import dbConnect from '@/lib/mongoose'
@@ -11,8 +10,6 @@ export async function GET(req: NextRequest) {
 
   const storeId = searchParams.get("storeId");
   const productId = searchParams.get("productId");
-  // const storeId ="6853c0deffe4c597713a3385";
-  // const productId ="685681e5b0a526a88dfef5c6";
 
   if(!storeId){
     return NextResponse.json("Failed to get store",{status:404})

@@ -111,3 +111,17 @@ export const downloadExportProductBranch = async (startDate: Date, endDate: Date
 
   return true;
 };
+
+
+
+export const uploadReports  = async (storeId:string) => {
+
+  const res = await fetch(`${API_BASE_URL}/upload/?sstoreId=${storeId}`, {
+    method: "GET",
+  });
+  if (!res.ok) throw new Error("Failed ");
+
+
+
+  return true;
+};

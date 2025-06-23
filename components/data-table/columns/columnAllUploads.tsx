@@ -3,21 +3,12 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SortableHeader } from "@/components/data-table/SortableHeader";
-import { Project } from "../../../app/data";
-import ProjectName from "@/components/data-table/Name";
-import ProjectStatus from "@/components/data-table/ProjectStatus";
-import ProjectResources from "@/components/data-table/ProjectResources";
-import { ProjectActions } from "@/components/data-table/ProjectActions";
-import ProjectLastUpdate from "../ProjectLastUpdate";
+import Name from "@/components/data-table/Name";
 
-// function formatCurrency(amount: number) {
-//   if (amount >= 1000) {
-//     return `US$ ${(amount / 1000).toFixed(1)}k`;
-//   }
-//   return `US$ ${amount}`;
-// }
 
-export const columnsAllUploads: ColumnDef<Project>[] = [
+
+
+export const columnAllUploads: ColumnDef<[]>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -42,46 +33,44 @@ export const columnsAllUploads: ColumnDef<Project>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-
-  {
-    accessorKey: "name",
+      {
+    accessorKey: "uploadDate",
     header: ({ column }) => (
-      <SortableHeader column={column} title="Week Number" />
+      <SortableHeader column={column} title="date" />
     ),
-    cell: ({ row }) => <ProjectName name={row.getValue("name")} />,
+    cell: ({ row }) => <Name name={row.getValue("uploadDate")} />,
     enableSorting: true,
   },
+
+  {
+    accessorKey: "branchLocation",
+    header: ({ column }) => (
+      <SortableHeader column={column} title="Branch" />
+    ),
+    cell: ({ row }) => <Name name={row.getValue("branchLocation")} />,
+    enableSorting: true,
+  },
+
     {
-    accessorKey: "name",
+    accessorKey: "estValue",
     header: ({ column }) => (
-      <SortableHeader column={column} title="Upload Date" />
+      <SortableHeader column={column} title="Est Value" />
     ),
-    cell: ({ row }) => <ProjectName name={row.getValue("name")} />,
+    cell: ({ row }) => <Name name={row.getValue("estValue")} />,
+    enableSorting: true,
+  },
+
+      {
+    accessorKey: "totalProducts",
+    header: ({ column }) => (
+      <SortableHeader column={column} title="Total Products" />
+    ),
+    cell: ({ row }) => <Name name={row.getValue("totalProducts")} />,
     enableSorting: true,
   },
 
 
+      
 
-   {
-    accessorKey: "id",
-    header: ({ column }) => (
-      <SortableHeader column={column} title="Products Uploaded" />
-    ),
-    enableSorting: true,
-  },
-  
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => <ProjectStatus status={row.getValue("status")} />,
-  },
-
-   { 
-    accessorKey: "actions",
-    header: "Action",
-    cell: ({ row }) => <ProjectActions row={row} />,
-  },
-
- 
 
 ];

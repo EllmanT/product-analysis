@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import * as path from "path";
 import ExcelJS from "exceljs";
 import fs from "fs";
+import dbConnect from "@/lib/mongoose";
+import { Types } from "mongoose";
+import { Upload, WeeklyProductSummaries } from "@/database";
+import { addWeeks, formatDate, startOfISOWeek } from "date-fns";
+import handleError from "@/lib/handlers/error";
 
 // Function to get the formatted date
 function getFormattedDate(): string {
@@ -162,4 +167,53 @@ sortedData.forEach((line) => {
   } catch (error) {
     return NextResponse.json({ error: `Error processing file: ${error}` }, { status: 500 });
   }
+}
+
+export async function GET(req: NextRequest) {
+    const { searchParams } = new URL(req.url);
+  // const year = searchParams.get("year");
+
+  const storeId = searchParams.get("storeId");
+
+    console.log("📥 Incoming export request...");
+
+  if(!storeId){
+    return NextResponse.json("Failed",{status:404})
+  }
+  console.log("storeId",storeId)
+ await dbConnect()
+
+
+
+const objectStoreId = new Types.ObjectId(storeId)
+
+
+
+  try {
+
+const uploads = await Upload.find({
+  storeId: objectStoreId,
+
+}).populate("branchId", "name location");
+
+const formattedUploads = uploads.map(upload => ({
+  uploadId:upload._id,
+  branchId: upload.branchId._id, // or include location: `${name} (${location})`
+  branchLocation: upload.branchId.location, // or include location: `${name} (${location})`
+  uploadDate: formatDate(upload.upload_date, "dd/MM/yyyy"),
+  estValue: parseFloat(upload.estimatedValue),
+  totalProducts: upload.totalProducts,
+}));
+
+    console.log("the users are", uploads)
+  
+         return NextResponse.json({success:true,data:formattedUploads},{status:200})
+
+
+  } catch (error) {
+    return handleError(error) as ErrorResponse;
+  }
+
+//   res.status(200).json(chartData)
+  
 }

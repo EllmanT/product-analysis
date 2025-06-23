@@ -1,4 +1,3 @@
-import { NextApiRequest, NextApiResponse } from 'next'
 import mongoose, { Types } from 'mongoose'
 import { startOfISOWeek, addWeeks, format } from 'date-fns'
 import dbConnect from '@/lib/mongoose'

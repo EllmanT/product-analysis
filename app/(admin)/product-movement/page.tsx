@@ -12,7 +12,7 @@ import React, { startTransition, useEffect, useMemo, useState } from "react";
 import { getDetail, getList } from "@/lib/actions/product.action";
 import {QueryClient, QueryClientProvider, useQuery} from "@tanstack/react-query"
 import { BranchSalesLineChart } from "@/components/charts/BranchSalesLineChart";
-import { downloadExportAll, downloadExportBranch } from "@/app/api/products/downloadexcel";
+import { downloadExportAll, downloadExportBranch, downloadExportProductAll, downloadExportProductBranch } from "@/app/api/products/downloadexcel";
 import BranchFilter from "@/components/filter/BranchFilter";
 import { Calendar22 } from "@/components/Calendat";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -45,18 +45,22 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
      e.preventDefault()
     const params = new URLSearchParams(window.location.search);
     const branch = params.get("branch")
+    const product= params.get("productId")
   
     console.log(date)
-    if (!date || !endDate) {
-      console.warn("❗ Missing filter values (month/week/year)");
+
+    console.log("sending this data",product)
+    if (!date || !endDate || !product) {
+      console.warn("❗ Missing filter values (month/week/year) product");
       return;
     }
+
   
     startTransition(async () => {
           if(!branch || branch==="all"){
          try {
        
-      await downloadExportAll(date, endDate, storeId);
+      await downloadExportProductAll(date, endDate, storeId, product);
       console.log("✅ Export all branches triggered successfully");
       // Optional: show toast or notification
     } catch (err) {
@@ -68,7 +72,7 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
   
           console.log(date)
           console.log(endDate)
-      await downloadExportBranch(date, endDate, branch);
+      await downloadExportProductBranch(date, endDate, branch, product);
       console.log(`✅ Export ${branch} triggered successfully`);
       // Optional: show toast or notification
     } catch (err) {
@@ -120,7 +124,7 @@ useEffect(() => {
       const myproductId = params.get("productId");
 
       if (myproductId) {
-        
+        setProductId(myproductId)
         console.log("storeId", storeId);
         console.log("productId", myproductId); // Use directly here
 

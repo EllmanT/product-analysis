@@ -42,3 +42,9 @@ interface CreateUserParams{
 interface GetUserParams {
   userId: string;
 }
+
+interface GlobalSearchParams {
+  query: string;
+  type: string | null;
+}
+

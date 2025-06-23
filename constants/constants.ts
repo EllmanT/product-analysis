@@ -107,4 +107,11 @@ import {
     email: "Manager",
     avatar: "/avatars/shadcn.jpg",
   }
+
+  export const GlobalSearchFilters = [
+  { name: "Product", value: "product" },
+  { name: "Code", value: "code" },
+
+];
+
   

@@ -233,3 +233,9 @@ export const CreateUserSchema = z.object({
   storeId: z.string().min(1, { message: "Store ID is required" }).optional(),
 
 });
+
+
+export const GlobalSearchSchema = z.object({
+  query: z.string(),
+  type: z.string().nullable().optional(),
+});

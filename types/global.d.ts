@@ -75,3 +75,11 @@ interface User {
   storeId?:string;
   branchId?:string;
 }
+
+
+interface GlobalSearchedItem {
+  id: string;
+  type: "product" | "code" ;
+  title: string;
+  code:string;
+}

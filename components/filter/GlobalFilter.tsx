@@ -1,83 +1,64 @@
 "use client";
-import { useRouter, useSearchParams } from "next/navigation";
-import React from "react";
 
-import { cn } from "@/lib/utils";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useState } from "react";
 
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 import { formUrlQuery } from "@/lib/url";
-import { Label } from "../ui/label";
+import { GlobalSearchFilters } from "@/constants/constants";
 
-interface Filter {
-  name: string;
-  value: string;
-}
-
-interface Props {
-  label:string;
-  filters: Filter[];
-  otherClasses?: string;
-  containerClasses?: string;
-  queryKey:string
-}
-
-const GlobalFilter = ({
-  label,
-  filters,
-  otherClasses = "",
-  containerClasses = "",
-  queryKey,
-}: Props) => {
+const GlobalFilter = () => {
   const router = useRouter();
-
   const searchParams = useSearchParams();
 
-  // const paramsFilter = searchParams.get("filter");
-  const selected = searchParams.get(queryKey); // <-- Get value for that key
+  const typeParams = searchParams.get("type");
 
-  const handleUpdateParams = (value: string) => {
-    const newUrl = formUrlQuery({
-      params: searchParams.toString(),
-      key: queryKey,
-      value,
-    });
+  const [active, setActive] = useState(typeParams || "");
+
+  const handleTypeClick = (item: string) => {
+    let newUrl = "";
+
+    if (active === item) {
+      setActive("");
+
+      newUrl = formUrlQuery({
+        params: searchParams.toString(),
+        key: "type",
+        value: "",
+      });
+
+      router.push(newUrl, { scroll: false });
+    } else {
+      setActive(item);
+
+      newUrl = formUrlQuery({
+        params: searchParams.toString(),
+        key: "type",
+        value: item.toLowerCase(),
+      });
+    }
+
     router.push(newUrl, { scroll: false });
   };
 
   return (
-    <div className={cn("relative max-w-[60px]", containerClasses)}>
-      <Label className="justify-center m-1 ml-10">{label}</Label>
-      <Select
-        onValueChange={handleUpdateParams}
-        defaultValue={selected || undefined}
-      >        <SelectTrigger
-          className={cn(
-            "body-regular no-focus light-border background-light800_dark300 text-dark500_light700 border px-5 py-2.5",
-            otherClasses
-          )}
-        >
-          <div className="line-clamp-1 flex-1 text-left">
-            <SelectValue placeholder="Select a filter" />
-          </div>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {filters.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.name}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+    <div className="flex items-center gap-5 px-5">
+      <p className="text-dark400_light900 body-medium">Type:</p>
+      <div className="flex gap-3">
+        {GlobalSearchFilters.map((item) => (
+          <button
+            type="button"
+            key={item.value}
+            className={`light-border-2 small-medium rounded-2xl px-5 py-2 capitalize ${
+              active === item.value
+                ? "bg-primary-500 text-light-900"
+                : "bg-light-700 text-dark-400 hover:text-primary-500 dark:bg-dark-500 dark:text-light-800 dark:hover:text-primary-500"
+            }`}
+            onClick={() => handleTypeClick(item.value)}
+          >
+            {item.name}
+          </button>
+        ))}
+      </div>
     </div>
   );
 };

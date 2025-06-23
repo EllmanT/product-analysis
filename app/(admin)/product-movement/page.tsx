@@ -16,16 +16,18 @@ import { downloadExportAll, downloadExportBranch } from "@/app/api/products/down
 import BranchFilter from "@/components/filter/BranchFilter";
 import { Calendar22 } from "@/components/Calendat";
 import { useRouter, useSearchParams } from "next/navigation";
+import LocalSearch from "@/components/search/GlobalSearch";
+import ROUTES from "@/constants/route";
+import GlobalSearch from "@/components/search/GlobalSearch";
 
 export default  function Page() {
-  const queryClient = new QueryClient()
-    const [searchValue, setSearchValue] = useState<string>("");
-  const [selectedValue, setSelectedValue] = useState<string>("");
-
+    
+  const searchParams = useSearchParams()
     const [branches, setBranches] = useState<Branch[]>([]);
     const [chartData, setChartData] = useState<[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId]= useState("");
+  const [productId, setProductId]= useState("");
   const router = useRouter();
   
 
@@ -82,33 +84,73 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
       window.location.href = window.location.pathname // full page reload, no query params
   } 
 
+   
+
   
     useEffect(() => {
 
-         const fetchProducts = async () => {
+       const fetchBranches = async () => {
         try {
-         
-        const response = await fetch(`/api/analytics/products?storeId="test"&productId="test"`);
-          if (!response.ok) throw new Error("Failed to fetch branches");
+          console.log("here")
+          const res = await fetch("/api/branches");
+          if (!res.ok) throw new Error("Failed to fetch branches");
   
-          const {data:datas} = await response.json();
-          setChartData(datas)
+          const {data} = await res.json();
+          setBranches(data.branches);
+          setStoreId(data.branches[0].storeId._id)
+          
         } catch (err) {
           console.error(err);
         } finally {
           setLoading(false);
         }
       };
-  
-      fetchProducts();
-            // fetchBranches();
+        
+      
+      fetchBranches();
+           
 
     }, []);
+
+      
+useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const myproductId = params.get("productId");
+
+      if (myproductId) {
+        
+        console.log("storeId", storeId);
+        console.log("productId", myproductId); // Use directly here
+
+        const response = await fetch(
+          `/api/analytics/products?storeId=${storeId}&productId=${myproductId}`
+        );
+        if (!response.ok) throw new Error("Failed to fetch product data");
+
+        const { data: datas } = await response.json();
+        setChartData(datas);
+      } else {
+        console.log("no product selected");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchProducts();
+}, [searchParams]); // run this effect whenever storeId changes
+
+
+    console.log("store id", storeId)
+    console.log("product id", productId)
   
             console.log("datas",chartData)
 
-  
-  const searchParams = useSearchParams()
+
   const branchId = searchParams.get('branch')
 
   const selectedBranch = useMemo(() => {
@@ -154,18 +196,8 @@ console.log("filteredData",filteredData)
        
       </div>
        <div className="flex  justify-center w-full"> 
-        <QueryClientProvider client={queryClient}>
-          <AutoComplete
-            selectedValue={selectedValue}
-        onSelectedValueChange={setSelectedValue}
-        searchValue={searchValue}
-        onSearchValueChange={setSearchValue}
-        items={ []}
-        isLoading={false}
-        emptyMessage="No pokemon found."
-
-          />
-          </QueryClientProvider></div>
+       <GlobalSearch />
+          </div>
      <section className="ml-6 mr-4 mt-5 flex justify-between gap-1 max-sm:flex-col sm:items-center bg-white items-center rounded-md p-2">
             <div className="flex space-x-1">
                 <Calendar22 label={"From"}  onDateChange={handleStartDateChange}/>

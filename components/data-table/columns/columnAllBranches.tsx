@@ -3,21 +3,15 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SortableHeader } from "@/components/data-table/SortableHeader";
-import { Project } from "../../../app/data";
 import ProjectName from "@/components/data-table/Name";
 import ProjectStatus from "@/components/data-table/ProjectStatus";
-import ProjectResources from "@/components/data-table/ProjectResources";
 import { ProjectActions } from "@/components/data-table/ProjectActions";
-import ProjectLastUpdate from "../ProjectLastUpdate";
+import Name from "@/components/data-table/Name";
 
-// function formatCurrency(amount: number) {
-//   if (amount >= 1000) {
-//     return `US$ ${(amount / 1000).toFixed(1)}k`;
-//   }
-//   return `US$ ${amount}`;
-// }
 
-export const columnAllBranches: ColumnDef<Project>[] = [
+
+
+export const columnAllBranches: ColumnDef<Branch>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -48,17 +42,18 @@ export const columnAllBranches: ColumnDef<Project>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} title="Name" />
     ),
-    cell: ({ row }) => <ProjectName name={row.getValue("name")} />,
+    cell: ({ row }) => <Name name={row.getValue("name")} />,
     enableSorting: true,
   },
     {
-    accessorKey: "name",
+    accessorKey: "location",
     header: ({ column }) => (
-      <SortableHeader column={column} title="Location" />
+      <SortableHeader column={column} title="location" />
     ),
-    cell: ({ row }) => <ProjectName name={row.getValue("name")} />,
+    cell: ({ row }) => <Name name={row.getValue("location")} />,
     enableSorting: true,
   },
+
 
 
    { 

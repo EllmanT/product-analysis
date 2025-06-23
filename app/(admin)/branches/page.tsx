@@ -7,19 +7,45 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { columnAllUsers } from "@/components/data-table/columns/columnAllUsers";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AutoComplete } from "@/components/Autocomplete";
 import GenericForm from "@/components/forms/GenericForm";
 import { AddBranchSchema } from "@/lib/validations";
 import { addBranch } from "@/lib/actions/branch.action";
 import { Dialog, DialogClose, DialogContent, DialogFooter,DialogTrigger } from "@/components/ui/dialog";
+import { columnAllBranches } from "@/components/data-table/columns/columnAllBranches";
 
 export default function Page() {
       const queryClient = new QueryClient()
     const [searchValue, setSearchValue] = useState<string>("");
   const [selectedValue, setSelectedValue] = useState<string>("");
+  const [branches, setBranches]= useState<Branch[]>([]);
+  const [loading , setLoading]= useState(true)
 
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        console.log("here")
+        const res = await fetch("/api/branches");
+        if (!res.ok) throw new Error("Failed to fetch branches");
 
+        const {data} = await res.json();
+
+        console.log("data", data)
+        console.log("data branches", data.branches)
+        setBranches(data.branches);
+        
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+        
+
+    fetchBranches();
+  }, []);
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6 justify-between">
@@ -85,7 +111,7 @@ export default function Page() {
          
            <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-12">
-      <DataTable data={projects} columns={columnAllUsers} isVisible={false} />
+      <DataTable data={branches} columns={columnAllBranches} isVisible={false} />
 
               </div>
             </div>

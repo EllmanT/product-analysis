@@ -6,7 +6,7 @@ import { DataTable } from "@/components/data-table/index";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { columnAllUsers } from "@/components/data-table/columns/columnAllUsers";
-import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { signUpWithCredentials } from "@/lib/actions/auth.action";
 import {  SignUpSchema } from "@/lib/validations";
 import AuthForm from "@/components/forms/AuthForm";
@@ -87,6 +87,7 @@ const [branches, setBranches] = useState<Branch[]>([]);
         <DialogTrigger asChild>
           <Button variant="outline">Add User</Button>
         </DialogTrigger>
+        <DialogTitle></DialogTitle>
         <DialogContent className="sm:max-w-[425px]">      
 
      <AuthForm

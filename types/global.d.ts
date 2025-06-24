@@ -10,7 +10,7 @@ type NavLink = {
     }
     type StatisticsCard= {
       label: string
-       value: string
+       value?: string
       trend?: string
       description?:string
       icon?:React.ElementType

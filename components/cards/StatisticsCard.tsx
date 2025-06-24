@@ -9,7 +9,7 @@ const StatisticsCard = ({label, value,trend,description,icon:Icon,period, bgColo
     <Card className="@container/card">
     <CardHeader>
       <CardDescription>{label}</CardDescription>
-      <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+      <CardTitle className="text-xl font-semibold tabular-nums @[250px]/card:text-3xl">
         {value}
       </CardTitle>
       <CardAction>

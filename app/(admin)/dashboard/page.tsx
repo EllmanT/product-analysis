@@ -1,19 +1,73 @@
+"use client"
+import { BranchSalesLineChart } from "@/components/charts/BranchSalesLineChart";
 import { ChartAreaInteractive } from "@/components/charts/LineChartInteractive";
 import { SectionCards } from "@/components/statistics/StatisticsSection";
 
 // import data from "./data.json";
-import { projects} from "@/app/data";
-import { columns } from "@/components/data-table/columns/columns";
-import { DataTable } from "@/components/data-table/index";
-import DataTableTopHeader from "@/components/data-table/Header";
-import GlobalFilter from "@/components/filter/GlobalFilter";
-import { HomePageBranchesFilters,  HomePageMonth, HomePageWeek, HomePageYear } from "@/constants/filter";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { FilterIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import React, { useEffect, useState } from "react";
 
-export default async function Page() {
+export default function Page() {
+
+  const [branches, setBranches]= useState<Branch[]>([]);
+  const [loading , setLoading]= useState(true)
+  const [dashboardStats,setDashboardStats]= useState();
+      const [chartData, setChartData] = useState<[]>([]);
+      const [date, setDate] = React.useState<Date | undefined>(undefined);
+      const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
+      
+      const selectedBranch = useState("")
+  
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        console.log("here")
+        const res = await fetch("/api/branches");
+        if (!res.ok) throw new Error("Failed to fetch branches");
+
+        const {data} = await res.json();
+
+         const response = await fetch(`/api/analytics/branches?storeId=${data.branches[0].storeId._id}`);
+          if (!response.ok) throw new Error("Failed to fetch branches");
+  
+          const {data:datas} = await response.json();
+          setChartData(datas)
+
+        console.log("data", data)
+        console.log("data branches", data.branches)
+        setBranches(data.branches);
+        
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+       const fetchOverallStats = async () => {
+      try {
+        console.log("here")
+        const res = await fetch("/api/analytics");
+        if (!res.ok) throw new Error("Failed to fetch branches");
+
+        const {data} = await res.json();
+
+        console.log("data", data)
+        setDashboardStats(data);
+        
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+            fetchBranches();
+
+fetchOverallStats();
+  }, []);
+
+  console.log(dashboardStats)
 
   return (
     <div className="flex flex-1 flex-col">
@@ -26,67 +80,32 @@ export default async function Page() {
     <h1 className="text-base font-medium">Dashboard</h1>
   </div>
   </div>
-          <section className="ml-6 mr-6 mt-5 flex justify-between gap-2 max-sm:flex-col sm:items-center bg-white items-center rounded-md p-2">
       
-        <GlobalFilter
-                 label="Branch"
-
-          filters={HomePageBranchesFilters}
-          otherClasses="min-h-[56px] sm:min-w-[170px]"
-          containerClasses="  max-md:flex"
-        />
-          <GlobalFilter
-                   label="Week"
-
-          filters={HomePageWeek}
-          otherClasses="min-h-[56px] sm:min-w-[170px]"
-          containerClasses="  max-md:flex"
-        />
-          <GlobalFilter
-                   label="Month"
-          filters={HomePageMonth}
-          otherClasses="min-h-[56px] sm:min-w-[170px]"
-          containerClasses="  max-md:flex"
-        />
-         <GlobalFilter
-         label="Year"
-          filters={HomePageYear}
-          otherClasses="min-h-[56px] sm:min-w-[170px]"
-          containerClasses="  max-md:flex"
-        />
-                  
- <Button
-          className="mt-5 primary-gradient min-h-[46px] px-4 py-3 !text-light-900 bg-blue-500"
-          // asChild
-        >
-          <FilterIcon/>
-          <Link href="/">Apply filter</Link>
-        </Button>
-        
-      </section>
-       
    
           
       <div className="@container/main flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
           {/* Statistics cards section */}
           <div className="flex-col">
-          <SectionCards />
+          <SectionCards dashboardStats={dashboardStats}/>
 
           </div>
           <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-12">
-              <ChartAreaInteractive />
+              {/* <ChartAreaInteractive /> */}
+
+                           <BranchSalesLineChart branch={selectedBranch} startDate={date} endDate={endDate} chartData={chartData}/>
+              
             </div>
            
 
 
           </div>
            <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-12">
+            {/* <div className="lg:col-span-12">
       <DataTable data={projects} columns={columns} />
 
-              </div>
+              </div> */}
             </div>
        
         </div>

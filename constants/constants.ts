@@ -9,8 +9,9 @@ import {
     IconTrendingUp,
     IconAlertTriangle
   } from "@tabler/icons-react"
-  
-  export const mainSidebarLinks = [
+import { FileText, Receipt } from "lucide-react"
+
+export const mainSidebarLinks = [
     {
       title: "Dashboard",
       url: "/dashboard",
@@ -84,9 +85,18 @@ import {
         url: "/branches",
         icon: IconBuildingStore,
       },
-   
-    
-    
+    {
+      title: "Quotations",
+      url: "/admin/quotations",
+      icon: FileText,
+      adminOnly: true,
+    },
+    {
+      title: "Invoices",
+      url: "/admin/invoices",
+      icon: Receipt,
+      adminOnly: true,
+    },
   ]
   
   export const secondarySidebarLinks = [

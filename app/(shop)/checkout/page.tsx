@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useCart } from "@/app/(shop)/context/CartContext";
 
@@ -12,6 +12,8 @@ type MeData = {
   phone: string;
   address: string;
 };
+
+type PaymentMethod = "card" | "ecocash";
 
 function formatMoney(s: string): string {
   const n = parseFloat(s);
@@ -27,10 +29,12 @@ function lineAmount(price: string, qty: number): string {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const { items, clearCart } = useCart();
   const [loadingMe, setLoadingMe] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [form, setForm] = useState<MeData>({
     tradeName: "",
     tinNumber: "",
@@ -84,9 +88,14 @@ export default function CheckoutPage() {
     return sum + (Number.isNaN(n) ? 0 : n);
   }, 0);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function continueToPayment() {
     setError(null);
+    if (!paymentMethod) return;
+    const el = formRef.current;
+    if (el && !el.checkValidity()) {
+      el.reportValidity();
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/shop/quotations", {
@@ -119,7 +128,12 @@ export default function CheckoutPage() {
         return;
       }
       clearCart();
-      router.push(`/quotations/${id}`);
+      const amount = encodeURIComponent(subtotal.toFixed(2));
+      const path =
+        paymentMethod === "card"
+          ? `/payment/card?quotationId=${id}&amount=${amount}`
+          : `/payment/ecocash?quotationId=${id}&amount=${amount}`;
+      router.push(path);
       router.refresh();
     } catch {
       setError("Something went wrong");
@@ -180,8 +194,8 @@ export default function CheckoutPage() {
         Checkout
       </h1>
 
-      <form onSubmit={onSubmit} className="mt-10 space-y-8">
-        <div className="grid gap-8 lg:grid-cols-2">
+      <div className="mt-10 space-y-8">
+        <form ref={formRef} className="grid gap-8 lg:grid-cols-2">
           <div className="rounded-xl bg-white p-6 shadow-sm">
             <h2 className="text-lg font-bold text-slate-900">Your details</h2>
             <p className="mt-1 text-sm text-slate-500">
@@ -223,6 +237,49 @@ export default function CheckoutPage() {
               <span>{formatMoney(subtotal.toFixed(2))}</span>
             </div>
           </div>
+        </form>
+
+        <div className="rounded-xl bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-900">
+            Select Payment Method
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Choose how you will pay (demo — no real charges).
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("card")}
+              className={`rounded-xl border-2 p-5 text-left transition ${
+                paymentMethod === "card"
+                  ? "border-[#2563EB] bg-blue-50/60 ring-2 ring-[#2563EB]/20"
+                  : "border-slate-200 bg-white hover:border-slate-300"
+              }`}
+            >
+              <p className="text-base font-semibold text-slate-900">
+                💳 Pay by Card — ZimSwitch
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                Visa, Mastercard accepted
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("ecocash")}
+              className={`rounded-xl border-2 p-5 text-left transition ${
+                paymentMethod === "ecocash"
+                  ? "border-[#2563EB] bg-blue-50/60 ring-2 ring-[#2563EB]/20"
+                  : "border-slate-200 bg-white hover:border-slate-300"
+              }`}
+            >
+              <p className="text-base font-semibold text-slate-900">
+                📱 Pay by EcoCash
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                Mobile money payment
+              </p>
+            </button>
+          </div>
         </div>
 
         {error ? (
@@ -232,13 +289,14 @@ export default function CheckoutPage() {
         ) : null}
 
         <button
-          type="submit"
-          disabled={submitting}
+          type="button"
+          disabled={submitting || !paymentMethod}
+          onClick={() => void continueToPayment()}
           className="no-print w-full rounded-lg bg-[#2563EB] py-4 text-sm font-semibold text-white transition hover:bg-blue-600 disabled:opacity-60"
         >
-          {submitting ? "Submitting…" : "Request Quotation"}
+          {submitting ? "Working…" : "Continue to Payment"}
         </button>
-      </form>
+      </div>
     </div>
   );
 }

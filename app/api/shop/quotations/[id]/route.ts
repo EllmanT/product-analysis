@@ -14,9 +14,10 @@ import dbConnect from "@/lib/mongoose";
 import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
 import { NextResponse } from "next/server";
 
-const PatchSchema = z.object({
-  action: z.literal("confirm"),
-});
+const PatchSchema = z.union([
+  z.object({ action: z.literal("confirm") }),
+  z.object({ paymentStatus: z.enum(["unpaid", "paid"]) }),
+]);
 
 export async function GET(
   _request: Request,
@@ -120,26 +121,64 @@ export async function PATCH(
       throw new NotFoundError("Quotation");
     }
 
-    if (doc.status !== "pending") {
-      throw new RequestError(
-        400,
-        "Only pending quotations can be confirmed"
+    if ("action" in parsed.data && parsed.data.action === "confirm") {
+      if (doc.status !== "pending") {
+        throw new RequestError(
+          400,
+          "Only pending quotations can be confirmed"
+        );
+      }
+      doc.status = "confirmed";
+      await doc.save();
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            _id: doc._id.toString(),
+            status: doc.status,
+          },
+        },
+        { status: 200 }
       );
     }
 
-    doc.status = "confirmed";
-    await doc.save();
-
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          _id: doc._id.toString(),
-          status: doc.status,
+    if (
+      "paymentStatus" in parsed.data &&
+      parsed.data.paymentStatus === "paid"
+    ) {
+      doc.paymentStatus = "paid";
+      await doc.save();
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            _id: doc._id.toString(),
+            paymentStatus: doc.paymentStatus,
+          },
         },
-      },
-      { status: 200 }
-    );
+        { status: 200 }
+      );
+    }
+
+    if (
+      "paymentStatus" in parsed.data &&
+      parsed.data.paymentStatus === "unpaid"
+    ) {
+      doc.paymentStatus = "unpaid";
+      await doc.save();
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            _id: doc._id.toString(),
+            paymentStatus: doc.paymentStatus,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    return NextResponse.json({ success: false }, { status: 400 });
   } catch (error) {
     return handleError(error, "api") as APIErrorResponse;
   }

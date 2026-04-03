@@ -10,6 +10,7 @@ import Upload from "./upload.model";
 import WeeklyProductSummaries from "./weekly_product_summaries.model";
 import Customer from "./customer.model";
 import Quotation from "./quotation.model";
+import Invoice from "./invoice.model";
 
 export {
   Account,
@@ -23,4 +24,5 @@ export {
   WeeklyProductSummaries,
   Customer,
   Quotation,
+  Invoice,
 };

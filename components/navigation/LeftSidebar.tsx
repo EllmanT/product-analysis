@@ -16,12 +16,18 @@ import {
 } from "@/components/ui/sidebar"
 import { IconInnerShadowTop } from "@tabler/icons-react"
 import { mainSidebarLinks, secondarySidebarLinks } from "@/constants/constants"
-import { auth } from "@/auth"
-
+import { useSession } from "next-auth/react"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // const session = await auth();
-  // const user = session?.user
+  const { data: session } = useSession();
+  const mainItems = React.useMemo(
+    () =>
+      mainSidebarLinks.filter(
+        (item) => !item.adminOnly || session?.user?.role === "admin"
+      ),
+    [session?.user?.role]
+  );
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -40,7 +46,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={mainSidebarLinks} />
+        <NavMain items={mainItems as Items[]} />
         <NavSecondary items={secondarySidebarLinks} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

@@ -54,9 +54,7 @@ function StatusBadge({ status }: { status: string }) {
   }
   if (status === "invoiced") {
     return (
-      <span className={`${base} bg-blue-50 text-blue-700 ring-1 ring-blue-200`}>
-        Invoiced
-      </span>
+      <span className={`${base} bg-purple-100 text-purple-800`}>Invoiced</span>
     );
   }
   return <span className={`${base} bg-slate-100 text-slate-700`}>{status}</span>;

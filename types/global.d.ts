@@ -7,6 +7,7 @@ type NavLink = {
       title: string
       url: string
       icon?: Icon
+      adminOnly?: boolean
     }
     type StatisticsCard= {
       label: string

@@ -1,20 +1,18 @@
-// pages/api/branches.ts
 import { auth } from "@/auth";
-import { getBranchesByStore } from "@/lib/actions/branch.action";
+import { requireAdmin } from "@/lib/auth/role";
 import { getUser, getUsers } from "@/lib/actions/user.action";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   const session = await auth();
-console.log("her now 22")
-  if (!session?.user?.id) {
-    // return res.status(401).json({ message: "Unauthorized" });
-   return NextResponse.json({success:false,},{status:404})
+  const denied = requireAdmin(session);
+  if (denied) return denied;
 
-  }
+  const userId = session!.user.id;
+
 console.log("her now 23")
 
-  const { success, data } = await getUser({ userId: session.user.id });
+  const { success, data } = await getUser({ userId });
   if (!success || !data?.user.storeId) {
     // return res.status(404).json({ message: "User or store not found" });
        return NextResponse.json({success:false,},{status:404})

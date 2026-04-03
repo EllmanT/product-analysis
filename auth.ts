@@ -5,8 +5,10 @@ import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
 import { IAccountDoc } from "./database/account.model";
-import { IUserDoc } from "./database/user.model";
+import User, { IUserDoc } from "./database/user.model";
+import { normalizeRole } from "./lib/auth/role";
 import { api } from "./lib/api";
+import dbConnect from "./lib/mongoose";
 import { SignInSchema } from "./lib/validations";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -52,6 +54,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               name: existingUser.name,
               email: existingUser.email,
               image: existingUser.image,
+              role: normalizeRole(existingUser.role),
             };
           }
         }
@@ -62,9 +65,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async session({ session, token }) {
       session.user.id = token.sub as string;
+      session.user.role = normalizeRole(token.role as string | undefined);
       return session;
     },
-    async jwt({ token, account }) {
+    async jwt({ token, user, account }) {
       if (account) {
         const { data: existingAccount, success } =
           (await api.accounts.getByProvider(
@@ -78,6 +82,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const userId = existingAccount.userId;
 
         if (userId) token.sub = userId.toString();
+      }
+
+      if (user && "role" in user && user.role) {
+        token.role = normalizeRole(user.role as string);
+      }
+
+      if (token.sub) {
+        await dbConnect();
+        const doc = await User.findById(token.sub).select("role").lean();
+        token.role = normalizeRole(
+          doc && "role" in doc ? (doc.role as string | undefined) : undefined
+        );
       }
 
       return token;

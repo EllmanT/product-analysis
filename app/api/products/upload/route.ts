@@ -4,8 +4,10 @@ import dbConnect from "@/lib/mongoose";
 import { uploadProductsSchema } from "@/lib/validations";
 import { NextResponse } from "next/server";
 import mongoose, { Types } from "mongoose";
-import { ProductMaster, Upload, UploadProduct, WeeklyProductSummaries } from "@/database";
+import { Branch, ProductMaster, Upload, UploadProduct, WeeklyProductSummaries } from "@/database";
 import { auth } from "@/auth";
+import { getUser } from "@/lib/actions/user.action";
+import { normalizeRole } from "@/lib/auth/role";
 
 export async function POST(req: Request) {
   console.log("📥 Received request for product upload");
@@ -18,8 +20,6 @@ export async function POST(req: Request) {
 
   const formData = await req.formData();
   const file = formData.get("file");
-  const branchId = formData.get("branchId");
-  const storeId = formData.get("storeId");
 
   console.log("📄 Uploaded file:", file);
 
@@ -27,7 +27,56 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid file" }, { status: 400 });
   }
 
-    await dbConnect();
+  await dbConnect();
+
+  const { success: userOk, data: userData } = await getUser({
+    userId: userIdStr,
+  });
+  if (!userOk || !userData?.user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const dbUser = userData.user;
+  let storeId: string;
+  let branchId: string;
+
+  if (normalizeRole(dbUser.role) === "admin") {
+    const rawStore = formData.get("storeId");
+    const rawBranch = formData.get("branchId");
+    if (
+      typeof rawStore !== "string" ||
+      typeof rawBranch !== "string" ||
+      !rawStore ||
+      !rawBranch
+    ) {
+      return NextResponse.json(
+        { error: "storeId and branchId are required" },
+        { status: 400 }
+      );
+    }
+    if (!dbUser.storeId || String(dbUser.storeId) !== rawStore) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const branchDoc = await Branch.findOne({
+      _id: rawBranch,
+      storeId: dbUser.storeId,
+    });
+    if (!branchDoc) {
+      return NextResponse.json({ error: "Invalid branch" }, { status: 403 });
+    }
+    storeId = rawStore;
+    branchId = rawBranch;
+  } else {
+    if (!dbUser.storeId || !dbUser.branchId) {
+      return NextResponse.json(
+        { error: "No branch assigned to your account" },
+        { status: 403 }
+      );
+    }
+    storeId = String(dbUser.storeId);
+    branchId = String(dbUser.branchId);
+  }
+
   const session = await mongoose.startSession();
 
   console.log("session");

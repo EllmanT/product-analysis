@@ -2,6 +2,8 @@ import { Document, model, models, Schema, Types } from "mongoose";
 
 // validation for the ide 
 // validation for the developer while we type code
+export type UserRole = "admin" | "branch_user";
+
 export interface IUser {
   name: string;
   surname: string;
@@ -9,6 +11,7 @@ export interface IUser {
   image?: string;
   storeId?:Types.ObjectId;
   branchId?:Types.ObjectId;
+  role?: UserRole;
 }
 
 export interface IUserDoc extends IUser, Document {}
@@ -22,6 +25,11 @@ const UserSchema = new Schema<IUser>(
     image: { type: String },
     storeId: { type: Schema.Types.ObjectId, ref: "Store" },
     branchId: { type: Schema.Types.ObjectId, ref: "Branch" },
+    role: {
+      type: String,
+      enum: ["admin", "branch_user"],
+      default: "branch_user",
+    },
 
   },
   {

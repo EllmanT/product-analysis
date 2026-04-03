@@ -1,6 +1,7 @@
 "use server"
 
 import { Branch, Store } from "@/database"
+import { normalizeRole } from "@/lib/auth/role"
 import action from "../handlers/action"
 import handleError from "../handlers/error"
 import { AddBranchSchema, GetBranchesByStoreSchema } from "../validations"
@@ -25,6 +26,10 @@ params:CreateBranchParams
     const {name, location} = validationResult.params!
 
     const userId = validationResult?.session?.user?.id;
+
+    if (normalizeRole(validationResult.session?.user?.role) !== "admin") {
+      return { success: false, status: 403 } as ActionResponse<IBranchDoc>;
+    }
 
     const [store] = await Store.find({userId})
 

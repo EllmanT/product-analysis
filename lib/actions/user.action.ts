@@ -7,7 +7,7 @@ import { CreateUserSchema, GetUserSchema,   } from "../validations"
 import mongoose from "mongoose"
 import { CreateUserParams, GetUserParams} from "@/types/action"
 import bcrypt from "bcryptjs"
-import { IUserDoc } from "@/database/user.model"
+import { IUserDoc, type IUser } from "@/database/user.model";
 
 
 export async function addUser(
@@ -73,7 +73,7 @@ params:CreateUserParams
 
 export async function getUser(params: GetUserParams): Promise<
   ActionResponse<{
-    user: User;
+    user: IUser;
   }>
 > {
   const validationResult = await action({
@@ -94,7 +94,7 @@ export async function getUser(params: GetUserParams): Promise<
     return {
       success: true,
       data: {
-        user: JSON.parse(JSON.stringify(user)),
+        user: JSON.parse(JSON.stringify(user)) as IUser,
       },
     };
   } catch (error) {
@@ -105,7 +105,7 @@ export async function getUser(params: GetUserParams): Promise<
 
 export async function getUsers(params:GetUserParams): Promise<
   ActionResponse<{
-    users: User[];
+    users: IUser[];
   }>
 > {
   const validationResult = await action({
@@ -132,8 +132,7 @@ const users = await User.find({
     return {
       success: true,
       data: {
-        users: JSON.parse(JSON.stringify(users)),
-
+        users: JSON.parse(JSON.stringify(users)) as IUser[],
       },
     };
   } catch (error) {

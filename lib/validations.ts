@@ -82,6 +82,7 @@ export const UserSchema = z.object({
     .email({ message: "Please provide a valid email address." }),
   branchId: z.string().min(1, { message: "Branch ID is required" }).optional(),
   storeId: z.string().min(1, { message: "Store ID is required" }).optional(),
+  role: z.enum(["admin", "branch_user"]).optional(),
 
   image: z.string().url({ message: "Please provide a valid URL" }).optional(),
   location: z.string().optional(),

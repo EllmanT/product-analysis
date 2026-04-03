@@ -12,7 +12,7 @@ export interface IUpload {
   year: number;
   fileName:string;
   contentHash:string;
-  products: [{ type: Schema.Types.ObjectId, ref: "UploadProduct", required: true }],
+  products: Types.ObjectId[];
   totalProducts:number;
   estimatedValue:Decimal128;
  

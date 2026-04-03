@@ -17,7 +17,7 @@ export const api = {
     }: SignInWithOAuthParams) =>
       fetchHandler(`${API_BASE_URL}/${ROUTES.SIGN_IN_WITH_OAUTH}`, {
         method: "POST",
-        body: JSON.stringify({ user, provider, providerAccountId }),
+        body: { user, provider, providerAccountId },
       }),
   },
 
@@ -28,17 +28,17 @@ export const api = {
     getByEmail: (email: string) =>
       fetchHandler(`${API_BASE_URL}/users/email/${email}`, {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: { email },
       }),
     create: (userData: Partial<IUser>) =>
       fetchHandler(`${API_BASE_URL}/users`, {
         method: "POST",
-        body: JSON.stringify(userData),
+        body: userData,
       }),
     update: (id: string, userData: Partial<IUser>) =>
       fetchHandler(`${API_BASE_URL}/users/${id}`, {
         method: "PUT",
-        body: JSON.stringify(userData),
+        body: userData,
       }),
       // accept id.
       // points to the url
@@ -62,7 +62,7 @@ export: (month: string, year: string, week: string) =>
   analytics:{
     
 branch: (storeId:string) =>
-  fetchHandler(`${API_BASE_URL}/products/export?storeId=${storeId}`, 
+  fetchHandler(`${API_BASE_URL}/analytics/branches?storeId=${storeId}`, 
     {
     method: "GET"
   }),
@@ -79,12 +79,12 @@ branch: (storeId:string) =>
     create: (accountData: Partial<IAccount>) =>
       fetchHandler(`${API_BASE_URL}/accounts`, {
         method: "POST",
-        body: JSON.stringify(accountData),
+        body: accountData,
       }),
     update: (id: string, accountData: Partial<IAccount>) =>
       fetchHandler(`${API_BASE_URL}/accounts/${id}`, {
         method: "PUT",
-        body: JSON.stringify(accountData),
+        body: accountData,
       }),
     delete: (id: string) =>
       fetchHandler(`${API_BASE_URL}/accounts/${id}`, {

@@ -76,15 +76,11 @@ export async function getBranchesByStore(
     .lean()
     ;
 
-    if (!branches || branches.length === 0) {
-      throw new Error("Branches not found");
-    }
-
     console.log("branches before", branches)
     return {
       success: true,
       data: {
-        branches: JSON.parse(JSON.stringify(branches)), // serializes deeply
+        branches: JSON.parse(JSON.stringify(branches ?? [])), // serializes deeply
       },
     };
   } catch (error) {

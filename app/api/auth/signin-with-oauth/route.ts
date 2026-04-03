@@ -28,7 +28,11 @@ export async function POST(request: Request) {
     if (!validatedData.success)
       throw new ValidationError(validatedData.error.flatten().fieldErrors);
 
-    const { name, surname, email, image } = user;
+    const { name, email, image } = user;
+    const surname =
+      "surname" in user && typeof user.surname === "string"
+        ? user.surname
+        : "";
 
   
     let existingUser = await User.findOne({ email }).session(session);

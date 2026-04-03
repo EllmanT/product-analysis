@@ -3,14 +3,29 @@ import { ValidationError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
 import { uploadProductsSchema } from "@/lib/validations";
 import { NextResponse } from "next/server";
-import mongoose, { Decimal128, Types } from "mongoose";
-import { ProductMaster, Upload, UploadProduct, User, WeeklyProductSummaries } from "@/database";
-import { uploadProcessingQueue } from "@/lib/jobs/queues/upload.queue";
-import { processUploadJob } from "@/lib/jobs/processors/upload.processor";
-import { getISOWeek } from 'date-fns';
+import mongoose, { Types } from "mongoose";
+import { ProductMaster, Upload, UploadProduct, WeeklyProductSummaries } from "@/database";
+import { auth } from "@/auth";
 
 export async function POST(req: Request) {
   console.log("📥 Received request for product upload");
+
+  const authSession = await auth();
+  if (!authSession?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const userIdStr = authSession.user.id;
+
+  const formData = await req.formData();
+  const file = formData.get("file");
+  const branchId = formData.get("branchId");
+  const storeId = formData.get("storeId");
+
+  console.log("📄 Uploaded file:", file);
+
+  if (!(file instanceof File)) {
+    return NextResponse.json({ error: "Invalid file" }, { status: 400 });
+  }
 
     await dbConnect();
   const session = await mongoose.startSession();
@@ -18,19 +33,6 @@ export async function POST(req: Request) {
   console.log("session");
   session.startTransaction();
   try {
-    const formData = await req.formData();
-    const file = formData.get("file");
-    const userId = formData.get("userId");
-    const branchId= formData.get("branchId")
-    const storeId= formData.get("storeId")
-
-    console.log("iser id", userId)
-
-    console.log("📄 Uploaded file:", file);
-
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: "Invalid file" }, { status: 400 });
-    }
 
     console.log("✅ Connected to database");
 
@@ -53,11 +55,10 @@ export async function POST(req: Request) {
      // ✅ Compute hash of file content
 
     const ogcontentHash = await generateSHA256Hash(buffer);
-       const upload_date = new Date();
-    upload_date.setDate(upload_date.getDate()+14);
+    const upload_date = new Date();
     console.log("content Hash", ogcontentHash)
 
-const contentHash = `${ogcontentHash}_${userId}_${storeId}_${branchId}_${upload_date.toISOString().split('T')[0]}`;
+const contentHash = `${ogcontentHash}_${userIdStr}_${storeId}_${branchId}_${upload_date.toISOString().split('T')[0]}`;
  // 🔍 Check if this hash already exists
     const existingUpload = await Upload.findOne({ contentHash}).session(session);
     if (existingUpload) {
@@ -89,9 +90,7 @@ const contentHash = `${ogcontentHash}_${userId}_${storeId}_${branchId}_${upload_
 
  console.log(`🔢 Parsed ${sortedLines.length} product lines`);
 
-    // Extract additional metadata (e.g., from formData or auth)
-    const uploaded_by = formData.get("userId")?.toString() || "unknown_user";
-    console.log("uploaded by", uploaded_by)
+    console.log("uploaded by", userIdStr)
 
     console.log("date format 2",upload_date);
     const week = getWeekNumber(upload_date);
@@ -102,7 +101,7 @@ const contentHash = `${ogcontentHash}_${userId}_${storeId}_${branchId}_${upload_
     const [upload] = await Upload.create(
       [
         {
-          uploadedBy:userId,
+          uploadedBy: new Types.ObjectId(userIdStr),
           storeId: storeId,
           branchId: branchId,
           upload_date: upload_date,
@@ -122,7 +121,7 @@ const contentHash = `${ogcontentHash}_${userId}_${storeId}_${branchId}_${upload_
 
     console.log("📦 Upload metadata saved:", upload._id);
 
- const productObjectIds: Types.ObjectId[] = [];
+ const uploadProductIds: Types.ObjectId[] = [];
 let totalProducts: number = 0;
 let estimatedValue = 0;
 
@@ -158,8 +157,6 @@ for (const line of sortedLines) {
     }
   }
 
-  productObjectIds.push(product._id);
-
   // Create UploadProduct
   const currentUpload = await UploadProduct.create(
     [{
@@ -178,6 +175,8 @@ for (const line of sortedLines) {
     }],
     { session }
   );
+
+  uploadProductIds.push(currentUpload[0]._id);
 
   totalProducts += qty;
   estimatedValue += qty * price;
@@ -286,7 +285,7 @@ await Upload.updateOne(
 
 await Upload.updateOne(
   { _id: upload._id },
-  { $set: { products: productObjectIds } },
+  { $set: { products: uploadProductIds } },
   { session }
 );
 

@@ -8,6 +8,8 @@ import ProductMaster from "./productmaster.model";
 import UploadProduct from "./uploadproduct.model";
 import Upload from "./upload.model";
 import WeeklyProductSummaries from "./weekly_product_summaries.model";
+import Customer from "./customer.model";
+import Quotation from "./quotation.model";
 
 export {
   Account,
@@ -18,5 +20,7 @@ export {
   ProductMaster,
   UploadProduct,
   Upload,
-  WeeklyProductSummaries
+  WeeklyProductSummaries,
+  Customer,
+  Quotation,
 };

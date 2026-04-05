@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
-
-import { CheckCircle2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 function PaymentSuccessContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const quotationId = searchParams.get("quotationId") ?? "";
   const [patchError, setPatchError] = useState<string | null>(null);
+  const [patched, setPatched] = useState(false);
+  const [countdown, setCountdown] = useState(3);
+  const redirected = useRef(false);
 
+  // Mark quotation as paid
   useEffect(() => {
     if (!quotationId) return;
     let cancelled = false;
@@ -28,12 +31,31 @@ function PaymentSuccessContent() {
           (j as { error?: { message?: string } })?.error?.message ??
             "Could not update payment status."
         );
+      } else {
+        setPatched(true);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [quotationId]);
+
+  // Countdown + auto-redirect after 3 seconds
+  useEffect(() => {
+    if (!quotationId) return;
+    const interval = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          clearInterval(interval);
+          if (!redirected.current) {
+            redirected.current = true;
+            router.push(`/account/quotations/${quotationId}`);
+          }
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [quotationId, router]);
 
   if (!quotationId) {
     return (
@@ -47,41 +69,65 @@ function PaymentSuccessContent() {
   }
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-16 text-center">
-      <div className="flex justify-center">
-        <CheckCircle2
-          className="h-20 w-20 text-emerald-500"
-          strokeWidth={1.5}
-          aria-hidden
-        />
-      </div>
-      <h1 className="mt-6 text-2xl font-bold text-slate-900">
-        Payment Received!
-      </h1>
-      <p className="mt-3 text-slate-600">
-        Your order reference is{" "}
-        <span className="font-mono font-semibold text-slate-900">
-          {quotationId}
-        </span>
-        . You will receive your quotation confirmation shortly.
-      </p>
-      {patchError ? (
-        <p className="mt-4 text-sm text-amber-800" role="status">
-          {patchError}
+    <div className="flex min-h-[calc(100vh-200px)] items-center justify-center bg-[#F0FDF4] px-4 py-16">
+      <div className="w-full max-w-[520px] rounded-2xl bg-white p-12 text-center shadow-[0_4px_24px_rgba(0,0,0,0.08)]">
+
+        {/* Animated checkmark */}
+        <div className="flex justify-center">
+          <div
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-[#10B981]/10"
+            style={{ animation: "checkPop 0.4s ease forwards" }}
+          >
+            <svg
+              viewBox="0 0 24 24" fill="none" className="h-10 w-10 text-[#10B981]"
+              stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
+            >
+              <path d="M20 6L9 17l-5-5" />
+            </svg>
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes checkPop {
+            0% { transform: scale(0); }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+          }
+        `}</style>
+
+        <h1 className="mt-6 text-2xl font-bold text-slate-900">Payment Successful!</h1>
+        <p className="mt-3 text-slate-600">
+          Your payment has been received. We&apos;re generating your invoice now.
         </p>
-      ) : null}
-      <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
+
+        {patchError ? (
+          <p className="mt-4 text-sm text-amber-700" role="status">{patchError}</p>
+        ) : patched ? (
+          <div className="mt-4 inline-flex items-center gap-2 rounded-[6px] bg-green-100 px-3 py-1.5 text-sm font-semibold text-green-800">
+            ✓ Order Updated
+          </div>
+        ) : null}
+
+        {/* Countdown */}
+        <p className="mt-6 text-sm text-slate-400">
+          {countdown > 0
+            ? `Redirecting to your order in ${countdown} second${countdown !== 1 ? "s" : ""}…`
+            : "Redirecting…"}
+        </p>
+
+        {/* Progress bar */}
+        <div className="mx-auto mt-2 h-1 w-40 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-[#1E40AF] transition-all"
+            style={{ width: `${((3 - countdown) / 3) * 100}%`, transition: "width 1s linear" }}
+          />
+        </div>
+
         <Link
-          href={`/quotations/${quotationId}`}
-          className="inline-flex justify-center rounded-lg bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white hover:bg-blue-600"
+          href={`/account/quotations/${quotationId}`}
+          className="mt-8 inline-flex items-center justify-center rounded-[8px] bg-[#1E40AF] px-8 py-3 text-sm font-semibold text-white transition hover:bg-[#1E3A8A]"
         >
-          View My Quotation
-        </Link>
-        <Link
-          href="/"
-          className="inline-flex justify-center rounded-lg border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-        >
-          Continue Shopping
+          Go to My Order
         </Link>
       </div>
     </div>

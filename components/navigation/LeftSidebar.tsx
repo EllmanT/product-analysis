@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sidebar"
 import { IconInnerShadowTop } from "@tabler/icons-react"
 import { mainSidebarLinks, secondarySidebarLinks } from "@/constants/constants"
+import { normalizeRole } from "@/lib/auth/role"
 import { useSession } from "next-auth/react"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -23,7 +24,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const mainItems = React.useMemo(
     () =>
       mainSidebarLinks.filter(
-        (item) => !item.adminOnly || session?.user?.role === "admin"
+        (item) =>
+          !item.adminOnly || normalizeRole(session?.user?.role) === "admin"
       ),
     [session?.user?.role]
   );

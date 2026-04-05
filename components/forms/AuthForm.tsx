@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   DefaultValues,
   FieldValues,
@@ -22,6 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import ForgotPasswordModal from "@/components/auth/ForgotPasswordModal";
 
 // import { toast } from "@/hooks/use-toast";
 import ROUTES from "@/constants/route";
@@ -44,6 +46,7 @@ const AuthForm = <T extends FieldValues>({
 }: AuthFormProps<T>) => {
   // 1. Define your form.
   const router = useRouter();
+  const [forgotOpen, setForgotOpen] = useState(false);
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues as DefaultValues<T>,
@@ -151,6 +154,25 @@ const AuthForm = <T extends FieldValues>({
             : buttonText}
         </Button>
 
+        {formType === "SIGN_IN" && (
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => {
+                const currentEmail = form.getValues("email" as Path<T>) as string;
+                if (!currentEmail) {
+                  form.setError("email" as Path<T>, { message: "Please enter your email address first" });
+                  return;
+                }
+                setForgotOpen(true);
+              }}
+              className="paragraph-regular primary-text-gradient hover:underline underline-offset-4"
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
+
         {formType === "SIGN_IN" ? (
           <p>
             Dont have an account?{" "}
@@ -172,6 +194,12 @@ const AuthForm = <T extends FieldValues>({
             </Link>
           </p>
         )}
+
+        <ForgotPasswordModal
+          open={forgotOpen}
+          onClose={() => setForgotOpen(false)}
+          email={form.getValues("email" as Path<T>) as string ?? ""}
+        />
       </form>
     </Form>
   );

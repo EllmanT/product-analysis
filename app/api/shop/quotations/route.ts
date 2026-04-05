@@ -12,6 +12,11 @@ import {
 } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
 import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
+import { sendEmail } from "@/lib/utils/sendEmail";
+import {
+  quotationEmailTemplate,
+  adminQuotationNotificationTemplate,
+} from "@/lib/utils/emailTemplates";
 import { NextResponse } from "next/server";
 
 const CartItemSchema = z.object({
@@ -125,6 +130,59 @@ export async function POST(request: Request) {
       status: "pending",
       paymentStatus: "unpaid",
     });
+
+    const refId = created._id.toString().slice(-8).toUpperCase();
+    const siteUrl = process.env.SITE_URL ?? "";
+
+    // Send customer confirmation email (non-blocking)
+    try {
+      const itemsForEmail = created.items.map((row: { name: string; quantity: number; unitPrice: string; lineTotal: string }) => ({
+        name: row.name,
+        quantity: row.quantity,
+        unitPrice: parseFloat(row.unitPrice) || 0,
+        lineTotal: parseFloat(row.lineTotal) || 0,
+      }));
+      const html = quotationEmailTemplate({
+        customerFirstName: customer.firstName,
+        quotationId: created._id.toString(),
+        referenceId: refId,
+        items: itemsForEmail,
+        subtotal: parseFloat(created.subtotal) || 0,
+        total: parseFloat(created.subtotal) || 0,
+        siteUrl,
+      });
+      await sendEmail({
+        to: customer.email,
+        subject: `Your Quotation #${refId} has been received — StockFlow`,
+        html,
+      });
+    } catch (emailError) {
+      console.error("[Quotation Email] Failed to send customer email:", emailError);
+    }
+
+    // Send admin notification email (non-blocking)
+    try {
+      const adminEmail = process.env.ADMIN_EMAIL ?? "";
+      if (adminEmail) {
+        const adminHtml = adminQuotationNotificationTemplate({
+          customerName: `${customer.firstName} ${customer.lastName}`,
+          tradeName: customer.tradeName ?? "N/A",
+          customerEmail: customer.email,
+          quotationId: created._id.toString(),
+          referenceId: refId,
+          itemCount: created.items.length,
+          total: parseFloat(created.subtotal) || 0,
+          siteUrl,
+        });
+        await sendEmail({
+          to: adminEmail,
+          subject: `New Quotation Received — ${customer.firstName} ${customer.lastName}`,
+          html: adminHtml,
+        });
+      }
+    } catch (adminEmailError) {
+      console.error("[Quotation Email] Failed to send admin notification:", adminEmailError);
+    }
 
     return NextResponse.json(
       {

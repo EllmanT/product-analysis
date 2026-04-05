@@ -13,6 +13,8 @@ import {
 } from "@/lib/http-errors";
 import { requireAdmin } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
+import { sendEmail } from "@/lib/utils/sendEmail";
+import { invoiceEmailTemplate } from "@/lib/utils/emailTemplates";
 import { NextResponse } from "next/server";
 
 const PAGE_SIZE = 20;
@@ -178,6 +180,37 @@ export async function POST(request: Request) {
 
     quotation.status = "invoiced";
     await quotation.save();
+
+    // Send invoice email to customer (non-blocking)
+    try {
+      const freshCustomer = await Customer.findById(inv.customerId).select(
+        "firstName email"
+      );
+      if (freshCustomer?.email) {
+        const itemsForEmail = inv.items.map((row: IQuotationItem) => ({
+          name: row.name,
+          quantity: row.quantity,
+          unitPrice: parseFloat(row.unitPrice) || 0,
+          lineTotal: parseFloat(row.lineTotal) || 0,
+        }));
+        const html = invoiceEmailTemplate({
+          customerFirstName: freshCustomer.firstName,
+          invoiceId: inv._id.toString(),
+          invoiceNumber: inv.invoiceNumber,
+          items: itemsForEmail,
+          subtotal: parseFloat(inv.subtotal) || 0,
+          total: parseFloat(inv.subtotal) || 0,
+          siteUrl: process.env.SITE_URL ?? "",
+        });
+        await sendEmail({
+          to: freshCustomer.email,
+          subject: `Invoice ${inv.invoiceNumber} from StockFlow`,
+          html,
+        });
+      }
+    } catch (emailError) {
+      console.error("[Invoice Email] Failed to send customer invoice email:", emailError);
+    }
 
     return NextResponse.json(
       {

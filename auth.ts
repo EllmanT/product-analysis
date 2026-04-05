@@ -6,6 +6,7 @@ import Google from "next-auth/providers/google";
 
 import { IAccountDoc } from "./database/account.model";
 import User, { IUserDoc } from "./database/user.model";
+import { getBootstrapAdminEmailSet } from "./lib/auth/bootstrap-admin";
 import { normalizeRole } from "./lib/auth/role";
 import { api } from "./lib/api";
 import dbConnect from "./lib/mongoose";
@@ -90,10 +91,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       if (token.sub) {
         await dbConnect();
-        const doc = await User.findById(token.sub).select("role").lean();
-        token.role = normalizeRole(
+        const doc = await User.findById(token.sub)
+          .select("role email")
+          .lean();
+        let role = normalizeRole(
           doc && "role" in doc ? (doc.role as string | undefined) : undefined
         );
+        const email =
+          doc && "email" in doc && doc.email
+            ? String(doc.email).toLowerCase()
+            : "";
+        const bootstrap = getBootstrapAdminEmailSet();
+        if (email && bootstrap.has(email)) {
+          if (role !== "admin") {
+            await User.updateOne(
+              { _id: token.sub },
+              { $set: { role: "admin" } }
+            );
+          }
+          token.role = "admin";
+        } else {
+          token.role = role;
+        }
       }
 
       return token;

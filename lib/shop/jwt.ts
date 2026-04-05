@@ -1,5 +1,10 @@
 import crypto from "crypto";
 
+/** Same resolution as middleware.ts — Auth.js prefers AUTH_SECRET. */
+function authSecret(): string | undefined {
+  return process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+}
+
 function base64UrlEncode(data: string | Buffer): string {
   const buf = typeof data === "string" ? Buffer.from(data, "utf8") : data;
   return buf
@@ -10,12 +15,14 @@ function base64UrlEncode(data: string | Buffer): string {
 }
 
 export function signShopJwt(
-  payload: { sub: string; email: string },
-  maxAgeSec = 60 * 60 * 24 * 7
+  payload: { sub: string; email: string; firstName: string },
+  maxAgeSec = 60 * 60 * 24 * 30
 ): string {
-  const secret = process.env.NEXTAUTH_SECRET;
+  const secret = authSecret();
   if (!secret) {
-    throw new Error("NEXTAUTH_SECRET is not set");
+    throw new Error(
+      "Shop auth secret is not set: define AUTH_SECRET or NEXTAUTH_SECRET in your environment (e.g. .env.local)."
+    );
   }
   const header = { alg: "HS256", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
@@ -37,10 +44,10 @@ function base64UrlDecodeToBuffer(segment: string): Buffer {
   return Buffer.from(b64, "base64");
 }
 
-export type ShopJwtPayload = { sub: string; email: string };
+export type ShopJwtPayload = { sub: string; email: string; firstName: string };
 
 export function verifyShopJwt(token: string): ShopJwtPayload | null {
-  const secret = process.env.NEXTAUTH_SECRET;
+  const secret = authSecret();
   if (!secret) return null;
   const parts = token.split(".");
   if (parts.length !== 3) return null;
@@ -61,7 +68,11 @@ export function verifyShopJwt(token: string): ShopJwtPayload | null {
     if (typeof payload.sub !== "string" || typeof payload.email !== "string") {
       return null;
     }
-    return { sub: payload.sub, email: payload.email };
+    return {
+      sub: payload.sub,
+      email: payload.email,
+      firstName: typeof payload.firstName === "string" ? payload.firstName : "",
+    };
   } catch {
     return null;
   }

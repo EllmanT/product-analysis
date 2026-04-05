@@ -15,14 +15,22 @@ export function ShopFooter() {
             <Link href="/cart" className="hover:text-white">
               Cart
             </Link>
-            <Link href="/quotations" className="hover:text-white">
-              My quotations
+            <Link href="/account" className="hover:text-white">
+              My Account
             </Link>
           </nav>
         </div>
-        <p className="text-sm">
-          © {new Date().getFullYear()} StockFlow. All rights reserved.
-        </p>
+        <div className="flex flex-col items-center gap-3 sm:items-end">
+          <p className="text-center text-sm sm:text-right">
+            © {new Date().getFullYear()} StockFlow. All rights reserved.
+          </p>
+          <Link
+            href="/sign-in"
+            className="text-xs text-slate-500 underline-offset-4 transition hover:text-slate-300 hover:underline"
+          >
+            Staff sign-in
+          </Link>
+        </div>
       </div>
     </footer>
   );

@@ -46,7 +46,7 @@ const hashedPassword = await bcrypt.hash(password, 12);
 
 if(store){
 const [newUser] = await User.create(
-  [{ surname, name, email }],
+  [{ surname, name, email, role: "admin" as const }],
   { session }
 );
 

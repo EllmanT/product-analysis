@@ -49,10 +49,12 @@ export const api = {
       }),
   },
   products:{
-    upload:(formData:FormData)=>fetchHandler(`${API_BASE_URL}/products/upload`,{
-      method:"POST",
-      body:formData
-    }),
+    upload: (formData: FormData) =>
+      fetchHandler(`${API_BASE_URL}/products/upload`, {
+        method: "POST",
+        body: formData,
+        timeOut: 600_000,
+      }),
 export: (month: string, year: string, week: string) =>
   fetchHandler(`${API_BASE_URL}/products/export?month=${month}&year=${year}&week=${week}`, 
     {

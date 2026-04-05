@@ -77,12 +77,10 @@ export async function POST(req: Request) {
     branchId = String(dbUser.branchId);
   }
 
-  const session = await mongoose.startSession();
+  /** Set when an Upload row exists; cleared on success so catch does not delete a good upload. */
+  let uploadIdForCleanup: Types.ObjectId | null = null;
 
-  console.log("session");
-  session.startTransaction();
   try {
-
     console.log("✅ Connected to database");
 
     const validatedData = uploadProductsSchema.safeParse({ file });
@@ -94,11 +92,8 @@ export async function POST(req: Request) {
 
     console.log("✅ File validated successfully");
 
+    console.log(validatedData.data.file);
 
-    // Continue with processing `validatedData.data.file` if needed
-    console.log(validatedData.data.file)
-
-        
     // Convert file to Buffer and read text
     const buffer = await file.arrayBuffer();
      // ✅ Compute hash of file content
@@ -108,14 +103,25 @@ export async function POST(req: Request) {
     console.log("content Hash", ogcontentHash)
 
 const contentHash = `${ogcontentHash}_${userIdStr}_${storeId}_${branchId}_${upload_date.toISOString().split('T')[0]}`;
- // 🔍 Check if this hash already exists
-    const existingUpload = await Upload.findOne({ contentHash}).session(session);
+    // 🔍 Check if this hash already exists
+    const existingUpload = await Upload.findOne({ contentHash });
     if (existingUpload) {
       console.log("♻️ Duplicate upload detected. Aborting...");
-      return NextResponse.json({ message: "Duplicate upload. No changes made." }, { status: 200 });
+      return NextResponse.json(
+        {
+          success: true,
+          duplicate: true,
+          message: "Duplicate upload. No changes made.",
+        },
+        { status: 200 }
+      );
     }
 
-    
+    /**
+     * Large uploads exceed MongoDB default transaction lifetime (~60s), which causes
+     * NoSuchTransaction. We run without a multi-document transaction; on failure after
+     * the Upload doc exists, we best-effort remove partial UploadProduct rows.
+     */
     // Store file locally for auditing
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const fileName = `upload_${timestamp}_${file.name}`;
@@ -165,54 +171,65 @@ const contentHash = `${ogcontentHash}_${userIdStr}_${storeId}_${branchId}_${uplo
         //   filePath: fullPath,
         },
       ],
-      { session }
     );
 
+    uploadIdForCleanup = upload._id;
     console.log("📦 Upload metadata saved:", upload._id);
 
  const uploadProductIds: Types.ObjectId[] = [];
 let totalProducts: number = 0;
 let estimatedValue = 0;
+let productLineCount = 0;
+let deadStockSkus = 0;
+let activeStockSkus = 0;
 
 for (const line of sortedLines) {
-  const [codeRaw, nameRaw, priceRaw, qtyRaw] = line.split(",").map((val) => val.trim());
+  // CSV column order: ProductCode(0), Description(1), Quantity(2, may be blank), Price(3), Empty(4), Zero(5)
+  // FIX: previous code had index 2→price and index 3→qty which was SWAPPED.
+  // A blank Quantity column must become 0 — it must NOT fall through to be read as Price.
+  const parts = line.split(",").map((val) => val.trim());
+  const codeRaw  = parts[0]; // Column 0 → ProductCode
+  const nameRaw  = parts[1]; // Column 1 → Description
+  const qtyRaw   = parts[2]; // Column 2 → Quantity (may be blank — treat as 0)
+  const priceRaw = parts[3]; // Column 3 → Price
 
-  const code = codeRaw;
-  const name = nameRaw;
+  const code  = codeRaw;
+  const name  = nameRaw;
+  // FIX: blank or missing Quantity = 0 (dead stock), NOT a reason to skip the row
+  const qty   = (qtyRaw === "" || qtyRaw === undefined) ? 0 : (parseInt(qtyRaw, 10) || 0);
   const price = parseFloat(priceRaw);
-  const qty = parseInt(qtyRaw, 10);
 
-  if (!code || !name || isNaN(price) || isNaN(qty)) {
+  // Only skip if ProductCode, Description, or Price is missing/invalid.
+  // Blank Quantity is valid (0 units in stock).
+  if (!code || !name || isNaN(price)) {
     console.warn(`⚠️ Skipping invalid row: ${line}`);
     continue;
   }
 
-  let product = await ProductMaster.findOne({ standardCode: code }).session(session);
+  let product = await ProductMaster.findOne({ standardCode: code });
   console.log("product", product)
 
   if (!product) {
-    const created = await ProductMaster.create(
-      [{ standardCode: code, name, aliases: [] }],
-      { session }
-    );
+    const created = await ProductMaster.create([
+      { standardCode: code, name, aliases: [] },
+    ]);
     product = created[0];
   } else {
     if (!product.aliases.includes(name)) {
       await ProductMaster.updateOne(
         { _id: product._id },
-        { $addToSet: { aliases: name } },
-        { session }
+        { $addToSet: { aliases: name } }
       );
     }
   }
 
   // Create UploadProduct
-  const currentUpload = await UploadProduct.create(
-    [{
+  const currentUpload = await UploadProduct.create([
+    {
       uploadId: upload._id,
       productId: product._id,
-      storeId:storeId,
-      branchId:branchId,
+      storeId: storeId,
+      branchId: branchId,
       code,
       name,
       qty,
@@ -221,14 +238,16 @@ for (const line of sortedLines) {
       month,
       week,
       year,
-    }],
-    { session }
-  );
+    },
+  ]);
 
   uploadProductIds.push(currentUpload[0]._id);
 
+  productLineCount += 1;
   totalProducts += qty;
   estimatedValue += qty * price;
+  if (qty === 0) deadStockSkus += 1;
+  else activeStockSkus += 1;
 
   // === Weekly Summary Logic ===
   const previousUpload = await UploadProduct.findOne({
@@ -238,14 +257,14 @@ for (const line of sortedLines) {
     // createdAt: { $lt: currentUpload[0].createdAt },//this would be ideal
     upload_date: { $lt: currentUpload[0].upload_date },//this is for testing purposes
 
-  }).sort({ createdAt: -1 }).session(session);
+  }).sort({ createdAt: -1 });
 
   console.log("previous upload",previousUpload);
 
   if (!previousUpload) {
     // First upload for this product
-    await WeeklyProductSummaries.create(
-      [{
+    await WeeklyProductSummaries.create([
+      {
         productId: product._id,
         code: code,
         week: week,
@@ -253,15 +272,14 @@ for (const line of sortedLines) {
         upload_date: upload_date,
         storeId: storeId,
         branchId: branchId,
-        price:price,
+        price: price,
         startQuantity: qty,
         endQuantity: null,
         estimatedSales: mongoose.Types.Decimal128.fromString("0.00"),
         restocked: false,
         restockAmount: 0,
-      }],
-      { session }
-    );
+      },
+    ]);
   } else {
     const prevQty = previousUpload.qty;
     const sales = (prevQty - qty)*price;
@@ -274,16 +292,24 @@ for (const line of sortedLines) {
     console.log(summaryYear)
     console.log("product id",product._id)
     await WeeklyProductSummaries.updateOne(
-      { productId: product._id, branchId:branchId,storeId:storeId, week: summaryWeek, year: summaryYear },
+      {
+        productId: product._id,
+        branchId: branchId,
+        storeId: storeId,
+        week: summaryWeek,
+        year: summaryYear,
+      },
       {
         $set: {
           endQuantity: qty,
-          estimatedSales: mongoose.Types.Decimal128.fromString(Math.abs(sales).toFixed(2)),
+          estimatedSales: mongoose.Types.Decimal128.fromString(
+            Math.abs(sales).toFixed(2)
+          ),
           restocked,
           restockAmount: restocked ? Math.abs(sales) : 0,
         },
       },
-      { upsert: true, session }
+      { upsert: true }
     );
     console.log("sales", sales)
     console.log("qty", qty)
@@ -295,16 +321,16 @@ for (const line of sortedLines) {
       branchId:branchId,
       week,
       year
-    }).session(session);
+    });
 
     if (!currentSummary) {
-      await WeeklyProductSummaries.create(
-        [{
+      await WeeklyProductSummaries.create([
+        {
           productId: product._id,
           code: code,
-          week:week,
-          year:year,
-          price:price,
+          week: week,
+          year: year,
+          price: price,
           upload_date: upload_date,
           storeId: storeId,
           branchId: branchId,
@@ -313,9 +339,8 @@ for (const line of sortedLines) {
           estimatedSales: mongoose.Types.Decimal128.fromString("0.00"),
           restocked: false,
           restockAmount: 0,
-        }],
-        { session }
-      );
+        },
+      ]);
     }
   }
 }
@@ -327,35 +352,59 @@ await Upload.updateOne(
     $set: {
       totalProducts,
       estimatedValue: mongoose.Types.Decimal128.fromString(estimatedValue.toFixed(2)),
-    }
-  },
-  { session }
+    },
+  }
 );
 
 await Upload.updateOne(
   { _id: upload._id },
-  { $set: { products: uploadProductIds } },
-  { session }
+  { $set: { products: uploadProductIds } }
 );
 
+    uploadIdForCleanup = null;
+    console.log("✅ Upload completed");
 
+    const branchLean = await Branch.findById(branchId)
+      .select("name location")
+      .lean<{ _id: Types.ObjectId; name: string; location: string } | null>();
 
+    const summary = {
+      productLineCount,
+      totalQuantity: totalProducts,
+      totalValue: estimatedValue,
+      deadStockSkus,
+      activeStockSkus,
+      uploadDate: upload_date.toISOString(),
+      originalFileName: file.name,
+      fileSizeBytes: file.size,
+      branch: {
+        id: branchId,
+        name: branchLean?.name ?? "Unknown branch",
+        location: branchLean?.location ?? "",
+      },
+    };
 
-    await session.commitTransaction();
-    console.log("✅ Upload transaction committed");
-
-    // 
-//  await processUploadJob(upload);
-
-
-
-    return NextResponse.json({ success: true, uploadId: upload._id }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          uploadId: String(upload._id),
+          summary,
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("🔥 Error during product upload:", error);
-    await session.abortTransaction();
+    if (uploadIdForCleanup) {
+      try {
+        await UploadProduct.deleteMany({ uploadId: uploadIdForCleanup });
+        await Upload.deleteOne({ _id: uploadIdForCleanup });
+      } catch (cleanupErr) {
+        console.error("Upload cleanup failed:", cleanupErr);
+      }
+    }
     return handleError(error, "api") as APIErrorResponse;
-  } finally {
-    session.endSession();
   }
 }
 

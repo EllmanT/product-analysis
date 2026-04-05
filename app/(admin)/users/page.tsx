@@ -1,16 +1,14 @@
 "use client"
 
-// import data from "./data.json";
-import { projects} from "@/app/data";
 import { DataTable } from "@/components/data-table/index";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { columnAllUsers } from "@/components/data-table/columns/columnAllUsers";
+import { buildColumnAllUsers } from "@/components/data-table/columns/columnAllUsers";
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { signUpWithCredentials } from "@/lib/actions/auth.action";
 import {  SignUpSchema } from "@/lib/validations";
 import AuthForm from "@/components/forms/AuthForm";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export default  function Page() {
 const [branches, setBranches] = useState<Branch[]>([]);
@@ -18,52 +16,50 @@ const [branches, setBranches] = useState<Branch[]>([]);
   const [storeId, setStoreId]= useState("");
   const [users, setUsers] = useState<User[]>([])
 
-  useEffect(() => {
-    const fetchBranches = async () => {
-      try {
-        console.log("here")
-        const res = await fetch("/api/branches");
-        if (!res.ok) throw new Error("Failed to fetch branches");
-
-        const {data} = await res.json();
-
-        console.log("data", data)
-        console.log("data branches", data.branches)
-        setBranches(data.branches);
-        setStoreId(data.branches[0].storeId._id)
-        
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-        const fetchUsers = async () => {
-      try {
-        console.log("here")
-        const res = await fetch("/api/users/all");
-        if (!res.ok) throw new Error("Failed to fetch users");
-
-        const {data} = await res.json();
-
-        console.log("data", data)
-        console.log("data branches", data.users)
-        setUsers(data.users);
-        
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBranches();
-    fetchUsers();
+  const loadUsers = useCallback(async () => {
+    try {
+      const res = await fetch("/api/users/all");
+      if (!res.ok) throw new Error("Failed to fetch users");
+      const { data } = await res.json();
+      setUsers(data.users ?? []);
+    } catch (err) {
+      console.error(err);
+    }
   }, []);
 
-          console.log("branches",branches)
-          console.log("users",users)
+  const loadBranches = useCallback(async () => {
+    try {
+      const res = await fetch("/api/branches");
+      if (!res.ok) throw new Error("Failed to fetch branches");
+      const { data } = await res.json();
+      setBranches(data.branches ?? []);
+      const first = data.branches?.[0] as
+        | { storeId?: { _id?: string } }
+        | undefined;
+      if (first?.storeId?._id) {
+        setStoreId(String(first.storeId._id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      await Promise.all([loadBranches(), loadUsers()]);
+      if (!cancelled) setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loadBranches, loadUsers]);
+
+  const userColumns = useMemo(
+    () => buildColumnAllUsers({ onRoleUpdated: loadUsers }),
+    [loadUsers]
+  );
 
   if (loading) return <div>Loading branches...</div>;
 
@@ -108,9 +104,10 @@ const [branches, setBranches] = useState<Branch[]>([]);
 
 </section>
 
-       
-   
-          
+      <p className="mx-6 mt-3 text-sm text-muted-foreground">
+        Changing a user&apos;s role applies after they sign out and sign back in.
+      </p>
+
       <div className="@container/main flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
           {/* Statistics cards section */}
@@ -120,7 +117,7 @@ const [branches, setBranches] = useState<Branch[]>([]);
          
            <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-12">
-      <DataTable data={users} columns={columnAllUsers} isVisible={false} />
+      <DataTable data={users} columns={userColumns} isVisible={false} />
 
               </div>
             </div>

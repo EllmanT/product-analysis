@@ -5,7 +5,10 @@ import Customer from "@/database/customer.model";
 import handleError from "@/lib/handlers/error";
 import { RequestError, ValidationError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
+import { signShopJwt } from "@/lib/shop/jwt";
 import { NextResponse } from "next/server";
+
+const SHOP_COOKIE = "shop_token";
 
 const RegisterBodySchema = z.object({
   firstName: z.string().min(1),
@@ -49,16 +52,34 @@ export async function POST(request: Request) {
       address: body.address,
     });
 
-    return NextResponse.json(
+    const customerId = customer._id.toString();
+    const token = signShopJwt({
+      sub: customerId,
+      email: customer.email,
+      firstName: customer.firstName,
+    });
+
+    const res = NextResponse.json(
       {
         success: true,
         data: {
-          id: customer._id.toString(),
+          id: customerId,
           email: customer.email,
+          firstName: customer.firstName,
         },
       },
       { status: 201 }
     );
+
+    res.cookies.set(SHOP_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+
+    return res;
   } catch (error) {
     if (
       error &&

@@ -18,6 +18,7 @@ export type CartLine = {
   standardCode: string;
   price: string;
   quantity: number;
+  imageUrl?: string | null;
 };
 
 type CartContextValue = {
@@ -89,6 +90,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
               standardCode: item.standardCode,
               price: item.price,
               quantity: qty,
+              imageUrl: item.imageUrl ?? null,
             },
           ];
         }

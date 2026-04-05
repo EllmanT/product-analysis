@@ -1,14 +1,20 @@
 import { IconTrendingDown, IconTrendingUp } from "@tabler/icons-react"
 import StatisticsCard from "../cards/StatisticsCard"
-import SummaryCard from "../cards/SummaryCard"
 import { StoreIcon } from "lucide-react"
 
+const intlCount = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 })
+const intlMoney = new Intl.NumberFormat(undefined, {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+})
+
 export function SectionCards(dashboardStats:any) {
-  console.log(dashboardStats)
     if (!dashboardStats.dashboardStats) return null; // Or show a loader/spinner
 
 const estStockValue = dashboardStats?.dashboardStats?.estStockValue??0;
-  const estStock = dashboardStats.dashboardStats.estStock??0;
+  const productCount = dashboardStats.dashboardStats.productCount ?? 0;
+  const currentStockQty = dashboardStats.dashboardStats.currentStockQty ?? 0;
   const estSales = dashboardStats.dashboardStats.totalEstimatedSales??0;
   const totalBranches = dashboardStats.dashboardStats.totalBranches??0;
   return (
@@ -16,16 +22,17 @@ const estStockValue = dashboardStats?.dashboardStats?.estStockValue??0;
    
      <>
      <StatisticsCard
-      label="Current Stock"
-      value={estStock}
-      trend="+12.5%"
+      label="Products"
+      value={intlCount.format(productCount)}
+      secondaryLabel="Current stock"
+      secondaryValue={intlCount.format(currentStockQty)}
       bgColor="bg-blue-300"
       icon={IconTrendingUp}
       />
      
 <StatisticsCard
       label="Estimated Stock Value"
-      value={`$ ${estStockValue}`}
+      value={intlMoney.format(estStockValue)}
       trend="-8.5%"
             bgColor="bg-purple-300"
 
@@ -33,7 +40,7 @@ const estStockValue = dashboardStats?.dashboardStats?.estStockValue??0;
       />
         <StatisticsCard
       label="Estimated Sales"
-      value={`$ ${estSales}`}
+      value={intlMoney.format(estSales)}
       trend="-8.5%"
             bgColor="bg-green-300"
 
@@ -42,7 +49,7 @@ const estStockValue = dashboardStats?.dashboardStats?.estStockValue??0;
 
       <StatisticsCard
       label="Total Branches"
-      value={totalBranches}
+      value={intlCount.format(totalBranches)}
           bgColor="bg-orange-300"
 
       description=""

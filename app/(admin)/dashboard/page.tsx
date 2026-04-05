@@ -1,28 +1,43 @@
 "use client"
 import { BranchSalesLineChart } from "@/components/charts/BranchSalesLineChart";
-import { ChartAreaInteractive } from "@/components/charts/LineChartInteractive";
 import { SectionCards } from "@/components/statistics/StatisticsSection";
 
-// import data from "./data.json";
 import { Separator } from "@/components/ui/separator";
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { FileText, Receipt, Upload, Users } from "lucide-react";
+
+type DashboardAnalytics = {
+  productCount?: number;
+  currentStockQty?: number;
+  estStockValue?: number;
+  totalEstimatedSales?: number;
+  totalBranches?: number;
+  totalQuotations?: number;
+  totalInvoices?: number;
+  totalUploadFiles?: number;
+  totalStoreUsers?: number;
+};
+
+const countFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 0,
+});
 
 export default function Page() {
 
   const [branches, setBranches]= useState<Branch[]>([]);
   const [loading , setLoading]= useState(true)
-  const [dashboardStats,setDashboardStats]= useState();
+  const [dashboardStats,setDashboardStats]= useState<DashboardAnalytics>();
       const [chartData, setChartData] = useState<[]>([]);
       const [date, setDate] = React.useState<Date | undefined>(undefined);
       const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
       
-      const selectedBranch = useState("")
+      const [selectedBranch] = useState<Branch | undefined>(undefined)
   
 
   useEffect(() => {
     const fetchBranches = async () => {
       try {
-        console.log("here")
         const res = await fetch("/api/branches");
         if (!res.ok) throw new Error("Failed to fetch branches");
 
@@ -34,8 +49,6 @@ export default function Page() {
           const {data:datas} = await response.json();
           setChartData(datas)
 
-        console.log("data", data)
-        console.log("data branches", data.branches)
         setBranches(data.branches);
         
       } catch (err) {
@@ -47,13 +60,11 @@ export default function Page() {
 
        const fetchOverallStats = async () => {
       try {
-        console.log("here")
         const res = await fetch("/api/analytics");
-        if (!res.ok) throw new Error("Failed to fetch branches");
+        if (!res.ok) throw new Error("Failed to fetch analytics");
 
         const {data} = await res.json();
 
-        console.log("data", data)
         setDashboardStats(data);
         
       } catch (err) {
@@ -66,8 +77,6 @@ export default function Page() {
 
 fetchOverallStats();
   }, []);
-
-  console.log(dashboardStats)
 
   return (
     <div className="flex flex-1 flex-col">
@@ -87,8 +96,69 @@ fetchOverallStats();
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
           {/* Statistics cards section */}
           <div className="flex-col">
-          <SectionCards dashboardStats={dashboardStats}/>
+            <SectionCards dashboardStats={dashboardStats}/>
+          </div>
 
+          <div className="px-4 lg:px-6">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {(
+                [
+                  {
+                    label: "Quotations",
+                    href: "/admin/quotations",
+                    icon: FileText,
+                    desc: "View & manage customer quotes",
+                    color: "bg-blue-100 text-blue-600",
+                    count: dashboardStats?.totalQuotations ?? 0,
+                  },
+                  {
+                    label: "Invoices",
+                    href: "/admin/invoices",
+                    icon: Receipt,
+                    desc: "Track invoices & payments",
+                    color: "bg-indigo-100 text-indigo-600",
+                    count: dashboardStats?.totalInvoices ?? 0,
+                  },
+                  {
+                    label: "Upload",
+                    href: "/uploads/upload",
+                    icon: Upload,
+                    desc: "Upload product data files",
+                    color: "bg-emerald-100 text-emerald-600",
+                    count: dashboardStats?.totalUploadFiles ?? 0,
+                  },
+                  {
+                    label: "Users",
+                    href: "/users",
+                    icon: Users,
+                    desc: "Manage staff accounts",
+                    color: "bg-slate-100 text-slate-600",
+                    count: dashboardStats?.totalStoreUsers ?? 0,
+                  },
+                ] as const
+              ).map(({ label, href, icon: Icon, desc, color, count }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${color}`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className="text-right text-2xl font-semibold tabular-nums text-slate-900">
+                      {countFormatter.format(count)}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{label}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{desc}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
           <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-12">

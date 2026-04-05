@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ShoppingBag } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useCart } from "@/app/(shop)/context/CartContext";
@@ -12,8 +14,6 @@ type MeData = {
   phone: string;
   address: string;
 };
-
-type PaymentMethod = "card" | "ecocash";
 
 function formatMoney(s: string): string {
   const n = parseFloat(s);
@@ -34,7 +34,8 @@ export default function CheckoutPage() {
   const [loadingMe, setLoadingMe] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [newQuotationId, setNewQuotationId] = useState<string | null>(null);
+  const [showOverlay, setShowOverlay] = useState(false);
   const [form, setForm] = useState<MeData>({
     tradeName: "",
     tinNumber: "",
@@ -44,10 +45,10 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
-    if (items.length === 0) {
+    if (items.length === 0 && !showOverlay) {
       router.replace("/cart");
     }
-  }, [items.length, router]);
+  }, [items.length, router, showOverlay]);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,10 +64,7 @@ export default function CheckoutPage() {
         setError("Could not load your profile.");
         return;
       }
-      const json = (await res.json()) as {
-        success: boolean;
-        data: MeData;
-      };
+      const json = (await res.json()) as { success: boolean; data: MeData };
       if (json.success && json.data) {
         setForm({
           tradeName: json.data.tradeName ?? "",
@@ -78,9 +76,7 @@ export default function CheckoutPage() {
       }
       setLoadingMe(false);
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [router]);
 
   const subtotal = items.reduce((sum, row) => {
@@ -88,14 +84,10 @@ export default function CheckoutPage() {
     return sum + (Number.isNaN(n) ? 0 : n);
   }, 0);
 
-  async function continueToPayment() {
+  async function handleSubmit() {
     setError(null);
-    if (!paymentMethod) return;
     const el = formRef.current;
-    if (el && !el.checkValidity()) {
-      el.reportValidity();
-      return;
-    }
+    if (el && !el.checkValidity()) { el.reportValidity(); return; }
     setSubmitting(true);
     try {
       const res = await fetch("/api/shop/quotations", {
@@ -118,23 +110,12 @@ export default function CheckoutPage() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) {
-        setError(json?.error?.message ?? "Request failed");
-        return;
-      }
+      if (!res.ok) { setError(json?.error?.message ?? "Request failed"); return; }
       const id = json?.data?._id as string | undefined;
-      if (!id) {
-        setError("Invalid response from server");
-        return;
-      }
+      if (!id) { setError("Invalid response from server"); return; }
       clearCart();
-      const amount = encodeURIComponent(subtotal.toFixed(2));
-      const path =
-        paymentMethod === "card"
-          ? `/payment/card?quotationId=${id}&amount=${amount}`
-          : `/payment/ecocash?quotationId=${id}&amount=${amount}`;
-      router.push(path);
-      router.refresh();
+      setNewQuotationId(id);
+      setShowOverlay(true);
     } catch {
       setError("Something went wrong");
     } finally {
@@ -142,32 +123,21 @@ export default function CheckoutPage() {
     }
   }
 
-  function field(
-    id: keyof MeData,
-    label: string,
-    multiline?: boolean
-  ) {
+  function field(id: keyof MeData, label: string, multiline?: boolean) {
     const base =
       "mt-1 w-full rounded-lg border border-slate-200 px-3 py-2.5 text-slate-900 outline-none ring-[#2563EB] focus:ring-2";
     return (
       <div>
-        <label htmlFor={id} className="text-sm font-medium text-slate-700">
-          {label}
-        </label>
+        <label htmlFor={id} className="text-sm font-medium text-slate-700">{label}</label>
         {multiline ? (
           <textarea
-            id={id}
-            required
-            rows={3}
-            className={base}
+            id={id} required rows={3} className={base}
             value={form[id]}
             onChange={(e) => setForm((f) => ({ ...f, [id]: e.target.value }))}
           />
         ) : (
           <input
-            id={id}
-            required
-            className={base}
+            id={id} required className={base}
             value={form[id]}
             onChange={(e) => setForm((f) => ({ ...f, [id]: e.target.value }))}
           />
@@ -176,9 +146,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (items.length === 0) {
-    return null;
-  }
+  if (!showOverlay && items.length === 0) return null;
 
   if (loadingMe) {
     return (
@@ -189,114 +157,113 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
-        Checkout
-      </h1>
+    <>
+      {/* ── Main checkout page ── */}
+      <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6">
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          Checkout
+        </h1>
 
-      <div className="mt-10 space-y-8">
-        <form ref={formRef} className="grid gap-8 lg:grid-cols-2">
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900">Your details</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Used for this quotation and saved to your profile.
+        <div className="mt-10 space-y-8">
+          <form ref={formRef} className="grid gap-8 lg:grid-cols-2">
+            <div className="rounded-xl bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900">Your details</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Used for this quotation and saved to your profile.
+              </p>
+              <div className="mt-6 space-y-4">
+                {field("tradeName", "Trade Name")}
+                {field("tinNumber", "TIN Number")}
+                {field("vatNumber", "VAT Number")}
+                {field("phone", "Phone")}
+                {field("address", "Address", true)}
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900">Order summary</h2>
+              <ul className="mt-4 divide-y divide-slate-100">
+                {items.map((row) => (
+                  <li key={row.productId} className="flex justify-between gap-4 py-3 text-sm">
+                    <span className="text-slate-700">
+                      <span className="font-medium text-slate-900">{row.name}</span>
+                      <span className="block text-slate-500">
+                        {row.standardCode} × {row.quantity}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-semibold text-slate-900">
+                      {formatMoney(lineAmount(row.price, row.quantity))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-4 flex justify-between border-t border-slate-200 pt-4 text-lg font-bold text-slate-900">
+                <span>Total</span>
+                <span>{formatMoney(subtotal.toFixed(2))}</span>
+              </div>
+            </div>
+          </form>
+
+          {error ? (
+            <p className="text-center text-sm text-red-600" role="alert">{error}</p>
+          ) : null}
+
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={() => void handleSubmit()}
+            className="no-print flex w-full items-center justify-center gap-2 rounded-[8px] bg-[#1E40AF] py-[14px] text-base font-semibold text-white transition hover:bg-[#1E3A8A] disabled:opacity-60"
+          >
+            {submitting ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Submitting…
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="h-5 w-5" />
+                Confirm Order &amp; Get Quotation
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Success overlay ── */}
+      {showOverlay && newQuotationId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-[440px] rounded-2xl bg-white p-10 text-center shadow-2xl">
+            {/* Green checkmark */}
+            <div className="flex justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#10B981]/10">
+                <svg viewBox="0 0 24 24" fill="none" className="h-10 w-10 text-[#10B981]" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6L9 17l-5-5" />
+                </svg>
+              </div>
+            </div>
+
+            <h2 className="mt-5 text-2xl font-bold text-slate-900">Quotation Submitted!</h2>
+            <p className="mt-3 text-sm text-slate-500">
+              We&apos;ve received your order and will confirm it shortly. You&apos;ll be notified by email.
             </p>
-            <div className="mt-6 space-y-4">
-              {field("tradeName", "Trade Name")}
-              {field("tinNumber", "TIN Number")}
-              {field("vatNumber", "VAT Number")}
-              {field("phone", "Phone")}
-              {field("address", "Address", true)}
-            </div>
-          </div>
 
-          <div className="rounded-xl bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900">Order summary</h2>
-            <ul className="mt-4 divide-y divide-slate-100">
-              {items.map((row) => (
-                <li
-                  key={row.productId}
-                  className="flex justify-between gap-4 py-3 text-sm"
-                >
-                  <span className="text-slate-700">
-                    <span className="font-medium text-slate-900">
-                      {row.name}
-                    </span>
-                    <span className="block text-slate-500">
-                      {row.standardCode} × {row.quantity}
-                    </span>
-                  </span>
-                  <span className="shrink-0 font-semibold text-slate-900">
-                    {formatMoney(lineAmount(row.price, row.quantity))}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-4 flex justify-between border-t border-slate-200 pt-4 text-lg font-bold text-slate-900">
-              <span>Total</span>
-              <span>{formatMoney(subtotal.toFixed(2))}</span>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button
+                onClick={() => router.push(`/account/quotations/${newQuotationId}`)}
+                className="flex-1 rounded-[8px] bg-[#1E40AF] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#1E3A8A]"
+              >
+                View My Quotation
+              </button>
+              <button
+                onClick={() => { setShowOverlay(false); router.push("/"); }}
+                className="flex-1 rounded-[8px] border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
+              >
+                Continue Shopping
+              </button>
             </div>
-          </div>
-        </form>
-
-        <div className="rounded-xl bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-900">
-            Select Payment Method
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Choose how you will pay (demo — no real charges).
-          </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setPaymentMethod("card")}
-              className={`rounded-xl border-2 p-5 text-left transition ${
-                paymentMethod === "card"
-                  ? "border-[#2563EB] bg-blue-50/60 ring-2 ring-[#2563EB]/20"
-                  : "border-slate-200 bg-white hover:border-slate-300"
-              }`}
-            >
-              <p className="text-base font-semibold text-slate-900">
-                💳 Pay by Card — ZimSwitch
-              </p>
-              <p className="mt-1 text-sm text-slate-600">
-                Visa, Mastercard accepted
-              </p>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPaymentMethod("ecocash")}
-              className={`rounded-xl border-2 p-5 text-left transition ${
-                paymentMethod === "ecocash"
-                  ? "border-[#2563EB] bg-blue-50/60 ring-2 ring-[#2563EB]/20"
-                  : "border-slate-200 bg-white hover:border-slate-300"
-              }`}
-            >
-              <p className="text-base font-semibold text-slate-900">
-                📱 Pay by EcoCash
-              </p>
-              <p className="mt-1 text-sm text-slate-600">
-                Mobile money payment
-              </p>
-            </button>
           </div>
         </div>
-
-        {error ? (
-          <p className="text-center text-sm text-red-600" role="alert">
-            {error}
-          </p>
-        ) : null}
-
-        <button
-          type="button"
-          disabled={submitting || !paymentMethod}
-          onClick={() => void continueToPayment()}
-          className="no-print w-full rounded-lg bg-[#2563EB] py-4 text-sm font-semibold text-white transition hover:bg-blue-600 disabled:opacity-60"
-        >
-          {submitting ? "Working…" : "Continue to Payment"}
-        </button>
-      </div>
-    </div>
+      )}
+    </>
   );
 }

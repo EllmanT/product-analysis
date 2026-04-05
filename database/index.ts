@@ -11,6 +11,8 @@ import WeeklyProductSummaries from "./weekly_product_summaries.model";
 import Customer from "./customer.model";
 import Quotation from "./quotation.model";
 import Invoice from "./invoice.model";
+import HomepageConfig from "./homepage-config.model";
+import ShopPublicStats from "./shop-public-stats.model";
 
 export {
   Account,
@@ -25,4 +27,6 @@ export {
   Customer,
   Quotation,
   Invoice,
+  HomepageConfig,
+  ShopPublicStats,
 };

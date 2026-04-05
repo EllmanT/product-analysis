@@ -1,7 +1,15 @@
 import { Types } from "mongoose";
 import dbConnect from "@/lib/mongoose";
 import { NextResponse } from "next/server";
-import { Branch, Upload, WeeklyProductSummaries } from "@/database";
+import {
+  Branch,
+  Invoice,
+  Quotation,
+  Upload,
+  UploadProduct,
+  User,
+  WeeklyProductSummaries,
+} from "@/database";
 import { auth } from "@/auth";
 import { getUser } from "@/lib/actions/user.action";
 import { normalizeRole } from "@/lib/auth/role";
@@ -72,6 +80,51 @@ export async function GET() {
     totalBranches = await Branch.countDocuments({ storeId: objectStoreId });
   }
 
+  const latestUploadAgg = await Upload.aggregate([
+    { $match: branchMatch },
+    { $sort: { upload_date: -1 } },
+    { $group: { _id: "$branchId", latestUploadId: { $first: "$_id" } } },
+  ]);
+  const latestUploadIds = latestUploadAgg
+    .map((d) => d.latestUploadId as Types.ObjectId | undefined)
+    .filter((id): id is Types.ObjectId => !!id);
+
+  let productCount = 0;
+  let currentStockQty = 0;
+  if (latestUploadIds.length > 0) {
+    const productMatch = {
+      ...branchMatch,
+      uploadId: { $in: latestUploadIds },
+    };
+    const [productAgg] = await UploadProduct.aggregate([
+      { $match: productMatch },
+      {
+        $group: {
+          _id: null,
+          distinctIds: { $addToSet: "$productId" },
+          totalQty: { $sum: "$qty" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          productCount: { $size: "$distinctIds" },
+          currentStockQty: "$totalQty",
+        },
+      },
+    ]);
+    productCount = productAgg?.productCount ?? 0;
+    currentStockQty = productAgg?.currentStockQty ?? 0;
+  }
+
+  const [totalQuotations, totalInvoices, totalUploadFiles, totalStoreUsers] =
+    await Promise.all([
+      Quotation.countDocuments({}),
+      Invoice.countDocuments({}),
+      Upload.countDocuments(branchMatch),
+      User.countDocuments({ storeId: objectStoreId }),
+    ]);
+
   function toFloat(value: unknown) {
     return value && typeof (value as { toString?: () => string }).toString === "function"
       ? parseFloat((value as { toString: () => string }).toString())
@@ -81,9 +134,15 @@ export async function GET() {
   const combined = {
     estStockValue: toFloat(uploadResult?.estStockValue),
     estStock: uploadResult?.estStock ?? 0,
+    productCount,
+    currentStockQty,
     totalEstimatedSales: toFloat(weeklyResult?.totalEstimatedSales),
     totalQuantitySold: weeklyResult?.totalQuantitySold ?? 0,
     totalBranches,
+    totalQuotations,
+    totalInvoices,
+    totalUploadFiles,
+    totalStoreUsers,
   };
 
   return NextResponse.json({ success: true, data: combined }, { status: 200 });

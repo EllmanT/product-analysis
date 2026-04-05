@@ -11,6 +11,7 @@ import { NextResponse } from "next/server";
 const LoginBodySchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  rememberMe: z.boolean().optional(),
 });
 
 const SHOP_COOKIE = "shop_token";
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
       throw new ValidationError(parsed.error.flatten().fieldErrors);
     }
 
-    const { email, password } = parsed.data;
+    const { email, password, rememberMe } = parsed.data;
     const customer: ICustomerDoc | null = await Customer.findOne({
       email: email.toLowerCase(),
     });
@@ -40,10 +41,13 @@ export async function POST(request: Request) {
 
     const customerId = String(customer._id);
 
-    const token = signShopJwt({
-      sub: customerId,
-      email: customer.email,
-    });
+    const cookieMaxAge =
+      rememberMe === false ? 60 * 60 * 24 : 60 * 60 * 24 * 30;
+
+    const token = signShopJwt(
+      { sub: customerId, email: customer.email, firstName: customer.firstName },
+      cookieMaxAge
+    );
 
     const res = NextResponse.json(
       {
@@ -62,7 +66,7 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: cookieMaxAge,
     });
 
     return res;

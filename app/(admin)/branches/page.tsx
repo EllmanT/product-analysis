@@ -5,7 +5,6 @@ import { projects} from "@/app/data";
 import { DataTable } from "@/components/data-table/index";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { columnAllUsers } from "@/components/data-table/columns/columnAllUsers";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { AutoComplete } from "@/components/Autocomplete";

@@ -6,8 +6,10 @@ export interface IAccount{
     image?:string;
     password?:string;
     provider:string;
-    providerAccountId:string
-
+    providerAccountId:string;
+    resetOtp?: string;
+    resetOtpExpiry?: Date;
+    resetOtpVerified?: boolean;
 }
 
 export interface IAccountDoc extends IAccount, Document {}
@@ -19,6 +21,9 @@ const AccountSchema = new Schema<IAccount>(
     password:{type:String},
     provider: { type: String },
     providerAccountId: { type: String },
+    resetOtp: { type: String },
+    resetOtpExpiry: { type: Date },
+    resetOtpVerified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

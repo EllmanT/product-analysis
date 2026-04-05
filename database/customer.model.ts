@@ -10,6 +10,9 @@ export interface ICustomer {
   tinNumber: string;
   vatNumber: string;
   address: string;
+  resetOtp?: string;
+  resetOtpExpiry?: Date;
+  resetOtpVerified?: boolean;
 }
 
 export interface ICustomerDoc extends ICustomer, Document {}
@@ -25,6 +28,9 @@ const CustomerSchema = new Schema<ICustomer>(
     tinNumber: { type: String, required: true },
     vatNumber: { type: String, required: true },
     address: { type: String, required: true },
+    resetOtp: { type: String },
+    resetOtpExpiry: { type: Date },
+    resetOtpVerified: { type: Boolean, default: false },
   },
   {
     timestamps: true,

@@ -1,33 +1,22 @@
-import { ProductMaster, UploadProduct } from "@/database";
+import { ProductMaster } from "@/database";
 import handleError from "@/lib/handlers/error";
 import dbConnect from "@/lib/mongoose";
 import { NextRequest, NextResponse } from "next/server";
-import type { Types } from "mongoose";
+import type { PipelineStage } from "mongoose";
 
-const PAGE_SIZE = 24;
+const DEFAULT_PAGE_SIZE = 24;
+const MAX_PAGE_SIZE = 48;
+
+const SORT_MAP: Record<string, Record<string, 1 | -1>> = {
+  name_asc: { name: 1 },
+  name_desc: { name: -1 },
+  price_asc: { "latest.price": 1 },
+  price_desc: { "latest.price": -1 },
+  qty_desc: { "latest.qty": -1 },
+};
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function decimalToPriceString(value: unknown): string | null {
-  if (value == null) return null;
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    "$numberDecimal" in value
-  ) {
-    return (value as { $numberDecimal: string }).$numberDecimal;
-  }
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { toString?: () => string }).toString === "function"
-  ) {
-    const s = (value as { toString: () => string }).toString();
-    if (s && !s.startsWith("[object ")) return s;
-  }
-  return null;
 }
 
 export async function GET(request: NextRequest) {
@@ -36,67 +25,141 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const pageSizeRaw = parseInt(
+      searchParams.get("pageSize") || String(DEFAULT_PAGE_SIZE),
+      10
+    );
+    const pageSize = Math.min(
+      MAX_PAGE_SIZE,
+      Math.max(1, Number.isNaN(pageSizeRaw) ? DEFAULT_PAGE_SIZE : pageSizeRaw)
+    );
     const q = searchParams.get("search")?.trim() || "";
+    const minPrice = parseFloat(searchParams.get("minPrice") || "");
+    const maxPrice = parseFloat(searchParams.get("maxPrice") || "");
+    const minQty = parseInt(searchParams.get("minQty") || "", 10);
+    const sortKey = searchParams.get("sort") || "name_asc";
+    const sortObj = SORT_MAP[sortKey] ?? SORT_MAP.name_asc;
 
-    const filter =
+    const activeMatch: PipelineStage = {
+      $match: {
+        $or: [{ isActive: true }, { isActive: { $exists: false } }],
+      },
+    };
+
+    const searchStages: PipelineStage[] =
       q.length > 0
-        ? {
-            $or: [
-              { name: { $regex: escapeRegex(q), $options: "i" } },
-              { standardCode: { $regex: escapeRegex(q), $options: "i" } },
-            ],
-          }
-        : {};
+        ? [
+            {
+              $match: {
+                $or: [
+                  { name: { $regex: escapeRegex(q), $options: "i" } },
+                  {
+                    standardCode: {
+                      $regex: escapeRegex(q),
+                      $options: "i",
+                    },
+                  },
+                ],
+              },
+            },
+          ]
+        : [];
 
-    const total = await ProductMaster.countDocuments(filter);
-    const docs = await ProductMaster.find(filter)
-      .skip((page - 1) * PAGE_SIZE)
-      .limit(PAGE_SIZE)
-      .select("name standardCode")
-      .lean();
-
-    const ids = docs.map((d) => d._id as Types.ObjectId);
-    const uploadByProduct = new Map<
-      string,
-      { price: string | null; quantityAvailable: number }
-    >();
-
-    if (ids.length > 0) {
-      const latest = await UploadProduct.aggregate<{
-        _id: Types.ObjectId;
-        price: unknown;
-        qty: number;
-      }>([
-        { $match: { productId: { $in: ids } } },
-        { $sort: { upload_date: -1, createdAt: -1 } },
-        {
-          $group: {
-            _id: "$productId",
-            price: { $first: "$price" },
-            qty: { $first: "$qty" },
-          },
+    const lookupAndStock: PipelineStage[] = [
+      {
+        $lookup: {
+          from: "uploadproducts",
+          let: { pid: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$productId", "$$pid"] },
+              },
+            },
+            { $sort: { upload_date: -1, createdAt: -1 } },
+            { $limit: 1 },
+            { $project: { qty: 1, price: 1 } },
+          ],
+          as: "latest",
         },
-      ]);
+      },
+      {
+        $unwind: {
+          path: "$latest",
+          preserveNullAndEmptyArrays: false,
+        },
+      },
+      { $match: { "latest.qty": { $gt: 0 } } },
+    ];
 
-      for (const row of latest) {
-        uploadByProduct.set(String(row._id), {
-          price: decimalToPriceString(row.price),
-          quantityAvailable: typeof row.qty === "number" ? row.qty : 0,
-        });
-      }
+    // Optional post-lookup filters
+    const postFilters: Record<string, unknown> = {};
+    if (!isNaN(minPrice)) postFilters["latest.price"] = { $gte: minPrice };
+    if (!isNaN(maxPrice)) {
+      postFilters["latest.price"] = {
+        ...(postFilters["latest.price"] as Record<string, unknown> ?? {}),
+        $lte: maxPrice,
+      };
     }
+    if (!isNaN(minQty)) postFilters["latest.qty"] = { $gte: minQty };
+    const postFilterStages: PipelineStage[] =
+      Object.keys(postFilters).length > 0
+        ? [{ $match: postFilters } as PipelineStage]
+        : [];
 
-    const products = docs.map((p) => {
-      const id = String(p._id);
-      const u = uploadByProduct.get(id);
-      return {
-        _id: id,
+    const preFacet: PipelineStage[] = [
+      activeMatch,
+      ...searchStages,
+      ...lookupAndStock,
+      ...postFilterStages,
+    ];
+
+    const facetStage: PipelineStage = {
+      $facet: {
+        metadata: [{ $count: "total" }],
+        data: [
+          { $sort: sortObj },
+          { $skip: (page - 1) * pageSize },
+          { $limit: pageSize },
+          {
+            $project: {
+              _id: 1,
+              name: 1,
+              standardCode: 1,
+              imageUrl: 1,
+              quantityAvailable: "$latest.qty",
+              price: { $toString: "$latest.price" },
+            },
+          },
+        ],
+      },
+    };
+
+    const [row] = await ProductMaster.aggregate([
+      ...preFacet,
+      facetStage,
+    ]);
+
+    const total = row?.metadata?.[0]?.total ?? 0;
+    const rawProducts = row?.data ?? [];
+
+    const products = rawProducts.map(
+      (p: {
+        _id: unknown;
+        name: string;
+        standardCode: string;
+        imageUrl?: string | null;
+        quantityAvailable: number;
+        price: string;
+      }) => ({
+        _id: String(p._id),
         name: p.name,
         standardCode: p.standardCode,
-        price: u?.price ?? null,
-        quantityAvailable: u?.quantityAvailable ?? 0,
-      };
-    });
+        imageUrl: p.imageUrl ?? null,
+        quantityAvailable: p.quantityAvailable,
+        price: p.price && p.price.length > 0 ? p.price : null,
+      })
+    );
 
     return NextResponse.json(
       {
@@ -104,12 +167,17 @@ export async function GET(request: NextRequest) {
         data: {
           products,
           page,
-          pageSize: PAGE_SIZE,
+          pageSize,
           total,
-          totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+          totalPages: Math.max(1, Math.ceil(total / pageSize)),
         },
       },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+        },
+      }
     );
   } catch (error) {
     return handleError(error, "api") as APIErrorResponse;

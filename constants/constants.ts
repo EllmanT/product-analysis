@@ -9,7 +9,7 @@ import {
     IconTrendingUp,
     IconAlertTriangle
   } from "@tabler/icons-react"
-import { FileText, Receipt } from "lucide-react"
+import { FileText, Package, Receipt } from "lucide-react"
 
 export const mainSidebarLinks = [
     {
@@ -49,6 +49,11 @@ export const mainSidebarLinks = [
       icon: IconAlertTriangle,
     },
     {
+      title: "Products",
+      url: "/products",
+      icon: Package,
+    },
+    {
       title: "Branch Upload Reports",
       url: "/branch-up-reports",
       icon: IconTrendingUp,
@@ -71,20 +76,9 @@ export const mainSidebarLinks = [
     //   },
   
     {
-        title: "Management",
-        url:""
-      },
-
-    {
-      title: "Users",
-      url: "/users",
-      icon: IconPackages,
+      title: "Sales",
+      url: "",
     },
-    {
-        title: "Branches",
-        url: "/branches",
-        icon: IconBuildingStore,
-      },
     {
       title: "Quotations",
       url: "/admin/quotations",
@@ -95,6 +89,23 @@ export const mainSidebarLinks = [
       title: "Invoices",
       url: "/admin/invoices",
       icon: Receipt,
+      adminOnly: true,
+    },
+
+    {
+      title: "Team",
+      url: "",
+    },
+    {
+      title: "Users",
+      url: "/users",
+      icon: IconUser,
+      adminOnly: true,
+    },
+    {
+      title: "Branches",
+      url: "/branches",
+      icon: IconBuildingStore,
       adminOnly: true,
     },
   ]

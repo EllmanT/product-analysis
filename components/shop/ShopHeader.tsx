@@ -14,7 +14,7 @@ import {
   LogOut,
   Settings,
 } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 
 import { useCart } from "@/app/(shop)/context/CartContext";
 import { useCartDrawer } from "./CartDrawerContext";
@@ -33,7 +33,15 @@ export interface ShopHeaderCustomer {
   id: string;
 }
 
-function SearchField({ className }: { className?: string }) {
+function SearchField({
+  className,
+  onFocus,
+  onBlur,
+}: {
+  className?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
+}) {
   const { search, setSearch } = useShopSearch();
 
   return (
@@ -46,6 +54,8 @@ function SearchField({ className }: { className?: string }) {
         type="search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        onFocus={onFocus}
+        onBlur={onBlur}
         placeholder="Search products..."
         className="w-full rounded-full border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-sm text-slate-900 shadow-sm outline-none ring-blue-500/30 placeholder:text-slate-400 transition focus:bg-white focus:ring-2"
         aria-label="Search products"
@@ -129,17 +139,43 @@ export function ShopHeader({
   const { toggleDrawer } = useCartDrawer();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrollActive, setScrollActive] = useState(false);
+  const [navSearchFocused, setNavSearchFocused] = useState(false);
+  const scrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pathname = usePathname();
   const isHomePage = pathname === "/";
   const { heroVisible } = useContext(HeroVisibilityContext);
-  const showNavSearch = !isHomePage || !heroVisible;
+  const routeAllowsNavSearch = !isHomePage || !heroVisible;
+  const showNavSearch =
+    routeAllowsNavSearch &&
+    scrolled &&
+    (scrollActive || navSearchFocused);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 4);
+    const clearIdleTimer = () => {
+      if (scrollIdleTimerRef.current) {
+        clearTimeout(scrollIdleTimerRef.current);
+        scrollIdleTimerRef.current = null;
+      }
+    };
+
+    const onScroll = () => {
+      setScrolled(window.scrollY > 4);
+      setScrollActive(true);
+      clearIdleTimer();
+      scrollIdleTimerRef.current = setTimeout(() => {
+        setScrollActive(false);
+        scrollIdleTimerRef.current = null;
+      }, 320);
+    };
+
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearIdleTimer();
+    };
   }, []);
 
   useEffect(() => {
@@ -178,7 +214,10 @@ export function ShopHeader({
           }`}
           aria-hidden={!showNavSearch}
         >
-          <SearchField />
+          <SearchField
+            onFocus={() => setNavSearchFocused(true)}
+            onBlur={() => setNavSearchFocused(false)}
+          />
         </div>
 
         {/* Desktop right side */}

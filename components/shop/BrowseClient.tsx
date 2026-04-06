@@ -62,7 +62,11 @@ export function BrowseSkeleton() {
             <div className="h-20 w-full animate-pulse rounded-lg bg-slate-200" />
           </div>
         </div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="h-11 w-full max-w-xl animate-pulse rounded-full bg-slate-200" />
+            <div className="h-10 w-48 shrink-0 animate-pulse rounded-lg bg-slate-200 sm:ml-auto" />
+          </div>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 12 }).map((_, i) => (
               <ProductSkeletonCard key={i} />
@@ -73,6 +77,9 @@ export function BrowseSkeleton() {
     </div>
   );
 }
+
+const filterInputClass =
+  "rounded-lg border border-slate-200 py-2 px-3 text-sm outline-none ring-blue-500 focus:ring-2";
 
 function FilterPanel({
   filters,
@@ -101,23 +108,6 @@ function FilterPanel({
         )}
       </div>
 
-      {/* Search */}
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-slate-500">
-          Name or Code
-        </label>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          <input
-            type="search"
-            value={filters.q}
-            onChange={(e) => onChange("q", e.target.value)}
-            placeholder="Search..."
-            className="w-full rounded-lg border border-slate-200 py-2 pl-8 pr-3 text-sm outline-none ring-blue-500 focus:ring-2"
-          />
-        </div>
-      </div>
-
       {/* Price range */}
       <div>
         <label className="mb-1.5 block text-xs font-medium text-slate-500">
@@ -130,7 +120,7 @@ function FilterPanel({
             value={filters.minPrice}
             onChange={(e) => onChange("minPrice", e.target.value)}
             placeholder="Min"
-            className="w-full rounded-lg border border-slate-200 py-2 px-3 text-sm outline-none ring-blue-500 focus:ring-2"
+            className={`w-full ${filterInputClass}`}
           />
           <input
             type="number"
@@ -138,7 +128,7 @@ function FilterPanel({
             value={filters.maxPrice}
             onChange={(e) => onChange("maxPrice", e.target.value)}
             placeholder="Max"
-            className="w-full rounded-lg border border-slate-200 py-2 px-3 text-sm outline-none ring-blue-500 focus:ring-2"
+            className={`w-full ${filterInputClass}`}
           />
         </div>
       </div>
@@ -154,7 +144,7 @@ function FilterPanel({
           value={filters.minQty}
           onChange={(e) => onChange("minQty", e.target.value)}
           placeholder="e.g. 10"
-          className="w-full rounded-lg border border-slate-200 py-2 px-3 text-sm outline-none ring-blue-500 focus:ring-2"
+          className={`w-full ${filterInputClass}`}
         />
       </div>
     </aside>
@@ -238,10 +228,12 @@ export function BrowseClient({
   const total = data?.data.total ?? 0;
   const totalPages = data?.data.totalPages ?? 1;
 
+  const showSortBar = !isError && !isLoading && products.length > 0;
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6">
       {/* Page header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">
             Browse Products
@@ -252,19 +244,17 @@ export function BrowseClient({
             </p>
           )}
         </div>
-
-        {/* Mobile filter toggle */}
         <button
           type="button"
           onClick={() => setMobileFilterOpen(true)}
-          className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm lg:hidden"
+          className="flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm lg:hidden"
         >
           <SlidersHorizontal className="h-4 w-4" /> Filters
         </button>
       </div>
 
       <div className="flex gap-8">
-        {/* Desktop sidebar */}
+        {/* Desktop filters — left sidebar */}
         <div className="hidden w-56 shrink-0 lg:block">
           <FilterPanel
             filters={filters}
@@ -273,24 +263,50 @@ export function BrowseClient({
           />
         </div>
 
-        {/* Product grid */}
         <div className="min-w-0 flex-1">
-          {/* Sort dropdown - top right */}
-          {!isError && !isLoading && products.length > 0 && (
-            <div className="mb-4 flex justify-end">
-              <select
-                value={filters.sort}
-                onChange={(e) => handleFilterChange("sort", e.target.value)}
-                className="rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm font-medium text-slate-700 outline-none ring-blue-500 shadow-sm transition hover:border-slate-300 focus:ring-2"
-              >
-                {SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+          {/* Search + sort on one row (main column) */}
+          <div
+            className={`mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 ${
+              showSortBar ? "sm:justify-between" : ""
+            }`}
+          >
+            <div className="relative min-w-0 w-full max-w-xl sm:flex-1">
+              <label htmlFor="browse-product-search" className="sr-only">
+                Search by name or code
+              </label>
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                aria-hidden
+              />
+              <input
+                id="browse-product-search"
+                type="search"
+                value={filters.q}
+                onChange={(e) => handleFilterChange("q", e.target.value)}
+                placeholder="Search by name or code..."
+                className="w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 shadow-sm outline-none ring-blue-500/30 placeholder:text-slate-400 transition focus:bg-white focus:ring-2"
+              />
             </div>
-          )}
+            {showSortBar && (
+              <div className="flex shrink-0 sm:justify-end">
+                <label htmlFor="browse-sort" className="sr-only">
+                  Sort products
+                </label>
+                <select
+                  id="browse-sort"
+                  value={filters.sort}
+                  onChange={(e) => handleFilterChange("sort", e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm font-medium text-slate-700 outline-none ring-blue-500 shadow-sm transition hover:border-slate-300 focus:ring-2 sm:w-auto"
+                >
+                  {SORT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
           {isError ? (
             <p className="py-12 text-center text-slate-500">

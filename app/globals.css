@@ -122,6 +122,16 @@
   }
 }
 
+/* Shop: premium pairing — set --font-shop-body / --font-shop-display on an ancestor (see shop layout). */
+@layer utilities {
+  .font-shop-body {
+    font-family: var(--font-shop-body), ui-sans-serif, system-ui, sans-serif;
+  }
+  .font-shop-display {
+    font-family: var(--font-shop-display), ui-serif, Georgia, "Times New Roman", serif;
+  }
+}
+
 @media print {
   body * {
     visibility: hidden;

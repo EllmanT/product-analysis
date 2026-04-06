@@ -45,7 +45,7 @@ const BROWSE_TILE_QUERIES: {
     label: "Tools",
     searchQuery: "tool",
     imageUrl:
-      "https://images.unsplash.com/photo-1581147036324-c4a87c6e628a?auto=format&fit=crop&w=256&h=256&q=80",
+      "https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=256&h=256&q=80",
   },
   {
     label: "Breakers",
@@ -57,7 +57,7 @@ const BROWSE_TILE_QUERIES: {
     label: "Conduits",
     searchQuery: "conduit",
     imageUrl:
-      "https://images.unsplash.com/photo-1584622788857-29c4acd0ead0?auto=format&fit=crop&w=256&h=256&q=80",
+      "https://images.unsplash.com/photo-1530124566582-a618bc2615dc?auto=format&fit=crop&w=256&h=256&q=80",
   },
   {
     label: "Safety",

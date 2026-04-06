@@ -9,6 +9,7 @@ import dbConnect from "@/lib/mongoose";
 export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json();
+    const normalizedEmail = typeof email === "string" ? email.toLowerCase().trim() : "";
 
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -17,14 +18,14 @@ export async function POST(req: NextRequest) {
     await dbConnect();
 
     // Always return 200 to avoid leaking which emails are registered
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return NextResponse.json({ success: true });
     }
 
     const account = await Account.findOne({
       provider: "credentials",
-      providerAccountId: email.toLowerCase().trim(),
+      providerAccountId: normalizedEmail,
     });
 
     if (!account) {

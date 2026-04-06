@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Eye, EyeOff, KeyRound, ShieldCheck } from "lucide-react";
 import { useRef, useState, useEffect, KeyboardEvent, ClipboardEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -21,9 +22,16 @@ interface ShopForgotPasswordModalProps {
   onClose: () => void;
   /** Email already entered in the login form */
   email: string;
+  /** After a successful reset + login, navigate here (default: home). */
+  redirectAfterReset?: string;
 }
 
-export default function ShopForgotPasswordModal({ open, onClose, email }: ShopForgotPasswordModalProps) {
+export default function ShopForgotPasswordModal({
+  open,
+  onClose,
+  email,
+  redirectAfterReset = "/",
+}: ShopForgotPasswordModalProps) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("otp");
 
@@ -39,6 +47,7 @@ export default function ShopForgotPasswordModal({ open, onClose, email }: ShopFo
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [emailNotFound, setEmailNotFound] = useState(false);
 
   // Auto-send OTP as soon as the modal opens
   useEffect(() => {
@@ -54,6 +63,7 @@ export default function ShopForgotPasswordModal({ open, onClose, email }: ShopFo
     setPassword("");
     setConfirm("");
     setError("");
+    setEmailNotFound(false);
     setLoading(false);
     setShowPassword(false);
     setShowConfirm(false);
@@ -67,6 +77,7 @@ export default function ShopForgotPasswordModal({ open, onClose, email }: ShopFo
   // ── Send OTP ─────────────────────────────────────────────────────────────
   async function sendOtp() {
     setError("");
+    setEmailNotFound(false);
     setLoading(true);
     try {
       const res = await fetch("/api/shop/auth/forgot-password", {
@@ -75,6 +86,12 @@ export default function ShopForgotPasswordModal({ open, onClose, email }: ShopFo
         body: JSON.stringify({ email: email.trim() }),
       });
       const data = await res.json();
+      if (!res.ok && (res.status === 404 || data?.code === "EMAIL_NOT_FOUND")) {
+        setEmailNotFound(true);
+        throw new Error(
+          data?.error || "Email not found. Please register a new account to get started."
+        );
+      }
       if (!res.ok) throw new Error(data.error || "Failed to send code");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -172,7 +189,7 @@ export default function ShopForgotPasswordModal({ open, onClose, email }: ShopFo
       setTimeout(() => {
         handleClose();
         if (loginRes.ok) {
-          router.push("/");
+          router.push(redirectAfterReset);
           router.refresh();
         }
       }, 1500);
@@ -242,6 +259,19 @@ export default function ShopForgotPasswordModal({ open, onClose, email }: ShopFo
               </div>
 
               {error && <p className="text-sm text-red-500">{error}</p>}
+              {emailNotFound && (
+                <p className="text-sm text-slate-600">
+                  New here?{" "}
+                  <Link
+                    href="/register"
+                    className="font-medium text-[#2563EB] underline-offset-4 hover:underline"
+                    onClick={handleClose}
+                  >
+                    Register a new account
+                  </Link>
+                  .
+                </p>
+              )}
 
               <button
                 type="button"

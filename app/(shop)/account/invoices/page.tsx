@@ -77,7 +77,7 @@ function InvoicesContent() {
           <span className="font-medium text-slate-900">Invoices</span>
         </nav>
 
-        <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: "1.75rem", fontWeight: 700, color: "#111827" }}>
+        <h1 className="font-shop-display text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
           My Invoices
         </h1>
 

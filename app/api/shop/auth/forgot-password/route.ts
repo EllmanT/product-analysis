@@ -8,6 +8,7 @@ import dbConnect from "@/lib/mongoose";
 export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json();
+    const normalizedEmail = typeof email === "string" ? email.toLowerCase().trim() : "";
 
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -16,11 +17,16 @@ export async function POST(req: NextRequest) {
     await dbConnect();
 
     // Always return 200 to avoid leaking which emails are registered
-    const customer = await Customer.findOne({ email: email.toLowerCase().trim() });
+    const customer = await Customer.findOne({ email: normalizedEmail });
     if (!customer) {
-      return NextResponse.json({ success: true });
+      return NextResponse.json(
+        {
+          error: "Email not found. Please register a new account to get started.",
+          code: "EMAIL_NOT_FOUND",
+        },
+        { status: 404 }
+      );
     }
-
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedOtp = await bcrypt.hash(otp, 10);

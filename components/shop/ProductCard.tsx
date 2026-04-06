@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 import { useCart } from "@/app/(shop)/context/CartContext";
 
@@ -32,19 +32,32 @@ export function ProductSkeletonCard() {
 function StockBadge({ qty }: { qty: number }) {
   if (qty > 10) {
     return (
-      <span className="absolute right-2 top-2 rounded-md bg-emerald-600/95 px-2 py-0.5 text-xs font-semibold text-white shadow-sm">
+      <span className="absolute right-2 top-2 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700 shadow-sm">
         {qty} in stock
       </span>
     );
   }
+  if (qty > 0) {
+    return (
+      <span className="absolute right-2 top-2 rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700 shadow-sm">
+        Only {qty} left
+      </span>
+    );
+  }
   return (
-    <span className="absolute right-2 top-2 rounded-md bg-amber-500/95 px-2 py-0.5 text-xs font-semibold text-white shadow-sm">
-      Only {qty} left
+    <span className="absolute right-2 top-2 rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 shadow-sm">
+      Out of stock
     </span>
   );
 }
 
-export function ProductCard({ product }: { product: ShopProductRow }) {
+export const ProductCard = memo(function ProductCard({
+  product,
+  priority = false,
+}: {
+  product: ShopProductRow;
+  priority?: boolean;
+}) {
   const { addToCart } = useCart();
   const [added, setAdded] = useState(false);
   const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,6 +96,8 @@ export function ProductCard({ product }: { product: ShopProductRow }) {
           className="object-cover transition duration-300 group-hover:scale-[1.02]"
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           unoptimized={imgSrc.startsWith("https://placehold.co")}
+          priority={priority}
+          loading={priority ? undefined : "lazy"}
         />
         <StockBadge qty={product.quantityAvailable} />
       </div>
@@ -91,21 +106,39 @@ export function ProductCard({ product }: { product: ShopProductRow }) {
           {product.name}
         </h3>
         <p className="mt-1 text-xs text-slate-500">{product.standardCode}</p>
-        <p className="mt-3 text-lg font-semibold text-[#2563EB]">{priceLabel}</p>
-        <div className="mt-4 overflow-hidden">
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <p className="text-lg font-semibold text-[#2563EB]">{priceLabel}</p>
           <button
             type="button"
             onClick={handleAdd}
-            className={`w-full translate-y-0 rounded-lg py-2.5 text-sm font-semibold text-white transition group-hover:shadow-md ${
+            disabled={product.quantityAvailable === 0}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition ${
               added
-                ? "bg-emerald-600 hover:bg-emerald-600"
-                : "bg-[#2563EB] hover:bg-blue-600"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
             }`}
+            aria-label="Add to cart"
           >
-            {added ? "Added!" : "Add to Cart"}
+            {added ? (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 5h2l1.2 7.2a2 2 0 0 0 2 1.8h7.8a2 2 0 0 0 2-1.6L19.5 7H7.1"
+                />
+                <circle cx="9" cy="18.5" r="1.5" />
+                <circle cx="17" cy="18.5" r="1.5" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 3v4m2-2h-4" />
+              </svg>
+            )}
           </button>
         </div>
       </div>
     </article>
   );
-}
+});

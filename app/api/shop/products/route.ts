@@ -73,7 +73,12 @@ export async function GET(request: NextRequest) {
           pipeline: [
             {
               $match: {
-                $expr: { $eq: ["$productId", "$$pid"] },
+                $expr: {
+                  $and: [
+                    { $eq: ["$productId", "$$pid"] },
+                    { $gt: ["$qty", 0] },
+                  ],
+                },
               },
             },
             { $sort: { upload_date: -1, createdAt: -1 } },
@@ -89,7 +94,6 @@ export async function GET(request: NextRequest) {
           preserveNullAndEmptyArrays: false,
         },
       },
-      { $match: { "latest.qty": { $gt: 0 } } },
     ];
 
     // Optional post-lookup filters
@@ -175,7 +179,8 @@ export async function GET(request: NextRequest) {
       {
         status: 200,
         headers: {
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+          "Cache-Control": "public, s-maxage=120, stale-while-revalidate=300",
+          "CDN-Cache-Control": "public, s-maxage=300",
         },
       }
     );

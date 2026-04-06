@@ -118,10 +118,10 @@ function StatCard({ icon, value, label, iconBg }: StatCardProps) {
         {icon}
       </div>
       <div>
-        <p style={{ fontFamily: "'Syne', sans-serif", fontSize: "2.2rem", fontWeight: 700, lineHeight: 1, color: "#111827" }}>
+        <p className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900">
           {value}
         </p>
-        <p className="mt-1 text-sm text-[#6B7280]">{label}</p>
+        <p className="mt-1.5 text-sm font-medium text-slate-500">{label}</p>
       </div>
     </div>
   );
@@ -175,12 +175,10 @@ export default function DashboardPage() {
 
         {/* Welcome bar */}
         <div className="mb-8">
-          <h1
-            style={{ fontFamily: "'Syne', sans-serif", fontSize: "2rem", fontWeight: 700, color: "#111827" }}
-          >
+          <h1 className="font-shop-display text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
             Welcome back, {c?.firstName ?? "…"}!
           </h1>
-          <p className="mt-1 text-[0.95rem] text-[#6B7280]">
+          <p className="mt-2 text-base text-slate-600">
             {c?.tradeName ?? ""}
             {c?.memberSince ? ` · Member since ${fmtMemberSince(c.memberSince)}` : ""}
           </p>
@@ -224,7 +222,7 @@ export default function DashboardPage() {
         {/* Recent Quotations */}
         <div className="mb-10">
           <div className="mb-4 flex items-center justify-between">
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "1.15rem", fontWeight: 700, color: "#111827" }}>
+            <h2 className="font-shop-display text-lg font-semibold tracking-tight text-slate-900">
               Recent Quotations
             </h2>
             <Link href="/account/quotations" className="text-sm font-medium text-[#1E40AF] hover:underline">
@@ -317,7 +315,7 @@ export default function DashboardPage() {
         {/* Recent Invoices */}
         <div>
           <div className="mb-4 flex items-center justify-between">
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: "1.15rem", fontWeight: 700, color: "#111827" }}>
+            <h2 className="font-shop-display text-lg font-semibold tracking-tight text-slate-900">
               My Invoices
             </h2>
             <Link href="/account/invoices" className="text-sm font-medium text-[#1E40AF] hover:underline">

@@ -208,7 +208,7 @@ function ActionCard({
     return (
       <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Amount Due</p>
-        <p style={{ fontFamily: "'Syne', sans-serif", fontSize: "2rem", fontWeight: 700, color: "#1E40AF" }}>
+        <p className="text-3xl font-semibold tabular-nums tracking-tight text-[#1E40AF]">
           {fmtMoney(quotation.subtotal)}
         </p>
         <Link
@@ -320,7 +320,7 @@ export default function QuotationDetailPage() {
             <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]">
               <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
                 <div>
-                  <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: "1.05rem", color: "#111827" }}>
+                  <h2 className="font-shop-display text-lg font-semibold tracking-tight text-slate-900">
                     Quotation #{refId}
                   </h2>
                   <p className="mt-0.5 text-xs text-slate-500">{fmtDate(quotation.createdAt)}</p>

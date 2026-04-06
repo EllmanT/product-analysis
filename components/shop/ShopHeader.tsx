@@ -12,6 +12,7 @@ import {
   FileText,
   Receipt,
   LogOut,
+  Settings,
 } from "lucide-react";
 import { useContext, useEffect, useState } from "react";
 
@@ -83,21 +84,27 @@ function CustomerAvatar({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/dashboard" className="flex cursor-pointer items-center gap-2">
+          <Link href="/account" className="flex cursor-pointer items-center gap-2">
             <LayoutDashboard className="h-4 w-4" />
             My Dashboard
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/quotations" className="flex cursor-pointer items-center gap-2">
+          <Link href="/account/quotations" className="flex cursor-pointer items-center gap-2">
             <FileText className="h-4 w-4" />
             My Quotations
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/invoices" className="flex cursor-pointer items-center gap-2">
+          <Link href="/account/invoices" className="flex cursor-pointer items-center gap-2">
             <Receipt className="h-4 w-4" />
             My Invoices
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/account/settings" className="flex cursor-pointer items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Account settings
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -280,18 +287,25 @@ export function ShopHeader({
               </p>
               <div className="mt-2 flex flex-col gap-1">
                 <Link
-                  href="/dashboard"
+                  href="/account"
                   className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-600 hover:bg-white"
                   onClick={() => setMobileOpen(false)}
                 >
                   <LayoutDashboard className="h-4 w-4" /> My Dashboard
                 </Link>
                 <Link
-                  href="/quotations"
+                  href="/account/quotations"
                   className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-600 hover:bg-white"
                   onClick={() => setMobileOpen(false)}
                 >
                   <FileText className="h-4 w-4" /> My Quotations
+                </Link>
+                <Link
+                  href="/account/invoices"
+                  className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-slate-600 hover:bg-white"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <Receipt className="h-4 w-4" /> My Invoices
                 </Link>
               </div>
             </div>

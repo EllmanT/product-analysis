@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, SlidersHorizontal, X } from "lucide-react";
@@ -37,13 +37,15 @@ const SORT_OPTIONS = [
 async function fetchBrowseProducts(
   params: BrowseParams & { page: number }
 ): Promise<ProductsResponse> {
-  const p = new URLSearchParams({ page: String(params.page), pageSize: "24" });
+  const p = new URLSearchParams({ page: String(params.page), pageSize: "48" });
   if (params.q) p.set("search", params.q);
   if (params.minPrice) p.set("minPrice", params.minPrice);
   if (params.maxPrice) p.set("maxPrice", params.maxPrice);
   if (params.minQty) p.set("minQty", params.minQty);
   if (params.sort) p.set("sort", params.sort);
-  const res = await fetch(`/api/shop/products?${p.toString()}`);
+  const res = await fetch(`/api/shop/products?${p.toString()}`, {
+    next: { revalidate: 60 },
+  });
   if (!res.ok) throw new Error("Failed to load products");
   return res.json() as Promise<ProductsResponse>;
 }
@@ -52,10 +54,21 @@ export function BrowseSkeleton() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 lg:px-6">
       <div className="mb-6 h-10 w-64 animate-pulse rounded-xl bg-slate-200" />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <ProductSkeletonCard key={i} />
-        ))}
+      <div className="flex gap-8">
+        <div className="hidden w-56 shrink-0 lg:block">
+          <div className="space-y-4">
+            <div className="h-8 w-full animate-pulse rounded-lg bg-slate-200" />
+            <div className="h-20 w-full animate-pulse rounded-lg bg-slate-200" />
+            <div className="h-20 w-full animate-pulse rounded-lg bg-slate-200" />
+          </div>
+        </div>
+        <div className="flex-1">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <ProductSkeletonCard key={i} />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -144,32 +157,16 @@ function FilterPanel({
           className="w-full rounded-lg border border-slate-200 py-2 px-3 text-sm outline-none ring-blue-500 focus:ring-2"
         />
       </div>
-
-      {/* Sort */}
-      <div>
-        <label className="mb-1.5 block text-xs font-medium text-slate-500">
-          Sort By
-        </label>
-        <select
-          value={filters.sort}
-          onChange={(e) => onChange("sort", e.target.value)}
-          className="w-full rounded-lg border border-slate-200 py-2 px-3 text-sm outline-none ring-blue-500 focus:ring-2"
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
     </aside>
   );
 }
 
 export function BrowseClient({
   initialParams,
+  initialData,
 }: {
   initialParams: BrowseParams;
+  initialData: ProductsResponse | null;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -232,6 +229,9 @@ export function BrowseClient({
     queryKey: ["browse-products", filters, page],
     queryFn: () => fetchBrowseProducts({ ...filters, page }),
     placeholderData: (prev) => prev,
+    ...(page === 1 && initialData ? { initialData } : {}),
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 
   const products = data?.data.products ?? [];
@@ -275,13 +275,30 @@ export function BrowseClient({
 
         {/* Product grid */}
         <div className="min-w-0 flex-1">
+          {/* Sort dropdown - top right */}
+          {!isError && !isLoading && products.length > 0 && (
+            <div className="mb-4 flex justify-end">
+              <select
+                value={filters.sort}
+                onChange={(e) => handleFilterChange("sort", e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white py-2 px-3 text-sm font-medium text-slate-700 outline-none ring-blue-500 shadow-sm transition hover:border-slate-300 focus:ring-2"
+              >
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {isError ? (
             <p className="py-12 text-center text-slate-500">
               Something went wrong. Please try again.
             </p>
           ) : isLoading ? (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 12 }).map((_, i) => (
+              {Array.from({ length: 16 }).map((_, i) => (
                 <ProductSkeletonCard key={i} />
               ))}
             </div>
@@ -304,8 +321,8 @@ export function BrowseClient({
                   isFetching ? "opacity-70" : ""
                 }`}
               >
-                {products.map((p) => (
-                  <ProductCard key={p._id} product={p} />
+                {products.map((p, idx) => (
+                  <ProductCard key={p._id} product={p} priority={idx < 8} />
                 ))}
               </div>
 

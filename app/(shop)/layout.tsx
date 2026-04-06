@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
+import { Cormorant_Garamond, DM_Sans } from "next/font/google";
 
 import { CartProvider } from "@/app/(shop)/context/CartContext";
 import { CartDrawerProvider } from "@/components/shop/CartDrawerContext";
@@ -9,6 +10,19 @@ import { ShopFooter } from "@/components/shop/ShopFooter";
 import { ShopHeader } from "@/components/shop/ShopHeader";
 import { ShopProviders } from "@/components/shop/ShopProviders";
 import { verifyShopJwt } from "@/lib/shop/jwt";
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-shop-body",
+  display: "swap",
+});
+
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-shop-display",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "StockFlow Shop",
@@ -25,15 +39,11 @@ export default async function ShopLayout({ children }: { children: ReactNode }) 
 
   return (
     <ShopProviders>
-      {/* Load DM Sans + Syne from Google Fonts for premium dashboard typography */}
-      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Syne:wght@400;600;700;800&display=swap"
-      />
       <CartProvider>
         <CartDrawerProvider>
-          <div className="flex min-h-screen flex-col bg-neutral-50 font-sans text-slate-900">
+          <div
+            className={`${dmSans.variable} ${cormorant.variable} flex min-h-screen flex-col bg-neutral-50 font-shop-body text-slate-900 antialiased`}
+          >
             <ShopHeader customer={customer} />
             <main className="flex-1">{children}</main>
             <ShopFooter />

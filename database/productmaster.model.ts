@@ -28,6 +28,8 @@ const ProductMasterSchema = new Schema<IProductMaster>(
 
 ProductMasterSchema.index({ name: 1 });
 ProductMasterSchema.index({ standardCode: 1 });
+ProductMasterSchema.index({ name: "text", standardCode: "text" });
+ProductMasterSchema.index({ isActive: 1 });
 
 const ProductMaster =
   models?.ProductMaster || model<IProductMaster>("ProductMaster", ProductMasterSchema);

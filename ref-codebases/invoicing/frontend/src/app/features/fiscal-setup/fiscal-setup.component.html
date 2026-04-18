@@ -1,0 +1,251 @@
+<div class="fiscal-page">
+  <div class="fiscal-card">
+    <h1 class="fiscal-title">Apply fiscalization</h1>
+    <p class="fiscal-sub">
+      Complete the steps below to validate your tax document, confirm taxpayer details, and finish company setup for fiscalization.
+    </p>
+
+    <div class="stepper">
+      <div class="stepper-rail">
+        @for (label of ['VAT status', 'Upload document', 'Taxpayer details', 'Branch details', 'Confirm']; track label) {
+          <div class="stepper-step" [class.active]="$index + 1 === step()" [class.done]="$index + 1 < step()">
+            <div class="stepper-dot">{{ $index + 1 }}</div>
+            <div class="stepper-label">{{ label }}</div>
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (step() === 1) {
+      <div class="step-card">
+        <h2 class="section-title">1) VAT registration status</h2>
+        <p class="hint">Choose whether your company is VAT registered.</p>
+
+        @if (stepError()) {
+          <p-message severity="error" [text]="stepError()!" styleClass="w-full" />
+        }
+
+        <div class="choice-grid">
+          <button type="button" class="choice" [class.selected]="vatRegistered() === true" (click)="onVatRegisteredChange(true)">
+            <div class="choice-title">VAT registered</div>
+            <div class="choice-sub">You will upload a VAT certificate.</div>
+          </button>
+          <button type="button" class="choice" [class.selected]="vatRegistered() === false" (click)="onVatRegisteredChange(false)">
+            <div class="choice-title">Non-VAT</div>
+            <div class="choice-sub">You will upload a TIN certificate or tax clearance.</div>
+          </button>
+        </div>
+
+        <div class="step-actions">
+          <a routerLink="/company-setup" class="link">Continue without fiscalization</a>
+          <p-button label="Continue" icon="pi pi-arrow-right" (onClick)="nextFromStep1()" />
+        </div>
+      </div>
+    }
+
+    @if (step() === 2) {
+      <div class="step-card">
+        <h2 class="section-title">2) Upload {{ requiredDocLabel() }}</h2>
+        <p class="hint">Upload exactly one document. We’ll validate it before you continue.</p>
+
+        @if (docProcessingError()) {
+          <p-message severity="error" [text]="docProcessingError()!" styleClass="w-full" />
+        }
+        @if (!docProcessingError() && stepError()) {
+          <p-message severity="error" [text]="stepError()!" styleClass="w-full" />
+        }
+
+        <div class="dropzone" [class.has-file]="!!selectedFile()">
+          <input class="dropzone-input" type="file" (change)="handleFileInput($event)" />
+          @if (!selectedFile()) {
+            <div class="dropzone-inner">
+              <i class="pi pi-cloud-upload dropzone-icon"></i>
+              <div class="dropzone-title">Drop file here or click to upload</div>
+              <div class="dropzone-sub">PDF or image. One document only.</div>
+            </div>
+          } @else {
+            <div class="dropzone-inner">
+              <i class="pi pi-file dropzone-icon"></i>
+              <div class="dropzone-title">{{ selectedFile()!.name }}</div>
+              <div class="dropzone-sub">{{ (selectedFile()!.size / 1024 / 1024) | number:'1.2-2' }} MB</div>
+              <button type="button" class="link danger" (click)="onFilePicked(null)">Remove</button>
+            </div>
+          }
+        </div>
+
+        <div class="step-actions">
+          <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="back()" />
+          <p-button
+            label="Validate document"
+            icon="pi pi-check"
+            [loading]="docProcessingLoading()"
+            (onClick)="processDocument()"
+          />
+        </div>
+      </div>
+    }
+
+    @if (step() === 3) {
+      <div class="step-card">
+        <h2 class="section-title">3) Taxpayer details</h2>
+        <p class="hint">These fields were populated from your document validation result.</p>
+
+        @if (stepError()) {
+          <p-message severity="error" [text]="stepError()!" styleClass="w-full" />
+        }
+
+        <div class="field-grid">
+          <div class="field">
+            <label>Taxpayer Name</label>
+            <input pInputText class="w-full" [ngModel]="taxpayerName()" (ngModelChange)="taxpayerName.set($event)" />
+          </div>
+          <div class="field">
+            <label>Trade Name</label>
+            <input pInputText class="w-full" [ngModel]="tradeName()" (ngModelChange)="tradeName.set($event)" />
+          </div>
+          <div class="field">
+            <label>VAT No.</label>
+            <input
+              pInputText
+              class="w-full"
+              [disabled]="vatRegistered() !== true"
+              [ngModel]="vatNo()"
+              (ngModelChange)="vatNo.set($event)"
+              placeholder="Only required for VAT registered"
+            />
+          </div>
+          <div class="field">
+            <label>Company TIN</label>
+            <input pInputText class="w-full" [ngModel]="companyTin()" (ngModelChange)="companyTin.set($event)" />
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label>Region</label>
+            <p-select
+              [options]="regions"
+              optionLabel="name"
+              optionValue="name"
+              [ngModel]="region()"
+              (ngModelChange)="onRegionChange($event)"
+              placeholder="Select region"
+              styleClass="w-full"
+            ></p-select>
+          </div>
+          <div class="field">
+            <label>Station</label>
+            <p-select
+              [options]="regionStations()"
+              [ngModel]="station()"
+              (ngModelChange)="station.set($event)"
+              placeholder="Select station"
+              styleClass="w-full"
+              [disabled]="!region()"
+            ></p-select>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="back()" />
+          <p-button label="Continue" icon="pi pi-arrow-right" (onClick)="nextFromStep3()" />
+        </div>
+      </div>
+    }
+
+    @if (step() === 4) {
+      <div class="step-card">
+        <h2 class="section-title">4) Branch details</h2>
+        <p class="hint">These details are used for your company profile.</p>
+
+        @if (stepError()) {
+          <p-message severity="error" [text]="stepError()!" styleClass="w-full" />
+        }
+
+        <div class="field-grid">
+          <div class="field">
+            <label>Company Phone Number</label>
+            <input pInputText class="w-full" [ngModel]="phone()" (ngModelChange)="phone.set(onlyDigits($event))" placeholder="e.g 077125555" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label>Company Email</label>
+            <input pInputText class="w-full" [ngModel]="email()" (ngModelChange)="email.set($event)" placeholder="e.g info@company.co.zw" inputmode="email" />
+          </div>
+          <div class="field">
+            <label>Street Name &amp; Suburb</label>
+            <input pInputText class="w-full" [ngModel]="street()" (ngModelChange)="street.set($event)" />
+          </div>
+          <div class="field">
+            <label>House No</label>
+            <input pInputText class="w-full" [ngModel]="houseNo()" (ngModelChange)="houseNo.set(onlyDigits($event))" inputmode="numeric" />
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field">
+            <label>Province</label>
+            <p-select
+              [options]="provinces"
+              optionLabel="name"
+              optionValue="name"
+              [ngModel]="province()"
+              (ngModelChange)="onProvinceChange($event)"
+              placeholder="Select province"
+              styleClass="w-full"
+            ></p-select>
+          </div>
+          <div class="field">
+            <label>City</label>
+            <p-select
+              [options]="provinceCities()"
+              [ngModel]="city()"
+              (ngModelChange)="city.set($event)"
+              placeholder="Select city"
+              styleClass="w-full"
+              [disabled]="!province()"
+            ></p-select>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="back()" />
+          <p-button label="Continue" icon="pi pi-arrow-right" (onClick)="nextFromStep4()" />
+        </div>
+      </div>
+    }
+
+    @if (step() === 5) {
+      <div class="step-card">
+        <h2 class="section-title">5) Confirm</h2>
+        <p class="hint">Review your details before submitting.</p>
+
+        <div class="review">
+          <div class="review-row"><span class="k">VAT registered</span><span class="v">{{ vatRegistered() ? 'Yes' : 'No' }}</span></div>
+          <div class="review-row"><span class="k">Document</span><span class="v">{{ selectedFile()?.name ?? '—' }}</span></div>
+          <div class="review-row"><span class="k">Taxpayer name</span><span class="v">{{ taxpayerName() }}</span></div>
+          <div class="review-row"><span class="k">Trade name</span><span class="v">{{ tradeName() }}</span></div>
+          <div class="review-row"><span class="k">TIN</span><span class="v">{{ companyTin() }}</span></div>
+          <div class="review-row"><span class="k">VAT No.</span><span class="v">{{ vatNo() || '—' }}</span></div>
+          <div class="review-row"><span class="k">Region</span><span class="v">{{ region() }}</span></div>
+          <div class="review-row"><span class="k">Station</span><span class="v">{{ station() }}</span></div>
+          <div class="review-row"><span class="k">Phone</span><span class="v">{{ phone() }}</span></div>
+          <div class="review-row"><span class="k">Email</span><span class="v">{{ email() }}</span></div>
+          <div class="review-row"><span class="k">Address</span><span class="v">{{ houseNo() }} {{ street() }}, {{ city() }}, {{ province() }}</span></div>
+        </div>
+
+        <div class="step-actions">
+          <p-button label="Back" icon="pi pi-arrow-left" severity="secondary" (onClick)="back()" />
+          <p-button
+            label="Confirm & submit"
+            icon="pi pi-check"
+            [loading]="confirmLoading()"
+            (onClick)="confirmAndSubmit()"
+          />
+        </div>
+      </div>
+    }
+
+  </div>
+
+  <p-toast />
+</div>

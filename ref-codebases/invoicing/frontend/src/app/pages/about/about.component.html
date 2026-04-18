@@ -1,0 +1,100 @@
+<div class="about-page">
+  <header class="about-intro">
+    <h1 class="about-title">About</h1>
+    <p class="about-lead">
+      E-Invoicing by Axis Solutions helps you issue professional invoices, stay aligned with fiscal requirements, and keep
+      your product data organized as you grow.
+    </p>
+  </header>
+
+  <section class="about-marketing" aria-labelledby="about-marketing-heading">
+    <div class="marketing-inner">
+      <h2 id="about-marketing-heading" class="marketing-headline">Built for real businesses</h2>
+      <p class="marketing-lead">
+        Draft invoices on the home page for free — then connect your company to stay compliant with fiscal rules and keep
+        products, prices, and tax codes consistent on every sale.
+      </p>
+
+      <div class="marketing-cards">
+        <article class="marketing-card">
+          <div class="marketing-visual marketing-visual--fiscal" aria-hidden="true">
+            <div class="visual-doc">
+              <div class="visual-doc__header"></div>
+              <div class="visual-doc__lines">
+                <span></span><span></span><span></span>
+              </div>
+              <div class="visual-doc__footer">
+                <div class="visual-qr" title="Illustration: fiscal QR on invoice">
+                  <span class="qr-cell"></span><span class="qr-cell"></span><span class="qr-cell"></span>
+                  <span class="qr-cell"></span><span class="qr-cell qr-cell--on"></span><span class="qr-cell"></span>
+                  <span class="qr-cell"></span><span class="qr-cell"></span><span class="qr-cell qr-cell--on"></span>
+                  <span class="qr-cell qr-cell--on"></span><span class="qr-cell"></span><span class="qr-cell"></span>
+                  <span class="qr-cell"></span><span class="qr-cell qr-cell--on"></span><span class="qr-cell"></span>
+                  <span class="qr-cell qr-cell--on"></span><span class="qr-cell"></span><span class="qr-cell qr-cell--on"></span>
+                </div>
+                <div class="visual-badge">
+                  <i class="pi pi-shield"></i>
+                  <span>Verified</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <h3 class="marketing-card-title">Fiscalization &amp; verification</h3>
+          <p class="marketing-card-text">
+            Submit invoices through your fiscal device workflow, capture verification codes, and give customers a QR they
+            can trust — so receipts line up with what regulators and auditors expect.
+          </p>
+          <ul class="marketing-bullets">
+            <li>Fiscal device–aware submission flow</li>
+            <li>Verification codes and printable fiscal layouts</li>
+            <li>Audit-friendly history once you are on a company account</li>
+          </ul>
+        </article>
+
+        <article class="marketing-card">
+          <div class="marketing-visual marketing-visual--catalog" aria-hidden="true">
+            <div class="visual-catalog">
+              <div class="visual-catalog__toolbar"></div>
+              <div class="visual-catalog__row">
+                <span class="cat-thumb"></span>
+                <span class="cat-lines"><i></i><i></i></span>
+                <span class="cat-tag">HS</span>
+              </div>
+              <div class="visual-catalog__row">
+                <span class="cat-thumb cat-thumb--alt"></span>
+                <span class="cat-lines"><i></i><i></i></span>
+                <span class="cat-tag">VAT</span>
+              </div>
+              <div class="visual-catalog__row">
+                <span class="cat-thumb"></span>
+                <span class="cat-lines"><i></i><i></i></span>
+                <span class="cat-tag">HS</span>
+              </div>
+            </div>
+          </div>
+          <h3 class="marketing-card-title">Product management</h3>
+          <p class="marketing-card-text">
+            Stop re-typing descriptions and rates. Maintain a catalog with units, tax codes, and HS codes so every invoice
+            line pulls the right numbers and stays consistent across the team.
+          </p>
+          <ul class="marketing-bullets">
+            <li>Central product list with pricing and units</li>
+            <li>Tax and HS code hints at invoice time</li>
+            <li>Fewer mistakes when multiple people raise invoices</li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="marketing-cta">
+        <p-button label="Sign up free" icon="pi pi-user-plus" (onClick)="signUp()" />
+        <button type="button" class="marketing-cta-secondary" (click)="login()">Sign in</button>
+      </div>
+
+      <p class="marketing-form-hint">
+        Try the
+        <a routerLink="/" class="about-inline-link">free invoice builder</a>
+        — no account required.
+      </p>
+    </div>
+  </section>
+</div>

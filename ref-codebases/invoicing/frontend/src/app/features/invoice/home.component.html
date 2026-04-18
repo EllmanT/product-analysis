@@ -1,0 +1,292 @@
+@if (showHero()) {
+  <section class="hero">
+    <h1 class="hero-title">Free Invoice Template</h1>
+    <p class="hero-subtitle">Make beautiful Invoices with one click!</p>
+    <p class="hero-desc">
+      Welcome to the original {{ siteName }}, used by over 4 million businesses.
+      {{ siteName }} lets you instantly make Invoices with our attractive invoice
+      template straight from your web browser. The Invoices you make can be sent
+      and paid online or downloaded as a PDF.
+    </p>
+    <p class="hero-cta-text">
+      Did we also mention that {{ siteName }} lets you generate an unlimited
+      number of Invoices?
+    </p>
+    <p-button
+      label="OK, got it!"
+      styleClass="p-button-success"
+      (onClick)="dismissHero()"
+    />
+  </section>
+}
+
+<div class="invoice-page">
+  <div class="invoice-main">
+    <!-- Left: Logo, From, To, Items -->
+    <div class="invoice-left">
+      <div class="logo-upload" (click)="fileInput.click()">
+        <input
+          #fileInput
+          type="file"
+          accept="image/*"
+          (change)="onLogoChange($event)"
+          class="logo-input"
+        />
+        @if (invoice().logoDataUrl) {
+          <img [src]="invoice().logoDataUrl" alt="Logo" class="logo-preview" />
+        } @else {
+          <i class="pi pi-plus"></i>
+          <span>Add Your Logo</span>
+        }
+      </div>
+
+      <label class="field-label">Who is this from?</label>
+      <input
+        type="text"
+        class="field-input"
+        [ngModel]="invoice().from"
+        (ngModelChange)="updateInvoice({ from: $event })"
+        placeholder="Sender name / company"
+      />
+
+      <div class="bill-ship">
+        <div class="bill-ship-col">
+          <label class="field-label">Bill To</label>
+          <span class="field-hint">Who is this to?</span>
+          <input
+            type="text"
+            class="field-input"
+            [ngModel]="invoice().billTo"
+            (ngModelChange)="updateInvoice({ billTo: $event })"
+            placeholder="Client name / company"
+          />
+        </div>
+        <div class="bill-ship-col">
+          <label class="field-label">Ship To</label>
+          <span class="field-hint">(optional)</span>
+          <input
+            type="text"
+            class="field-input"
+            [ngModel]="invoice().shipTo"
+            (ngModelChange)="updateInvoice({ shipTo: $event })"
+            placeholder="Shipping address"
+          />
+        </div>
+      </div>
+
+      <div class="items-section">
+        <div class="items-header">
+          <span>Item</span>
+          <span>Quantity</span>
+          <span>Rate</span>
+          <span>Amount</span>
+        </div>
+        @for (item of invoice().items; track item.id) {
+          <div class="item-row">
+            <input
+              type="text"
+              class="item-desc"
+              [ngModel]="item.description"
+              (ngModelChange)="updateItem(item.id, { description: $event })"
+              placeholder="Description of item/service..."
+            />
+            <input
+              type="number"
+              class="item-qty"
+              min="0"
+              [ngModel]="item.quantity"
+              (ngModelChange)="updateItem(item.id, { quantity: $event }); recalcItemAmount(item.id)"
+            />
+            <input
+              type="number"
+              class="item-rate"
+              min="0"
+              step="0.01"
+              [ngModel]="item.rate"
+              (ngModelChange)="updateItem(item.id, { rate: $event }); recalcItemAmount(item.id)"
+            />
+            <span class="item-amount">{{ formatMoney(item.amount) }}</span>
+          </div>
+        }
+        <button type="button" class="link-btn green" (click)="addLineItem()">
+          + Line Item
+        </button>
+      </div>
+
+      <label class="field-label">Notes</label>
+      <textarea
+        class="field-textarea"
+        [ngModel]="invoice().notes"
+        (ngModelChange)="updateInvoice({ notes: $event })"
+        placeholder="Notes - any relevant information not already covered"
+        rows="3"
+      ></textarea>
+
+      <label class="field-label">Terms</label>
+      <textarea
+        class="field-textarea"
+        [ngModel]="invoice().terms"
+        (ngModelChange)="updateInvoice({ terms: $event })"
+        placeholder="Terms and conditions - late fees, payment methods, delivery schedule"
+        rows="3"
+      ></textarea>
+    </div>
+
+    <!-- Center-Right: Invoice #, Date, etc. -->
+    <div class="invoice-center">
+      <h2 class="invoice-heading">INVOICE</h2>
+      <div class="meta-row">
+        <label>#</label>
+        <input
+          type="text"
+          class="field-input meta-input"
+          [ngModel]="invoice().invoiceNumber"
+          (ngModelChange)="updateInvoice({ invoiceNumber: $event })"
+        />
+      </div>
+      <div class="meta-row meta-row--date">
+        <label for="home-invoice-date">Date</label>
+        <p-datepicker
+          inputId="home-invoice-date"
+          class="meta-datepicker"
+          [ngModel]="invoiceDateValue()"
+          (ngModelChange)="onInvoiceDateChange($event)"
+          dateFormat="mm/dd/yy"
+          [showIcon]="true"
+          [showButtonBar]="true"
+        />
+      </div>
+      <div class="meta-row">
+        <label>Payment Terms</label>
+        <input
+          type="text"
+          class="field-input meta-input"
+          [ngModel]="invoice().paymentTerms"
+          (ngModelChange)="updateInvoice({ paymentTerms: $event })"
+        />
+      </div>
+      <div class="meta-row meta-row--date">
+        <label for="home-due-date">Due Date</label>
+        <p-datepicker
+          inputId="home-due-date"
+          class="meta-datepicker"
+          [ngModel]="dueDateValue()"
+          (ngModelChange)="onDueDateChange($event)"
+          dateFormat="mm/dd/yy"
+          [showIcon]="true"
+          [showClear]="true"
+          [showButtonBar]="true"
+          placeholder="Optional"
+        />
+      </div>
+      <div class="meta-row">
+        <label>PO Number</label>
+        <input
+          type="text"
+          class="field-input meta-input"
+          [ngModel]="invoice().poNumber"
+          (ngModelChange)="updateInvoice({ poNumber: $event })"
+        />
+      </div>
+    </div>
+
+    <!-- Right: Download, Theme, Currency, Summary -->
+    <div class="invoice-sidebar">
+      <p-button
+        label="Download"
+        icon="pi pi-download"
+        styleClass="p-button-success"
+        [disabled]="!canDownload()"
+        (onClick)="downloadPdf()"
+        class="download-btn"
+      />
+      <div class="sidebar-field">
+        <label>Theme</label>
+        <p-select
+          [options]="themes"
+          [ngModel]="invoice().theme"
+          (ngModelChange)="updateInvoice({ theme: $event })"
+          optionLabel="label"
+          optionValue="value"
+          [style]="{ width: '100%' }"
+        />
+      </div>
+      <div class="sidebar-field">
+        <label>Currency</label>
+        <p-select
+          [options]="currencies"
+          [ngModel]="invoice().currency"
+          (ngModelChange)="onCurrencyChange($event)"
+          optionLabel="label"
+          optionValue="value"
+          [style]="{ width: '100%' }"
+        />
+      </div>
+      <button type="button" class="link-btn green">Save Default</button>
+
+      <div class="summary">
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span>{{ formatMoney(subtotal()) }}</span>
+        </div>
+        <div class="summary-row">
+          <span>Tax</span>
+          <span>
+            <input
+              type="number"
+              class="tax-input"
+              min="0"
+              max="100"
+              step="0.0001"
+              [ngModel]="invoice().taxPercent"
+              (ngModelChange)="updateInvoice({ taxPercent: $event })"
+            />%
+          </span>
+        </div>
+        <div class="summary-row summary-tax-amount">
+          <span></span>
+          <span>{{ formatMoney(taxAmount()) }}</span>
+        </div>
+        <button type="button" class="link-btn green" (click)="showDiscountInput.set(true)">+ Discount</button>
+        @if (showDiscountInput() || invoice().discount > 0) {
+          <div class="summary-row">
+            <span>Discount</span>
+            <span>
+              <input type="number" class="tax-input" min="0" step="0.01" [ngModel]="invoice().discount" (ngModelChange)="updateInvoice({ discount: $event })" />
+            </span>
+          </div>
+        }
+        @if (!showShippingInput() && invoice().shipping === 0) {
+          <button type="button" class="link-btn green" (click)="showShippingInput.set(true)">+ Shipping</button>
+        }
+        @if (showShippingInput() || invoice().shipping > 0) {
+          <div class="summary-row">
+            <span>Shipping</span>
+            <span>
+              <input type="number" class="tax-input" min="0" step="0.01" [ngModel]="invoice().shipping" (ngModelChange)="updateInvoice({ shipping: $event })" />
+            </span>
+          </div>
+        }
+        <div class="summary-row total">
+          <span>Total</span>
+          <span>{{ formatMoney(total()) }}</span>
+        </div>
+        <div class="summary-row">
+          <span>Amount Paid</span>
+          <input
+            type="number"
+            class="field-input paid-input"
+            min="0"
+            step="0.01"
+            [ngModel]="invoice().amountPaid"
+            (ngModelChange)="updateInvoice({ amountPaid: $event })"
+          />
+        </div>
+        <div class="summary-row total">
+          <span>Balance Due</span>
+          <span>{{ formatMoney(balanceDue()) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

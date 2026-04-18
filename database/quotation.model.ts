@@ -23,6 +23,8 @@ export interface IQuotation {
   subtotal: string;
   status: QuotationStatus;
   paymentStatus: QuotationPaymentStatus;
+  paidAt?: Date;
+  paymentReference?: string;
 }
 
 export interface IQuotationDoc extends IQuotation, Document {}
@@ -62,6 +64,8 @@ const QuotationSchema = new Schema<IQuotation>(
       enum: ["unpaid", "paid"],
       default: "unpaid",
     },
+    paidAt: { type: Date },
+    paymentReference: { type: String },
   },
   { timestamps: true }
 );

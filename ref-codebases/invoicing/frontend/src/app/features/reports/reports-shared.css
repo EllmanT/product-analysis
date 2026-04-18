@@ -1,0 +1,129 @@
+.app-panel-card {
+  background: #ffffff !important;
+  border: 1px solid #dbe4ef !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08) !important;
+  padding: 1.25rem 1.5rem !important;
+  width: 100% !important;
+}
+
+.reports-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 4rem;
+  color: #64748b;
+}
+
+.reports-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.reports-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.reports-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.filter-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 0.35rem;
+}
+
+.filter-field {
+  flex: 1;
+  min-width: 160px;
+}
+
+.filter-field--narrow {
+  flex: 0 1 200px;
+  min-width: 180px;
+}
+
+.filter-field--date {
+  flex: 0 1 200px;
+  min-width: 160px;
+}
+
+.filter-field--action {
+  flex: 0 0 auto;
+}
+
+.filter-field p-datepicker,
+.filter-field p-select {
+  width: 100%;
+}
+
+.reports-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.summary-label {
+  font-size: 0.8125rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.summary-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.reports-chart-wrap {
+  height: 380px;
+  margin-bottom: 1.5rem;
+}
+
+.reports-chart-wrap--product {
+  min-height: 280px;
+  height: auto;
+  max-height: 480px;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+}
+
+.mt-3 {
+  margin-top: 1rem;
+}
+
+:host ::ng-deep .reports-inline-error {
+  margin-bottom: 1rem;
+  display: block;
+}

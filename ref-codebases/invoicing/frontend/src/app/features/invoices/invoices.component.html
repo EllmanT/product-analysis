@@ -1,0 +1,249 @@
+<div class="app-page app-page--full">
+  <header class="app-page-header">
+    <div>
+      <h1 class="app-page-title">Invoices</h1>
+      <p class="app-page-subtitle">
+        Your company’s invoices. Create a new one or manage drafts and fiscalization.
+      </p>
+    </div>
+    <p-button label="Create invoice" icon="pi pi-plus" routerLink="/invoice/new/fiscal-invoice" />
+  </header>
+
+  <section class="app-panel-card">
+    <div class="invoices-toolbar">
+      <div class="filter-field">
+        <input
+          type="text"
+          pInputText
+          [(ngModel)]="searchTerm"
+          placeholder="Search by invoice no. or reference…"
+          (input)="onSearchChange()"
+        />
+      </div>
+
+      <div class="filter-field filter-field--narrow">
+        <p-select
+          [(ngModel)]="statusFilter"
+          [options]="statuses"
+          placeholder="All statuses"
+          (onChange)="loadInvoices()"
+          [showClear]="true"
+        />
+      </div>
+
+      <div class="filter-field filter-field--date">
+        <p-datepicker
+          [(ngModel)]="fromDate"
+          placeholder="From date"
+          dateFormat="yy-mm-dd"
+          (onSelect)="loadInvoices()"
+          (onClear)="loadInvoices()"
+          [showClear]="true"
+        />
+      </div>
+
+      <div class="filter-field filter-field--date">
+        <p-datepicker
+          [(ngModel)]="toDate"
+          placeholder="To date"
+          dateFormat="yy-mm-dd"
+          (onSelect)="loadInvoices()"
+          (onClear)="loadInvoices()"
+          [showClear]="true"
+        />
+      </div>
+
+      <p-button label="Reset" icon="pi pi-refresh" styleClass="p-button-outlined" (onClick)="resetFilters()" />
+    </div>
+
+    <p-table
+      [value]="invoices()"
+      [loading]="loading()"
+      [paginator]="true"
+      [rows]="15"
+      [totalRecords]="totalRecords()"
+      styleClass="p-datatable-striped app-full-width-table"
+      [tableStyle]="{ width: '100%', 'min-width': '100%' }"
+    >
+      <ng-template #header>
+        <tr>
+          <th>Document No.</th>
+          <th>Date</th>
+          <th>Buyer</th>
+          <th>Amount</th>
+          <th>Payment</th>
+          <th>Status</th>
+          <th style="width: 200px">Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-invoice>
+        <tr>
+          <td>
+            <strong>{{ invoice.invoice_no }}</strong>
+          </td>
+          <td>{{ invoice.receipt_date | date: 'short' }}</td>
+          <td>{{ invoice.buyer?.name || 'Walk-in customer' }}</td>
+          <td>{{ invoice.receipt_currency }} {{ invoice.receipt_total | number: '1.2-2' }}</td>
+          <td>{{ invoice.payment_method }}</td>
+          <td>
+            <p-tag [value]="formatInvoiceStatus(invoice.status)" [severity]="getStatusSeverity(invoice.status)" />
+          </td>
+          <td>
+            <p-button
+              icon="pi pi-eye"
+              styleClass="p-button-text p-button-sm"
+              (onClick)="viewInvoice(invoice)"
+              pTooltip="View details"
+            />
+            @if (invoice.status === 'DRAFT') {
+              <p-button
+                icon="pi pi-check"
+                styleClass="p-button-text p-button-success p-button-sm"
+                (onClick)="fiscalizeInvoice(invoice)"
+                pTooltip="Fiscalize"
+                [loading]="fiscalizing() === invoice.id"
+              />
+            }
+            @if (invoice.status === 'SUBMITTED') {
+              <p-button
+                icon="pi pi-download"
+                styleClass="p-button-text p-button-sm"
+                (onClick)="downloadInvoicePdf(invoice)"
+                pTooltip="Download PDF"
+              />
+              <p-button
+                icon="pi pi-print"
+                styleClass="p-button-text p-button-sm"
+                (onClick)="printInvoice(invoice)"
+                pTooltip="Print"
+              />
+            }
+            @if (invoice.status === 'DRAFT') {
+              <p-button
+                icon="pi pi-trash"
+                styleClass="p-button-text p-button-danger p-button-sm"
+                (onClick)="deleteInvoice(invoice)"
+                pTooltip="Delete"
+              />
+            }
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template #emptymessage>
+        <tr>
+          <td colspan="7" class="empty-cell">
+            No invoices yet.
+            <a routerLink="/invoice/new/fiscal-invoice">Create your first invoice</a>.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </section>
+
+  <p-dialog
+    [visible]="invoiceDialogVisible()"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [closable]="true"
+    [style]="{ width: 'min(980px, 94vw)' }"
+    header="Fiscal tax invoice"
+    (onHide)="closeInvoiceDialog()"
+  >
+    @if (viewingInvoice()) {
+      <p>Loading invoice details...</p>
+    } @else if (selectedInvoice(); as s) {
+      <div class="invoice-preview">
+        <div class="invoice-grid">
+          <div class="invoice-field"><span>Document No.</span><strong>{{ s.invoice_no }}</strong></div>
+          <div class="invoice-field"><span>Date</span><strong>{{ s.receipt_date | date: 'medium' }}</strong></div>
+          <div class="invoice-field"><span>Buyer</span><strong>{{ s.buyer?.name || s.buyer?.register_name || 'Walk-in customer' }}</strong></div>
+          <div class="invoice-field"><span>Payment</span><strong>{{ s.payment_method }}</strong></div>
+          <div class="invoice-field"><span>Currency</span><strong>{{ s.receipt_currency }}</strong></div>
+        </div>
+
+        <div class="preview-block">
+          <h4>Line items</h4>
+          <table class="preview-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>{{ s.tax_inclusive ? 'Unit Price (Incl)' : 'Unit Price' }}</th>
+                <th>VAT amount</th>
+                @if (s.tax_inclusive) {
+                  <th>Total (Incl)</th>
+                } @else {
+                  <th>Total (Excl)</th>
+                  <th>Total (Incl)</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (line of s.lines || []; track $index; let i = $index) {
+                <tr>
+                  <td>{{ i + 1 }}</td>
+                  <td>{{ line.description }}</td>
+                  <td>{{ line.quantity | number: '1.2-2' }}</td>
+                  <td>{{ line.unit_price | number: '1.2-2' }}</td>
+                  <td>{{ (line.tax_amount || 0) | number: '1.2-2' }}</td>
+                  @if (s.tax_inclusive) {
+                    <td>{{ line.line_total | number: '1.2-2' }}</td>
+                  } @else {
+                    <td>{{ line.line_total | number: '1.2-2' }}</td>
+                    <td>{{ ((line.line_total || 0) + (line.tax_amount || 0)) | number: '1.2-2' }}</td>
+                  }
+                </tr>
+              } @empty {
+                <tr><td [attr.colspan]="s.tax_inclusive ? 6 : 7">No line items.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="preview-totals">
+          <div><span>Subtotal</span><strong>{{ s.receipt_currency }} {{ (s.total_excl_tax || 0) | number: '1.2-2' }}</strong></div>
+          <div><span>Total VAT</span><strong>{{ s.receipt_currency }} {{ (s.total_vat || 0) | number: '1.2-2' }}</strong></div>
+          <div class="grand"><span>Grand total</span><strong>{{ s.receipt_currency }} {{ s.receipt_total | number: '1.2-2' }}</strong></div>
+        </div>
+
+        <div class="preview-block">
+          <h4>Fiscal verification</h4>
+          <div class="invoice-grid">
+            <div class="invoice-field"><span>Verification code</span><strong>{{ s.fiscalResponse?.verification_code || '—' }}</strong></div>
+            <div class="invoice-field"><span>Fiscal day</span><strong>{{ s.fiscalResponse?.fiscal_day_no || '—' }}</strong></div>
+            <div class="invoice-field"><span>Device ID</span><strong>{{ s.fiscalResponse?.device_id || '—' }}</strong></div>
+            <div class="invoice-field"><span>Invoice Number</span><strong>{{ s.fiscalResponse?.fdms_invoice_no || '—' }}</strong></div>
+          </div>
+          @if (previewQrDataUrl()) {
+            <div class="qr-wrap">
+              <img [src]="previewQrDataUrl()" alt="Fiscal QR code" />
+            </div>
+          }
+          <p class="verify-link">{{ s.fiscalResponse?.verification_link || '' }}</p>
+        </div>
+      </div>
+    }
+
+    <ng-template #footer>
+      <p-button label="Close" styleClass="p-button-text" (onClick)="closeInvoiceDialog()" />
+      <p-button
+        label="Download"
+        icon="pi pi-download"
+        styleClass="p-button-outlined"
+        (onClick)="downloadPdfFromDialog()"
+        [disabled]="!selectedInvoice() || viewingInvoice()"
+      />
+      <p-button
+        label="Print"
+        icon="pi pi-print"
+        (onClick)="printFromDialog()"
+        [disabled]="!selectedInvoice() || viewingInvoice()"
+      />
+    </ng-template>
+  </p-dialog>
+
+  <p-toast />
+  <p-confirmDialog />
+</div>

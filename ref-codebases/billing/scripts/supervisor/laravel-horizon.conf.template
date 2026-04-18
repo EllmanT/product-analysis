@@ -1,0 +1,24 @@
+; Laravel Horizon — managed by scripts/setup-horizon-supervisor.sh
+; Docs: https://laravel.com/docs/horizon#supervisor-configuration
+;
+; Placeholders:
+;   __APP_ROOT__     Absolute path to the Laravel project (artisan lives here)
+;   __PHP_BIN__      PHP CLI binary (e.g. /usr/bin/php)
+;   __RUN_USER__     OS user to run the worker as (e.g. www-data, nginx, forge)
+;   __LOG_FILE__     stdout log path (default: storage/logs/horizon.log)
+
+[program:horizon]
+process_name=%(program_name)s
+directory=__APP_ROOT__
+command=__PHP_BIN__ __APP_ROOT__/artisan horizon
+autostart=true
+autorestart=true
+user=__RUN_USER__
+numprocs=1
+redirect_stderr=true
+stdout_logfile=__LOG_FILE__
+stdout_logfile_maxbytes=50MB
+stdout_logfile_backups=5
+stopwaitsecs=3600
+stopasgroup=true
+killasgroup=true

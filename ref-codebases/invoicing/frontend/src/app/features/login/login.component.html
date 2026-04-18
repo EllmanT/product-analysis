@@ -1,0 +1,135 @@
+<div class="login-page">
+  <div class="login-backdrop" aria-hidden="true"></div>
+
+  <form class="login-card" (ngSubmit)="handleSubmit()">
+    <div class="login-card-glow" aria-hidden="true"></div>
+
+    <div class="login-header">
+      <div class="login-logo-mark">
+        <i class="pi pi-lock" aria-hidden="true"></i>
+      </div>
+      <h1 class="login-title">Welcome back</h1>
+      <p class="login-sub">
+        @if (mode() === 'password') {
+          Sign in with your company email and password.
+        } @else {
+          Sign in with your 6-character activation code (e.g. from WhatsApp).
+        }
+      </p>
+    </div>
+
+    <div class="login-mode-bar" role="tablist" aria-label="Sign-in method">
+      <button
+        type="button"
+        class="login-mode-btn"
+        [class.active]="mode() === 'password'"
+        (click)="mode.set('password')"
+        role="tab"
+        [attr.aria-selected]="mode() === 'password'"
+      >
+        Email &amp; password
+      </button>
+      <button
+        type="button"
+        class="login-mode-btn"
+        [class.active]="mode() === 'activation'"
+        (click)="mode.set('activation')"
+        role="tab"
+        [attr.aria-selected]="mode() === 'activation'"
+      >
+        Activation code
+      </button>
+    </div>
+
+    @if (mode() === 'password') {
+      <div class="login-fields">
+        <div class="field">
+          <label class="field-label" for="email">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            pInputText
+            [(ngModel)]="email"
+            class="login-input w-full"
+            autocomplete="username"
+            placeholder="you@company.com"
+          />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="password">Password</label>
+          <p-password
+            id="password"
+            name="password"
+            [(ngModel)]="password"
+            [feedback]="false"
+            [toggleMask]="true"
+            styleClass="login-password w-full"
+            inputStyleClass="w-full login-password-input"
+            autocomplete="current-password"
+            placeholder="••••••••"
+          />
+        </div>
+      </div>
+    } @else {
+      <div class="login-fields">
+        <div class="field">
+          <label class="field-label" for="activationCode">Activation code</label>
+          <input
+            id="activationCode"
+            name="activationCode"
+            type="text"
+            pInputText
+            [(ngModel)]="activationCode"
+            class="login-input w-full login-input-code"
+            autocomplete="one-time-code"
+            maxlength="12"
+            placeholder="XXXXXX"
+            autocapitalize="characters"
+          />
+        </div>
+      </div>
+    }
+
+    <p-button
+      type="submit"
+      [label]="mode() === 'password' ? 'Sign in' : 'Sign in with code'"
+      styleClass="login-submit w-full"
+      [loading]="submitting()"
+      [disabled]="submitting()"
+    />
+
+    <div class="login-divider" role="presentation">
+      <span>Or continue with</span>
+    </div>
+
+    <div class="login-actions login-actions--oauth">
+      <p-button
+        type="button"
+        label="Google"
+        styleClass="login-oauth login-oauth--google w-full"
+        [disabled]="submitting()"
+        (onClick)="oauth('google')"
+      >
+        <ng-template pTemplate="icon">
+          <app-google-g-icon />
+        </ng-template>
+      </p-button>
+      <p-button
+        type="button"
+        label="Facebook"
+        icon="pi pi-facebook"
+        styleClass="login-oauth login-oauth--facebook w-full"
+        [disabled]="submitting()"
+        (onClick)="oauth('facebook')"
+      />
+    </div>
+
+    <p class="login-register">
+      <a routerLink="/signup" class="login-register-link">Register</a>
+    </p>
+  </form>
+
+  <p-toast />
+</div>

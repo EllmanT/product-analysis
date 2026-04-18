@@ -1,0 +1,48 @@
+<div class="activation-page">
+  <div class="activation-head">
+    <h1 class="activation-title">Activation code</h1>
+    <p class="activation-sub">
+      Use this 6-character code like a password for the chatbot and integrations. It only works for your company account.
+      If you generate a new code, the previous one stops working.
+    </p>
+  </div>
+
+  @if (loading()) {
+    <p class="activation-muted">Loading…</p>
+  } @else if (status()) {
+    <div class="activation-card">
+      @if (status()!.has_code) {
+        <p>
+          Active code ends with <strong>…{{ status()!.hint }}</strong>
+          @if (status()!.updated_at) {
+            <span class="activation-muted"> · last updated {{ status()!.updated_at | date: 'medium' }}</span>
+          }
+        </p>
+      } @else {
+        <p class="activation-muted">No code yet. Generate one to use with WhatsApp.</p>
+      }
+
+      @if (plainCode()) {
+        <div class="activation-reveal">
+          <div class="activation-reveal-label">Your new code (copy now — it won’t be shown again)</div>
+          <div class="activation-code-row">
+            <code class="activation-code">{{ plainCode() }}</code>
+            <button pButton type="button" label="Copy" class="p-button-sm" (click)="copyPlain()"></button>
+          </div>
+        </div>
+      }
+
+      <button
+        pButton
+        type="button"
+        [label]="status()!.has_code ? 'Generate new code' : 'Generate code'"
+        [loading]="regenerating()"
+        [disabled]="regenerating()"
+        (click)="regenerate()"
+        class="mt-3"
+      ></button>
+    </div>
+  }
+
+  <p-toast />
+</div>

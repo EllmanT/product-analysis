@@ -1,0 +1,57 @@
+<div class="pdt-toolbar">
+  @if (enableSearch()) {
+    <span class="p-input-icon-left pdt-search">
+      <i class="pi pi-search"></i>
+      <input
+        type="text"
+        pInputText
+        [placeholder]="searchPlaceholder()"
+        [ngModel]="searchTerm"
+        (ngModelChange)="onSearchInput($event)"
+      />
+    </span>
+  }
+
+  @if (enableExport()) {
+    <p-button
+      icon="pi pi-download"
+      label="Export"
+      styleClass="p-button-outlined p-button-sm"
+      (onClick)="exportCsv()"
+    />
+  }
+</div>
+
+<p-table
+  #dt
+  [value]="value()"
+  [loading]="loading()"
+  [paginator]="paginator()"
+  [rows]="rows()"
+  [lazy]="lazy()"
+  [totalRecords]="effectiveTotalRecords()"
+  [rowsPerPageOptions]="rowsPerPageOptions()"
+  [showCurrentPageReport]="showCurrentPageReport()"
+  [currentPageReportTemplate]="currentPageReportTemplate()"
+  [tableStyle]="tableStyle()"
+  [exportFilename]="exportFileName()"
+  [styleClass]="mergedStyleClass()"
+  (onLazyLoad)="onLazyLoadHandler($event)">
+  <ng-template pTemplate="header">
+    <ng-container *ngTemplateOutlet="headerTpl()!.templateRef" />
+  </ng-template>
+
+  <ng-template pTemplate="body" let-rowData>
+    <ng-container *ngTemplateOutlet="bodyTpl()!.templateRef; context: { $implicit: rowData }" />
+  </ng-template>
+
+  <ng-template pTemplate="emptymessage">
+    @if (emptyTpl(); as empty) {
+      <ng-container *ngTemplateOutlet="empty.templateRef" />
+    } @else {
+      <tr>
+        <td [attr.colspan]="emptyColspan()" class="pdt-empty-cell">{{ emptyMessage() }}</td>
+      </tr>
+    }
+  </ng-template>
+</p-table>

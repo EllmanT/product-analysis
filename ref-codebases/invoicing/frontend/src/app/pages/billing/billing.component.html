@@ -1,0 +1,131 @@
+<div class="app-page billing-page">
+  <p-toast></p-toast>
+  <div class="app-page-header">
+    <div>
+      <h2 class="app-page-title">Billing</h2>
+      <p class="app-page-subtitle">View your subscription status and available plans.</p>
+    </div>
+    <button
+      pButton
+      type="button"
+      label="Refresh"
+      icon="pi pi-refresh"
+      class="p-button-outlined"
+      (click)="refresh()"
+      [disabled]="loading()"></button>
+  </div>
+
+  @if (error()) {
+    <div class="billing-callout billing-callout--danger">
+      <div class="billing-callout-title">Couldn’t load billing</div>
+      <div class="billing-callout-body">{{ error() }}</div>
+    </div>
+  }
+
+  <div class="billing-grid">
+    <p-card header="Subscription status" styleClass="app-surface-card">
+      <div class="billing-status-head">
+        <div class="billing-status-left">
+          <div class="billing-status-kicker">Subscription</div>
+          <div class="billing-status-title">
+            @if (activeSubscription()) { Active } @else { Not active }
+          </div>
+          <div class="billing-status-sub text-muted">
+            @if (activeSubscription()) {
+              {{ activePlanLabel() }} • Expires {{ activeExpiryLabel() }}
+            } @else {
+              Subscribe to enable invoicing.
+            }
+          </div>
+        </div>
+        <p-tag
+          [severity]="activeSubscription() ? 'success' : 'danger'"
+          [value]="activeSubscription() ? 'Active' : 'Not active'"></p-tag>
+      </div>
+
+      @if (activeSubscription()) {
+        <div class="billing-meta">
+          <div class="billing-meta-row">
+            <div class="billing-meta-label text-muted">Plan</div>
+            <div class="billing-meta-value">{{ activePlanLabel() }}</div>
+          </div>
+          <div class="billing-meta-row">
+            <div class="billing-meta-label text-muted">Start date</div>
+            <div class="billing-meta-value">{{ activeStartLabel() }}</div>
+          </div>
+          <div class="billing-meta-row">
+            <div class="billing-meta-label text-muted">Expiry date</div>
+            <div class="billing-meta-value">{{ activeExpiryLabel() }}</div>
+          </div>
+          <div class="billing-meta-row">
+            <div class="billing-meta-label text-muted">Payment platform</div>
+            <div class="billing-meta-value">{{ activePaymentPlatform() }}</div>
+          </div>
+        </div>
+
+        <div class="billing-actions">
+          <button
+            pButton
+            type="button"
+            label="Change plan"
+            icon="pi pi-arrow-up-right"
+            (click)="openUpgrade()"></button>
+          <button
+            pButton
+            type="button"
+            label="Cancel"
+            icon="pi pi-times"
+            class="p-button-text"
+            (click)="cancelActive()"></button>
+          <a class="billing-actions-link" routerLink="/billing/history">History</a>
+        </div>
+      }
+    </p-card>
+  </div>
+
+  @if (!activeSubscription() || showPlans()) {
+    <div class="billing-pricing">
+      <div class="billing-pricing-head">
+        <div class="billing-pricing-title">Choose a plan</div>
+        <div class="billing-pricing-sub text-muted">
+          @if (activeSubscription()) {
+            Switching plans may create a new subscription.
+          } @else {
+            Subscribe to enable invoicing.
+          }
+        </div>
+      </div>
+
+      <div class="billing-plan-grid">
+        @for (plan of plans(); track planId(plan)) {
+          <div class="billing-plan-card">
+            <div class="billing-plan-top">
+              <div class="billing-plan-name">{{ plan.name ?? plan.id }}</div>
+              <div class="billing-plan-price">{{ planPriceLabel(plan) }}</div>
+            </div>
+            <div class="billing-plan-desc text-muted">
+              {{ plan.description ?? 'Includes access to invoicing features.' }}
+            </div>
+            <div class="billing-plan-cta">
+              <button
+                pButton
+                type="button"
+                [label]="activeSubscription() ? 'Switch plan' : 'Subscribe'"
+                icon="pi pi-check"
+                [loading]="subscribingPlanId() === planId(plan)"
+                [disabled]="subscribingPlanId() != null"
+                (click)="subscribeToPlan(plan)"></button>
+            </div>
+          </div>
+        }
+        @if (plans().length === 0) {
+          <div class="billing-plan-empty">
+            <div class="billing-plan-empty-title">No plans available</div>
+            <div class="text-muted">If this is unexpected, check Axis Billing configuration.</div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
+

@@ -1,0 +1,101 @@
+<div class="sidebar-shell" [class.collapsed]="sidebarCollapsed()">
+  <app-global-loader />
+  <app-top-nav class="sidebar-shell-header" />
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <img src="/logo.png" alt="E-Invoicing" class="sidebar-logo" width="28" height="28" />
+        @if (!sidebarCollapsed()) {
+          <span class="sidebar-title">E-Invoicing</span>
+        }
+      </div>
+
+      <button
+        type="button"
+        class="sidebar-toggle sidebar-toggle-top"
+        (click)="toggleSidebar()"
+        [title]="sidebarCollapsed() ? 'Expand sidebar' : 'Collapse sidebar'">
+        <i class="pi" [ngClass]="sidebarCollapsed() ? 'pi-angle-right' : 'pi-angle-left'"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      @for (section of navSections(); track section.id) {
+        @if (!sidebarCollapsed()) {
+          <div class="sidebar-section-title">{{ section.title }}</div>
+        }
+
+        @for (item of section.items; track item.id) {
+            @if (item.children?.length) {
+              @if (sidebarCollapsed()) {
+                <a
+                  [routerLink]="collapsedParentLink(item)"
+                  routerLinkActive="active"
+                  [routerLinkActiveOptions]="{ paths: 'subset' }"
+                  class="sidebar-item"
+                  [title]="item.label">
+                  <i class="pi" [ngClass]="item.icon"></i>
+                </a>
+              } @else {
+                <button
+                  type="button"
+                  class="sidebar-item sidebar-parent"
+                  [class.active]="itemIsActive(item)"
+                  (click)="toggleItem(item.id)"
+                  [attr.aria-expanded]="isExpanded(item.id)">
+                  <i class="pi" [ngClass]="item.icon"></i>
+                  <span class="sidebar-item-label">{{ item.label }}</span>
+                  <i class="pi sidebar-chevron" [ngClass]="isExpanded(item.id) ? 'pi-angle-up' : 'pi-angle-down'"></i>
+                </button>
+                @if (isExpanded(item.id)) {
+                  <div class="sidebar-subwrap">
+                    @for (child of item.children; track child.route) {
+                      <a
+                        [routerLink]="child.route"
+                        routerLinkActive="active"
+                        [routerLinkActiveOptions]="{ paths: 'subset' }"
+                        class="sidebar-item sidebar-sub"
+                        [title]="child.label">
+                        <i class="pi" [ngClass]="child.icon"></i>
+                        <span class="sidebar-item-label">{{ child.label }}</span>
+                      </a>
+                    }
+                  </div>
+                }
+              }
+            } @else if (item.route) {
+              <a
+                [routerLink]="item.route"
+                routerLinkActive="active"
+                [routerLinkActiveOptions]="{ paths: 'subset' }"
+                class="sidebar-item"
+                [title]="item.label">
+                <i class="pi" [ngClass]="item.icon"></i>
+                @if (!sidebarCollapsed()) {
+                  <span class="sidebar-item-label">{{ item.label }}</span>
+                }
+              </a>
+            }
+        }
+      }
+    </nav>
+
+    @if (showSidebarFooter()) {
+      <div class="sidebar-footer">
+        <button type="button" class="sidebar-item sidebar-logout" (click)="logout()" title="Logout">
+          <i class="pi pi-sign-out"></i>
+          @if (!sidebarCollapsed()) {
+            <span class="sidebar-item-label">Logout</span>
+          }
+        </button>
+      </div>
+    }
+  </aside>
+
+  <div class="sidebar-layout">
+    <div class="sidebar-rail-spacer" aria-hidden="true"></div>
+    <div class="sidebar-content">
+      <router-outlet />
+    </div>
+  </div>
+</div>

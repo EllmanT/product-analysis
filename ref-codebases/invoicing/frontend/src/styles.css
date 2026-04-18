@@ -1,0 +1,347 @@
+/* Google Fonts: Open Sans */
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700;800&display=swap');
+
+/* PrimeNG: icons (required for pi-* icon classes) */
+@import 'primeicons/primeicons.css';
+
+/* Tailwind */
+@import 'tailwindcss';
+
+/* -----------------------------------------------
+   Global design: typography, layout, tables
+   ----------------------------------------------- */
+:root {
+  --app-font-sans: 'Open Sans', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --app-font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --app-surface: var(--p-surface-0);
+  --app-text: var(--p-text-color);
+  --app-text-muted: var(--p-text-muted-color);
+  --app-border: var(--p-surface-200);
+  --app-border-strong: var(--p-surface-300);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--app-font-sans);
+  color: var(--app-text);
+  background-color: var(--app-surface);
+  margin: 0;
+  min-height: 100dvh;
+  line-height: 1.5;
+}
+
+/* Headings – use with PrimeNG typography */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0 0 0.5em;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--app-text);
+}
+
+h1 { font-size: 1.875rem; letter-spacing: -0.025em; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.125rem; }
+h5 { font-size: 1rem; }
+h6 { font-size: 0.875rem; }
+
+p {
+  margin: 0 0 0.75em;
+  color: var(--app-text);
+}
+
+small, .text-muted {
+  color: var(--app-text-muted);
+  font-size: 0.875em;
+}
+
+/* Tables – base styles that work with and without PrimeNG Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+th, td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--app-border);
+}
+
+th {
+  font-weight: 600;
+  color: #64748b;
+  background: #f8fafc;
+}
+
+td {
+  color: #475569;
+}
+
+tr:hover td {
+  background: #f1f5f9;
+}
+
+/* PrimeNG DataTable — readable slate tones, no pure black / heavy dark fills */
+:root .p-datatable {
+  color: #475569;
+  border-color: #e2e8f0;
+  font-family: var(--app-font-sans);
+}
+
+:root .p-datatable .p-datatable-thead > tr > th {
+  font-weight: 600;
+  font-family: var(--app-font-sans);
+  color: #64748b !important;
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+:root .p-datatable .p-datatable-tbody > tr > td {
+  font-family: var(--app-font-sans);
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
+}
+
+:root .p-datatable.p-datatable-striped .p-datatable-tbody > tr:nth-child(even) > td {
+  background: #f8fafc !important;
+}
+
+:root .p-datatable .p-datatable-tbody > tr:hover > td {
+  background: #f1f5f9 !important;
+}
+
+:root .p-datatable .p-datatable-emptymessage > td {
+  color: #64748b !important;
+}
+
+:root .p-datatable .p-sortable-column .p-sortable-column-icon,
+:root .p-datatable .p-column-header-content {
+  color: #64748b;
+}
+
+:root .p-datatable .p-datatable-loading-icon {
+  color: #94a3b8;
+}
+
+/* Paginator shown with p-table */
+:root .p-paginator {
+  color: #64748b;
+  background: #fafafa;
+  border-color: #e2e8f0;
+}
+
+:root .p-paginator .p-paginator-page,
+:root .p-paginator .p-paginator-prev,
+:root .p-paginator .p-paginator-next,
+:root .p-paginator .p-paginator-first,
+:root .p-paginator .p-paginator-last {
+  color: #64748b;
+}
+
+:root .p-paginator .p-paginator-page.p-highlight {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+/* Shared page chrome — align feature pages with the dashboard */
+.app-page {
+  padding: 1.75rem 2rem 3rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.app-page--wide {
+  max-width: 1600px;
+}
+
+.app-page--full {
+  max-width: none;
+  width: 100%;
+}
+
+.app-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.app-page-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.app-page-subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9375rem;
+  max-width: 42rem;
+  line-height: 1.5;
+}
+
+/**
+ * Full-width centered blocking loader for routed pages (sidebar content area).
+ * Use when loading initial data: hide page title/content until ready, then show chrome.
+ * Parent route host should use flex column + flex:1 (see dashboard :host).
+ */
+.app-centered-page-loader {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  width: 100%;
+  min-height: min(72dvh, 640px);
+  padding: 2rem;
+  box-sizing: border-box;
+  color: #64748b;
+  font-size: 0.9375rem;
+  text-align: center;
+}
+
+.app-centered-page-loader .app-centered-page-loader-text {
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+:root .app-centered-page-loader .p-progressspinner-circle {
+  stroke: #bc0515;
+}
+
+/* Standard content card — matches dashboard stat/chart cards */
+.p-card.app-surface-card {
+  border-radius: var(--p-card-border-radius, 12px);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.p-card.app-surface-card .p-card-body {
+  padding: 1.25rem 1.5rem;
+}
+
+/* Explicit panel card (use when Prime card visuals are too subtle) */
+.app-panel-card {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #dbe4ef;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  padding: 1.25rem 1.5rem;
+}
+
+/* Ensure PrimeNG datatable spans full card width */
+.app-full-width-table {
+  width: 100%;
+}
+
+.app-full-width-table.p-datatable,
+.app-full-width-table .p-datatable-table-container,
+.app-full-width-table .p-datatable-table {
+  width: 100% !important;
+}
+
+.app-full-width-table .p-datatable-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.app-full-width-table .p-datatable-table {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+/* Override PrimeNG success button (green) to use Axis red */
+.p-button-success {
+  background: #bc0515 !important;
+  border-color: #bc0515 !important;
+  color: white !important;
+}
+
+.p-button-success:hover {
+  background: #9a0411 !important;
+  border-color: #9a0411 !important;
+  color: white !important;
+}
+
+.p-button-success:focus {
+  box-shadow: 0 0 0 0.2rem rgba(188, 5, 21, 0.25) !important;
+}
+
+/* Override link colors - black default, red on hover */
+a {
+  color: #374151 !important;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: #bc0515 !important;
+  text-decoration: none;
+}
+
+a:visited {
+  color: #374151 !important;
+}
+
+a:visited:hover {
+  color: #bc0515 !important;
+}
+
+/* Override any Tailwind or utility green colors */
+.text-green-500,
+.text-green-600,
+.text-green-700,
+.hover\:text-green-500:hover,
+.hover\:text-green-600:hover,
+.hover\:text-green-700:hover {
+  color: #bc0515 !important;
+}
+
+.bg-green-500,
+.bg-green-600,
+.bg-green-700,
+.hover\:bg-green-500:hover,
+.hover\:bg-green-600:hover,
+.hover\:bg-green-700:hover {
+  background-color: #bc0515 !important;
+}
+
+/* Override any injected or external content with green colors */
+* {
+  --tw-text-opacity: 1 !important;
+}
+
+*[class*="green"],
+*[style*="rgb(34, 197, 94)"],
+*[style*="rgb(22, 163, 74)"],
+*[style*="rgb(16, 185, 129)"],
+*[style*="#22c55e"],
+*[style*="#16a34a"],
+*[style*="#10b981"] {
+  color: #374151 !important;
+}
+
+*[style*="rgb(34, 197, 94)"]:hover,
+*[style*="rgb(22, 163, 74)"]:hover,
+*[style*="rgb(16, 185, 129)"]:hover,
+*[style*="#22c55e"]:hover,
+*[style*="#16a34a"]:hover,
+*[style*="#10b981"]:hover {
+  color: #bc0515 !important;
+}
+

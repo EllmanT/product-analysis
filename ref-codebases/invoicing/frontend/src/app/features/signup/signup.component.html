@@ -1,0 +1,147 @@
+<div class="signup-page">
+  <div class="signup-backdrop" aria-hidden="true"></div>
+
+  <form class="signup-card" (ngSubmit)="submit()">
+    <div class="signup-card-glow" aria-hidden="true"></div>
+
+    <div class="signup-header">
+      <div class="signup-logo-mark">
+        <i class="pi pi-user-plus" aria-hidden="true"></i>
+      </div>
+      <h1 class="signup-title">Create your account</h1>
+      <p class="signup-sub">Enter your details to get started. You can add your company later from the dashboard.</p>
+    </div>
+
+    <div class="signup-fields">
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="firstName">First name</label>
+          <input
+            id="firstName"
+            name="firstName"
+            type="text"
+            pInputText
+            [(ngModel)]="firstName"
+            class="signup-input w-full"
+            autocomplete="given-name"
+            placeholder="Jane"
+          />
+        </div>
+        <div class="field">
+          <label class="field-label" for="lastName">Last name</label>
+          <input
+            id="lastName"
+            name="lastName"
+            type="text"
+            pInputText
+            [(ngModel)]="lastName"
+            class="signup-input w-full"
+            autocomplete="family-name"
+            placeholder="Doe"
+          />
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="email">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            pInputText
+            [(ngModel)]="email"
+            class="signup-input w-full"
+            autocomplete="email"
+            placeholder="you@example.com"
+          />
+        </div>
+        <div class="field">
+          <label class="field-label" for="phone">Phone</label>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            pInputText
+            [(ngModel)]="phone"
+            class="signup-input w-full"
+            autocomplete="tel"
+            placeholder="+263 …"
+          />
+        </div>
+      </div>
+
+      <div class="field-row field-row--passwords">
+        <div class="field">
+          <label class="field-label" for="password">Password</label>
+          <p-password
+            id="password"
+            name="password"
+            [(ngModel)]="password"
+            [feedback]="true"
+            [toggleMask]="true"
+            styleClass="signup-password w-full"
+            inputStyleClass="w-full signup-password-input"
+            autocomplete="new-password"
+            placeholder="8+ characters"
+          />
+        </div>
+        <div class="field">
+          <label class="field-label" for="password2">Confirm</label>
+          <p-password
+            id="password2"
+            name="password2"
+            [(ngModel)]="passwordConfirmation"
+            [feedback]="false"
+            [toggleMask]="true"
+            styleClass="signup-password w-full"
+            inputStyleClass="w-full signup-password-input"
+            autocomplete="new-password"
+            placeholder="Repeat"
+          />
+        </div>
+      </div>
+    </div>
+
+    <p-button
+      type="submit"
+      label="Create account"
+      styleClass="signup-submit w-full"
+      [loading]="submitting()"
+      [disabled]="submitting()"
+    />
+
+    <div class="signup-divider" role="presentation">
+      <span>Or continue with</span>
+    </div>
+
+    <div class="signup-oauth-actions">
+      <p-button
+        type="button"
+        label="Google"
+        styleClass="signup-oauth signup-oauth--google w-full"
+        [disabled]="submitting()"
+        (onClick)="oauth('google')"
+      >
+        <ng-template pTemplate="icon">
+          <app-google-g-icon />
+        </ng-template>
+      </p-button>
+      <p-button
+        type="button"
+        label="Facebook"
+        icon="pi pi-facebook"
+        styleClass="signup-oauth signup-oauth--facebook w-full"
+        [disabled]="submitting()"
+        (onClick)="oauth('facebook')"
+      />
+    </div>
+
+    <p class="signup-footer">
+      Already have an account?
+      <a routerLink="/login" class="signup-link">Sign in</a>
+    </p>
+  </form>
+
+  <p-toast />
+</div>

@@ -1,0 +1,142 @@
+# Azure DevOps: Pipelines → New pipeline → Azure Repos Git → select this repo → Existing Azure Pipelines YAML file → /azure-pipelines.yml
+#
+# Branches match .github/workflows (main, develop, master, workos). Adjust trigger/pr include lists as needed.
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - master
+      - workos
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+      - master
+      - workos
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  NODE_VERSION: '22.x'
+
+stages:
+  - stage: quality
+    displayName: Quality
+    jobs:
+      - job: lint_and_types
+        displayName: PHP Pint, Prettier, ESLint, TypeScript
+        steps:
+          - checkout: self
+            fetchDepth: 0
+
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(NODE_VERSION)
+
+          - script: |
+              set -e
+              sudo add-apt-repository ppa:ondrej/php -y
+              sudo apt-get update
+              sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                php8.4-cli php8.4-xml php8.4-mbstring php8.4-curl php8.4-zip \
+                php8.4-bcmath php8.4-sqlite3 php8.4-intl
+              sudo update-alternatives --install /usr/bin/php php /usr/bin/php8.4 100
+              sudo update-alternatives --set php /usr/bin/php8.4
+              php -v
+            displayName: Install PHP 8.4
+
+          - script: |
+              set -e
+              curl -sS https://getcomposer.org/installer | php -- --install-dir=/tmp --filename=composer
+              sudo mv /tmp/composer /usr/local/bin/composer
+              composer --version
+            displayName: Install Composer
+
+          - script: composer install --no-interaction --prefer-dist --no-progress
+            displayName: Composer install
+
+          - script: npm ci
+            displayName: npm ci
+
+          - script: composer lint:check
+            displayName: Laravel Pint (check only)
+
+          - script: npm run format:check
+            displayName: Prettier (check only)
+
+          - script: npm run lint:check
+            displayName: ESLint (check only)
+
+          - script: npm run types:check
+            displayName: TypeScript (tsc --noEmit)
+
+  # Runs in parallel with `quality` for faster CI. Use `dependsOn: quality` instead if you want lint to gate tests.
+  - stage: test
+    displayName: Tests
+    dependsOn: []
+    jobs:
+      - job: pest
+        displayName: Pest (PHP matrix)
+        strategy:
+          matrix:
+            PHP83:
+              phpVersion: '8.3'
+            PHP84:
+              phpVersion: '8.4'
+            PHP85:
+              phpVersion: '8.5'
+        steps:
+          - checkout: self
+            fetchDepth: 0
+
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(NODE_VERSION)
+
+          - script: |
+              set -e
+              sudo add-apt-repository ppa:ondrej/php -y
+              sudo apt-get update
+              sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                php$(phpVersion)-cli php$(phpVersion)-xml php$(phpVersion)-mbstring php$(phpVersion)-curl \
+                php$(phpVersion)-zip php$(phpVersion)-bcmath php$(phpVersion)-sqlite3 php$(phpVersion)-intl
+              sudo update-alternatives --install /usr/bin/php php /usr/bin/php$(phpVersion) 100
+              sudo update-alternatives --set php /usr/bin/php$(phpVersion)
+              php -v
+            displayName: Install PHP $(phpVersion)
+            env:
+              phpVersion: $(phpVersion)
+
+          - script: |
+              set -e
+              curl -sS https://getcomposer.org/installer | php -- --install-dir=/tmp --filename=composer
+              sudo mv /tmp/composer /usr/local/bin/composer
+            displayName: Install Composer
+
+          - script: npm ci
+            displayName: npm ci
+
+          - script: composer install --no-interaction --prefer-dist --optimize-autoloader --no-progress
+            displayName: Composer install
+
+          - script: cp .env.example .env && php artisan key:generate --force
+            displayName: Environment and app key
+
+          - script: npm run build
+            displayName: Vite build
+
+          - script: |
+              set -e
+              sudo DEBIAN_FRONTEND=noninteractive apt-get install -y php$(phpVersion)-pcov
+            displayName: Install PCOV for coverage
+            env:
+              phpVersion: $(phpVersion)
+
+          - script: |
+              php -d pcov.enabled=1 -d pcov.directory="$(pwd)" ./vendor/bin/pest --coverage --min=100
+            displayName: Pest with 100% line coverage (PCOV)

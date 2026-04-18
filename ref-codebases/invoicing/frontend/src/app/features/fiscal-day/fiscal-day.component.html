@@ -1,0 +1,87 @@
+<div class="app-page app-page--full">
+  <header class="app-page-header">
+    <div>
+      <h1 class="app-page-title">Fiscal day</h1>
+      <p class="app-page-subtitle">
+        Check virtual device fiscal day status, then run only the valid action for the current state.
+      </p>
+    </div>
+    <p-button
+      label="Refresh status"
+      icon="pi pi-refresh"
+      styleClass="p-button-outlined"
+      [loading]="loading()"
+      (onClick)="refreshStatus()"
+    />
+  </header>
+
+  <section class="app-panel-card fiscal-day-card">
+    <div class="fiscal-toolbar">
+      <div class="actions">
+        <p-button
+          label="Open day"
+          icon="pi pi-lock-open"
+          (onClick)="openFiscalDay()"
+          [disabled]="!canOpen || actionLoading()"
+          [loading]="actionLoading() && canOpen"
+        />
+        <p-button
+          label="Close day"
+          icon="pi pi-lock"
+          styleClass="p-button-outlined"
+          (onClick)="closeFiscalDay()"
+          [disabled]="!canClose || actionLoading()"
+          [loading]="actionLoading() && canClose"
+        />
+      </div>
+    </div>
+
+    @if (statusError()) {
+      <p-message severity="error" [text]="statusError()!" />
+    }
+
+    @if (status(); as s) {
+      <div class="status-grid">
+        <div class="status-item">
+          <span class="status-label">Fiscal day no</span>
+          <span class="status-value">{{ s.data?.FiscalDayNo ?? '—' }}</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Verification link</span>
+          <span class="status-value">{{ s.data?.VerificationLink ?? '—' }}</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Device ID</span>
+          <span class="status-value">{{ s.data?.DeviceID ?? '—' }}</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Device serial number</span>
+          <span class="status-value">{{ s.data?.DeviceSerialNumber ?? '—' }}</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Fiscal day status</span>
+          <span class="status-value">{{ s.data?.Data?.fiscalDayStatus ?? '—' }}</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Last receipt global no</span>
+          <span class="status-value">{{ s.data?.Data?.lastReceiptGlobalNo ?? '—' }}</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Last fiscal day no</span>
+          <span class="status-value">{{ s.data?.Data?.lastFiscalDayNo ?? '—' }}</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Operation ID</span>
+          <span class="status-value">{{ s.data?.Data?.operationID ?? '—' }}</span>
+        </div>
+      </div>
+      @if (s.code === '0') {
+        <p-message severity="warn" text="There is a fiscal day error. Contact support@axissol.com." />
+      }
+    } @else if (!loading()) {
+      <p-message severity="info" text="No status loaded yet. Click refresh status." />
+    }
+  </section>
+
+  <p-toast />
+</div>

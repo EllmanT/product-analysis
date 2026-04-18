@@ -1,0 +1,87 @@
+@if (loading() && !report()) {
+  <div class="reports-loading">
+    <p-progressSpinner strokeWidth="3" />
+    <span>Loading report…</span>
+  </div>
+} @else if (error() && !report()) {
+  <p-message severity="error" [text]="error()!" />
+  <p-button label="Retry" styleClass="mt-3" (onClick)="loadReport()" />
+} @else if (report(); as r) {
+  <section class="app-panel-card">
+    @if (error()) {
+      <p-message severity="error" [text]="error()!" styleClass="reports-inline-error" />
+    }
+    <div class="reports-toolbar">
+      <div class="reports-presets">
+        <p-button label="Last 7 days" severity="secondary" (onClick)="presetLast7Days()" />
+        <p-button label="Last 30 days" severity="secondary" (onClick)="presetLast30Days()" />
+        <p-button label="This month" severity="secondary" (onClick)="presetThisMonth()" />
+      </div>
+
+      <div class="reports-filters">
+        <div class="filter-field filter-field--date">
+          <label class="filter-label">From</label>
+          <p-datepicker
+            [(ngModel)]="fromDate"
+            placeholder="From"
+            dateFormat="yy-mm-dd"
+            [showClear]="true"
+          />
+        </div>
+        <div class="filter-field filter-field--date">
+          <label class="filter-label">To</label>
+          <p-datepicker
+            [(ngModel)]="toDate"
+            placeholder="To"
+            dateFormat="yy-mm-dd"
+            [showClear]="true"
+          />
+        </div>
+        <div class="filter-field filter-field--narrow">
+          <label class="filter-label">Group by</label>
+          <p-select [(ngModel)]="groupBy" [options]="groupOptions" optionLabel="label" optionValue="value" />
+        </div>
+        <div class="filter-field filter-field--action">
+          <p-button label="Apply" icon="pi pi-filter" [loading]="loading()" (onClick)="loadReport()" />
+        </div>
+      </div>
+    </div>
+
+    <div class="reports-summary">
+      <div class="summary-card">
+        <span class="summary-label">Total revenue</span>
+        <span class="summary-value">{{ r.summary.total_revenue | number: '1.2-2' }}</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Invoices in range</span>
+        <span class="summary-value">{{ r.summary.invoice_count }}</span>
+      </div>
+    </div>
+
+    <div class="reports-chart-wrap">
+      <p-chart type="bar" [data]="chartData()" [options]="chartOptions()" />
+    </div>
+
+    <p-table [value]="r.series" styleClass="p-datatable-sm" [tableStyle]="{ 'min-width': '100%' }">
+      <ng-template #header>
+        <tr>
+          <th>Period</th>
+          <th class="text-right">Invoices</th>
+          <th class="text-right">Revenue</th>
+        </tr>
+      </ng-template>
+      <ng-template #body let-row>
+        <tr>
+          <td>{{ row.period }}</td>
+          <td class="text-right">{{ row.invoice_count }}</td>
+          <td class="text-right">{{ row.revenue | number: '1.2-2' }}</td>
+        </tr>
+      </ng-template>
+      <ng-template #emptymessage>
+        <tr>
+          <td colspan="3" class="empty-cell">No invoices in this date range.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </section>
+}

@@ -1,0 +1,22 @@
+.pdt-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.pdt-search {
+  min-width: 220px;
+}
+
+.pdt-search input {
+  width: 100%;
+}
+
+.pdt-empty-cell {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+}

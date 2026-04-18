@@ -1,0 +1,310 @@
+<div class="setup-page">
+  <div class="setup-container">
+    <div class="setup-header">
+      <h1 class="setup-title">Complete Your Setup</h1>
+      <p class="setup-subtitle">Let's get your company profile set up in just a few steps</p>
+    </div>
+
+    <!-- Custom Stepper Navigation -->
+    <div class="custom-stepper-nav">
+      <div class="custom-step" [class.active]="currentStep() === 1" [class.completed]="currentStep() > 1">
+        <div class="step-number">1</div>
+        <div class="step-label">Company Details</div>
+      </div>
+      <div class="step-connector" [class.active]="currentStep() > 1"></div>
+      <div class="custom-step" [class.active]="currentStep() === 2" [class.completed]="currentStep() > 2">
+        <div class="step-number">2</div>
+        <div class="step-label">Admin User</div>
+      </div>
+      <div class="step-connector" [class.active]="currentStep() > 2"></div>
+      <div class="custom-step" [class.active]="currentStep() === 3" [class.completed]="currentStep() > 3">
+        <div class="step-number">3</div>
+        <div class="step-label">Review</div>
+      </div>
+    </div>
+
+    <div class="stepper-content">
+      <!-- Step 1: Company Details -->
+      @if (currentStep() === 1) {
+        <div class="step-content">
+          <div class="step-icon">
+            <i class="pi pi-building"></i>
+          </div>
+          <h2 class="step-title">Company Information</h2>
+          <p class="step-description">Enter your company's basic details</p>
+
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label for="companyName" class="required">Company Name</label>
+              <input 
+                id="companyName" 
+                type="text" 
+                pInputText 
+                [(ngModel)]="companyName"
+                placeholder="Acme Corporation" />
+            </div>
+
+            <div class="form-field">
+              <label for="regNumber" class="required">Registration Number</label>
+              <input 
+                id="regNumber" 
+                type="text" 
+                pInputText 
+                [(ngModel)]="registrationNumber"
+                placeholder="REG-123456" />
+            </div>
+
+            <div class="form-field">
+              <label for="taxId">Tax ID / VAT Number</label>
+              <input 
+                id="taxId" 
+                type="text" 
+                pInputText 
+                [(ngModel)]="taxId"
+                placeholder="TAX-123456" />
+            </div>
+
+            <div class="form-field">
+              <label for="companyEmail" class="required">Company Email</label>
+              <input 
+                id="companyEmail" 
+                type="email" 
+                pInputText 
+                [(ngModel)]="email"
+                placeholder="info@company.com" />
+            </div>
+
+            <div class="form-field">
+              <label for="companyPhone" class="required">Company Phone</label>
+              <p-inputMask 
+                id="companyPhone"
+                [(ngModel)]="phone"
+                mask="+263 999 999 999"
+                placeholder="+263 777 123 456" />
+            </div>
+
+            <div class="form-field full-width">
+              <label for="address">Physical Address</label>
+              <textarea 
+                id="address" 
+                rows="3" 
+                pTextarea 
+                [(ngModel)]="address"
+                placeholder="123 Main Street"></textarea>
+            </div>
+
+            <div class="form-field">
+              <label for="country">Country</label>
+              <p-select
+                id="country"
+                [(ngModel)]="selectedCountry"
+                [options]="countries()"
+                optionLabel="name"
+                placeholder="Select a country"
+                [filter]="true"
+                filterPlaceholder="Search countries..."
+                [showClear]="true"
+                styleClass="w-full" />
+            </div>
+
+            <div class="form-field">
+              <label for="city">City</label>
+              <p-select
+                id="city"
+                [(ngModel)]="selectedCity"
+                [options]="cities()"
+                optionLabel="name"
+                placeholder="Select a city"
+                [filter]="true"
+                filterPlaceholder="Search cities..."
+                [showClear]="true"
+                [disabled]="!selectedCountry()"
+                styleClass="w-full" />
+            </div>
+          </div>
+
+          <div class="step-actions">
+            <p-button 
+              label="Cancel" 
+              styleClass="p-button-outlined p-button-secondary"
+              (onClick)="cancel()" />
+            <p-button 
+              label="Next" 
+              icon="pi pi-arrow-right"
+              iconPos="right"
+              [disabled]="!isStep1Valid()"
+              (onClick)="nextStep()" />
+          </div>
+        </div>
+      }
+
+      <!-- Step 2: Admin User -->
+      @if (currentStep() === 2) {
+        <div class="step-content">
+          <div class="step-icon">
+            <i class="pi pi-user"></i>
+          </div>
+          <h2 class="step-title">Administrator Details</h2>
+          <p class="step-description">
+            @if (isLoggedIn()) {
+              Confirm the account that will manage this company.
+            } @else {
+              Primary administrator information
+            }
+          </p>
+
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="firstName" class="required">First Name</label>
+              <input 
+                id="firstName" 
+                type="text" 
+                pInputText 
+                [(ngModel)]="adminFirstName"
+                placeholder="John" />
+            </div>
+
+            <div class="form-field">
+              <label for="lastName" class="required">Last Name</label>
+              <input 
+                id="lastName" 
+                type="text" 
+                pInputText 
+                [(ngModel)]="adminLastName"
+                placeholder="Doe" />
+            </div>
+
+            <div class="form-field full-width">
+              <label for="adminEmail" class="required">Administrator email</label>
+              <input
+                id="adminEmail"
+                type="email"
+                pInputText
+                [(ngModel)]="adminEmail"
+                placeholder="you@company.com"
+                autocomplete="email"
+                [readonly]="isLoggedIn()" />
+            </div>
+
+            <div class="form-field full-width">
+              <label for="adminPhone" class="required">Phone Number</label>
+              <p-inputMask 
+                id="adminPhone"
+                [(ngModel)]="adminPhone"
+                mask="+263 999 999 999"
+                placeholder="+263 777 123 456" />
+            </div>
+
+            @if (!isLoggedIn()) {
+              <div class="form-field full-width">
+                <label for="adminPassword" class="required">Password</label>
+                <p-password
+                  id="adminPassword"
+                  [(ngModel)]="adminPassword"
+                  [feedback]="true"
+                  [toggleMask]="true"
+                  styleClass="w-full"
+                  inputStyleClass="w-full"
+                  autocomplete="new-password" />
+                <span class="field-hint">At least 8 characters.</span>
+              </div>
+
+              <div class="form-field full-width">
+                <label for="adminPassword2" class="required">Confirm password</label>
+                <p-password
+                  id="adminPassword2"
+                  [(ngModel)]="adminPasswordConfirmation"
+                  [feedback]="false"
+                  [toggleMask]="true"
+                  styleClass="w-full"
+                  inputStyleClass="w-full"
+                  autocomplete="new-password" />
+              </div>
+            }
+          </div>
+
+          <div class="step-actions">
+            <p-button 
+              label="Back" 
+              icon="pi pi-arrow-left"
+              styleClass="p-button-outlined p-button-secondary"
+              (onClick)="prevStep()" />
+            <p-button 
+              label="Next" 
+              icon="pi pi-arrow-right"
+              iconPos="right"
+              [disabled]="!isStep2Valid()"
+              (onClick)="nextStep()" />
+          </div>
+        </div>
+      }
+
+      <!-- Step 3: Review -->
+      @if (currentStep() === 3) {
+        <div class="step-content">
+          <div class="step-icon success">
+            <i class="pi pi-check-circle"></i>
+          </div>
+          <h2 class="step-title">Review & Confirm</h2>
+          <p class="step-description">Please review your information before submitting</p>
+
+          <div class="review-section">
+            <h3 class="review-heading">Company Details</h3>
+            <div class="review-grid">
+              <div class="review-item">
+                <span class="review-label">Company Name:</span>
+                <span class="review-value">{{ companyDetails().companyName }}</span>
+              </div>
+              <div class="review-item">
+                <span class="review-label">Registration Number:</span>
+                <span class="review-value">{{ companyDetails().registrationNumber }}</span>
+              </div>
+              <div class="review-item">
+                <span class="review-label">Email:</span>
+                <span class="review-value">{{ companyDetails().email }}</span>
+              </div>
+              <div class="review-item">
+                <span class="review-label">Phone:</span>
+                <span class="review-value">{{ companyDetails().phone }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="review-section">
+            <h3 class="review-heading">Administrator</h3>
+            <div class="review-grid">
+              <div class="review-item">
+                <span class="review-label">Name:</span>
+                <span class="review-value">{{ adminUser().firstName }} {{ adminUser().lastName }}</span>
+              </div>
+              <div class="review-item">
+                <span class="review-label">Email:</span>
+                <span class="review-value">{{ adminUser().email }}</span>
+              </div>
+              <div class="review-item">
+                <span class="review-label">Phone:</span>
+                <span class="review-value">{{ adminUser().phone }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="step-actions">
+            <p-button 
+              label="Back" 
+              icon="pi pi-arrow-left"
+              styleClass="p-button-outlined p-button-secondary"
+              (onClick)="prevStep()" />
+            <p-button 
+              label="Complete Setup" 
+              icon="pi pi-check"
+              iconPos="right"
+              [loading]="saving()"
+              (onClick)="onSubmit()" />
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <p-toast />
+</div>

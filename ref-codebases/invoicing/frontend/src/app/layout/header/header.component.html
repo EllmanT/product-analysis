@@ -1,0 +1,33 @@
+<header class="app-header">
+  <a routerLink="/" class="app-logo">
+    <img src="/logo.png" alt="Axis Solutions" class="app-logo-image" />
+  </a>
+  <nav class="app-nav">
+    <a
+      routerLink="/"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: true }"
+      class="app-nav-link"
+      >Create Invoice</a>
+    <a routerLink="/about" routerLinkActive="active" class="app-nav-link">About</a>
+    <a routerLink="/guide" routerLinkActive="active" class="app-nav-link">Guide</a>
+    <a routerLink="/help" routerLinkActive="active" class="app-nav-link">Help</a>
+  </nav>
+  <div class="app-header-actions">
+    @if (isLoggedIn()) {
+      <span class="app-ad-icon" title="Ad">AD</span>
+      <button
+        type="button"
+        class="app-icon-btn"
+        (click)="toggleTheme()"
+        [title]="darkMode() ? 'Enable Light Mode' : 'Enable Dark Mode'"
+      >
+        <i class="pi" [ngClass]="darkMode() ? 'pi-moon' : 'pi-sun'"></i>
+      </button>
+      <button type="button" class="app-link-btn" (click)="logout()">Logout</button>
+    } @else {
+      <button type="button" class="app-link-btn" (click)="login()">Sign In</button>
+      <p-button label="Sign Up" styleClass="p-button-success p-button-sm" (onClick)="signUp()" />
+    }
+  </div>
+</header>

@@ -1,0 +1,267 @@
+<div class="invoice-builder app-page app-page--wide">
+  <header class="app-page-header">
+    <div>
+      <h1 class="app-page-title">{{ pageTitle }}</h1>
+      <p class="app-page-subtitle">{{ pageSubtitle }}</p>
+    </div>
+    <div class="header-actions">
+      <p-button label="Clear" icon="pi pi-refresh" styleClass="p-button-outlined" (onClick)="clearForm()" />
+      <p-button label="Download" icon="pi pi-download" styleClass="p-button-outlined" (onClick)="downloadInvoice()" [loading]="downloading()" />
+      @if (isAuthenticated()) {
+        <p-button
+          label="Save Draft"
+          icon="pi pi-save"
+          styleClass="p-button-outlined"
+          (onClick)="saveDraft()"
+          [loading]="saving()"
+          [disabled]="subscriptionSaveBlocked()"
+        />
+        <p-button
+          label="Fiscalize & Submit"
+          icon="pi pi-check"
+          (onClick)="saveAndFiscalize()"
+          [loading]="fiscalizing()"
+          [disabled]="subscriptionSaveBlocked()"
+        />
+      } @else {
+        <p-button label="Login to Save" icon="pi pi-sign-in" (onClick)="login()" />
+      }
+    </div>
+  </header>
+
+  @if (!isAuthenticated()) {
+    <div class="guest-notice">
+      <i class="pi pi-info-circle"></i>
+      <span>You're creating an invoice as a guest. Your invoices are saved in browser storage and can be downloaded.</span>
+    </div>
+  }
+
+  @if (isAuthenticated() && subscriptionSaveBlocked()) {
+    <div class="subscription-notice" role="status">
+      <i class="pi pi-lock"></i>
+      <div class="subscription-notice-body">
+        @if (subscriptionCheckLoading()) {
+          <span>Checking your subscription…</span>
+        } @else {
+          <span>An active subscription is required to save or fiscalize invoices. Upgrade your plan to continue.</span>
+          <p-button label="View billing" icon="pi pi-credit-card" styleClass="p-button-sm p-button-outlined" (onClick)="goToBilling()" />
+        }
+      </div>
+    </div>
+  }
+
+  <div class="builder-content">
+    <section class="app-panel-card">
+      <h3 class="builder-card-heading">Invoice details</h3>
+      <div class="form-grid">
+        <div class="form-field">
+          <label for="invoiceNo">Invoice Number *</label>
+          <input id="invoiceNo" type="text" pInputText [(ngModel)]="invoiceNo" placeholder="INV-001" />
+        </div>
+
+        @if (!fixedReceiptType) {
+          <div class="form-field">
+            <label for="receiptType">Receipt Type *</label>
+            <p-select
+              id="receiptType"
+              [(ngModel)]="receiptType"
+              [options]="receiptTypes"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select type"
+              appendTo="body"
+            />
+          </div>
+        }
+
+        <div class="form-field">
+          <label for="currency">Currency *</label>
+          <p-select
+            id="currency"
+            [(ngModel)]="currency"
+            [options]="currencies"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select currency"
+            appendTo="body"
+          />
+        </div>
+      </div>
+    </section>
+
+    @if (isAuthenticated()) {
+      <section class="app-panel-card">
+        <h3 class="builder-card-heading">Buyer information</h3>
+        <div class="form-field">
+          <label for="buyer">Buyer (Optional)</label>
+          <p-autoComplete
+            inputId="buyer"
+            [(ngModel)]="selectedBuyer"
+            [suggestions]="filteredBuyers()"
+            (completeMethod)="searchBuyers($event)"
+            field="display_name"
+            placeholder="Search buyer by name or TIN"
+            [dropdown]="true"
+          >
+            <ng-template let-buyer #item>
+              <div class="buyer-item">
+                <div><strong>{{ buyer.display_name }}</strong></div>
+                @if (buyer.tin) {
+                  <div class="text-muted">TIN: {{ buyer.tin }}</div>
+                }
+              </div>
+            </ng-template>
+          </p-autoComplete>
+        </div>
+      </section>
+    }
+
+    <section class="app-panel-card">
+      <div class="section-header">
+        <h3 class="builder-card-heading builder-card-heading--inline">Line items</h3>
+        <p-button label="Add line" icon="pi pi-plus" styleClass="p-button-sm" (onClick)="addLine()" />
+      </div>
+
+      <div class="line-items">
+        @for (line of lines(); track $index; let i = $index) {
+          <div class="line-item">
+            <div class="line-number">{{ i + 1 }}</div>
+
+            <div class="line-content">
+              <div class="line-grid">
+                <div class="form-field line-hs-code">
+                  <label for="line-hs-{{ i }}">HS code</label>
+                  <p-autoComplete
+                    [inputId]="'line-hs-' + i"
+                    [(ngModel)]="line.hs_code"
+                    (ngModelChange)="onHsCodeInputChange(line, $event)"
+                    [suggestions]="filteredHsCodeCodes()"
+                    (completeMethod)="searchHsCodes($event)"
+                    (onSelect)="onHsCodeSelect(line, $event)"
+                    placeholder="Type code or pick from enabled list"
+                    [dropdown]="true"
+                    [forceSelection]="false"
+                  >
+                    <ng-template let-code #item>
+                      <div class="hs-suggest-item">
+                        <span class="hs-suggest-code">{{ code }}</span>
+                        @let hint = hsCodeDescription(code);
+                        @if (hint) {
+                          <span class="text-muted hs-suggest-desc">{{ hint }}</span>
+                        }
+                      </div>
+                    </ng-template>
+                  </p-autoComplete>
+                </div>
+
+                <div class="form-field line-description">
+                  <label for="line-desc-{{ i }}">Item / description *</label>
+                  <p-autoComplete
+                    [inputId]="'line-desc-' + i"
+                    [(ngModel)]="line.description"
+                    (ngModelChange)="onDescriptionInputChange(line, $event)"
+                    [suggestions]="filteredProductNames()"
+                    (completeMethod)="searchProducts($event)"
+                    (onSelect)="onDescriptionSelect(line, $event)"
+                    placeholder="Type any item name or pick from your products"
+                    [dropdown]="true"
+                    [forceSelection]="false"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label>Quantity *</label>
+                  <p-inputNumber
+                    [(ngModel)]="line.quantity"
+                    [min]="0"
+                    [showButtons]="true"
+                    (ngModelChange)="recalculateLine(line)"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label>Unit Price *</label>
+                  <p-inputNumber
+                    [(ngModel)]="line.unit_price"
+                    mode="decimal"
+                    [minFractionDigits]="2"
+                    [maxFractionDigits]="2"
+                    (ngModelChange)="recalculateLine(line)"
+                  />
+                </div>
+
+                <div class="form-field">
+                  <label>Tax %</label>
+                  <p-inputNumber [(ngModel)]="line.tax_percent" [min]="0" [max]="100" (ngModelChange)="recalculateLine(line)" />
+                </div>
+
+                <div class="form-field">
+                  <label>Line Total</label>
+                  <input type="text" pInputText [value]="line.line_total | number: '1.2-2'" readonly class="readonly-field" />
+                </div>
+              </div>
+            </div>
+
+            <button type="button" class="line-remove" (click)="removeLine(i)" title="Remove line">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="app-panel-card">
+      <h3 class="builder-card-heading">Totals & payment</h3>
+      <div class="totals-section">
+        <div class="totals-grid">
+          <div class="form-field-checkbox">
+            <input id="taxInclusive" type="checkbox" [(ngModel)]="taxInclusive" (ngModelChange)="onTaxInclusiveChange()" />
+            <label for="taxInclusive">Tax Inclusive</label>
+          </div>
+        </div>
+
+        <div class="totals-summary">
+          <div class="total-row">
+            <span>{{ taxInclusive ? 'Subtotal (excl. tax):' : 'Subtotal:' }}</span>
+            <span class="total-row-value">{{ currency }} {{ netSubtotalForDisplay() | number: '1.2-2' }}</span>
+          </div>
+          <div class="total-row">
+            <span>Total Tax:</span>
+            <span class="total-row-value">{{ currency }} {{ totalTax() | number: '1.2-2' }}</span>
+          </div>
+          <div class="total-row grand-total">
+            <span>Grand Total:</span>
+            <span class="total-row-value">{{ currency }} {{ grandTotal() | number: '1.2-2' }}</span>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="notes">Notes</label>
+          <textarea id="notes" rows="3" placeholder="Additional notes..." pTextarea [(ngModel)]="notes"></textarea>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <p-toast />
+
+  <p-dialog
+    header="Subscription required"
+    [modal]="true"
+    [style]="{ width: 'min(26rem, 92vw)' }"
+    [visible]="subscriptionModalVisible()"
+    (visibleChange)="onSubscriptionDialogVisible($event)"
+    [draggable]="false"
+    [resizable]="false"
+    [closable]="true"
+    [dismissableMask]="true"
+  >
+    <p class="subscription-dialog-copy">
+      Your account does not have an active subscription, or it has expired. Choose a plan on the billing page to create and fiscalize invoices.
+    </p>
+    <ng-template #footer>
+      <p-button label="Close" styleClass="p-button-text" (onClick)="onSubscriptionDialogVisible(false)" />
+      <p-button label="Go to billing" icon="pi pi-arrow-right" iconPos="right" (onClick)="goToBilling()" />
+    </ng-template>
+  </p-dialog>
+</div>

@@ -1,0 +1,66 @@
+.activation-page {
+  max-width: 40rem;
+}
+
+.activation-head {
+  margin-bottom: 1.5rem;
+}
+
+.activation-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.activation-sub {
+  margin: 0;
+  color: var(--p-text-muted-color, #64748b);
+  line-height: 1.5;
+  font-size: 0.9375rem;
+}
+
+.activation-muted {
+  color: var(--p-text-muted-color, #64748b);
+  font-size: 0.9375rem;
+}
+
+.activation-card {
+  padding: 1.25rem;
+  border-radius: var(--p-border-radius-md, 8px);
+  border: 1px solid var(--p-content-border-color, #e2e8f0);
+  background: var(--p-content-background, #fff);
+}
+
+.activation-reveal {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background: var(--p-highlight-background, #f1f5f9);
+}
+
+.activation-reveal-label {
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color, #64748b);
+  margin-bottom: 0.5rem;
+}
+
+.activation-code-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.activation-code {
+  font-size: 1.5rem;
+  letter-spacing: 0.15em;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  background: var(--p-content-background, #fff);
+  border-radius: 6px;
+  border: 1px solid var(--p-content-border-color, #e2e8f0);
+}
+
+.mt-3 {
+  margin-top: 1rem;
+}

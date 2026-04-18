@@ -1,0 +1,56 @@
+<div class="app-page billing-history-page">
+  <div class="app-page-header">
+    <div>
+      <h2 class="app-page-title">Subscription history</h2>
+      <p class="app-page-subtitle">All subscription activity for your account.</p>
+    </div>
+    <button
+      pButton
+      type="button"
+      label="Refresh"
+      icon="pi pi-refresh"
+      class="p-button-outlined"
+      (click)="refresh()"
+      [disabled]="loading()"></button>
+  </div>
+
+  @if (error()) {
+    <div class="billing-callout billing-callout--danger">
+      <div class="billing-callout-title">Couldn’t load history</div>
+      <div class="billing-callout-body">{{ error() }}</div>
+    </div>
+  }
+
+  <p-card header="Subscriptions" styleClass="app-surface-card">
+    <p-table
+      styleClass="app-full-width-table"
+      [value]="subscriptions()"
+      [loading]="loading()"
+      [rows]="10"
+      [paginator]="true"
+      responsiveLayout="scroll">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Plan</th>
+          <th>Status</th>
+          <th>Start</th>
+          <th>Expiry</th>
+          <th>Payment</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-row>
+        <tr>
+          <td>{{ planLabel(row.plan_id) }}</td>
+          <td><p-tag [severity]="statusSeverity(row.status)" [value]="row.status ?? 'unknown'"></p-tag></td>
+          <td>{{ formatDate(startDate(row)) }}</td>
+          <td>{{ formatDate(endDate(row)) }}</td>
+          <td>{{ paymentPlatform(row) }}</td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr><td colspan="5"><span class="text-muted">No subscription history found.</span></td></tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+</div>
+

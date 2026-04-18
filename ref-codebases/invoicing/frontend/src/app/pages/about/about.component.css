@@ -1,0 +1,351 @@
+.about-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem 0 3rem;
+  box-sizing: border-box;
+}
+
+.about-intro {
+  margin-bottom: 1.75rem;
+  padding: 0 0.25rem;
+}
+
+.about-title {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.about-lead {
+  margin: 0;
+  max-width: 40rem;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.about-marketing {
+  padding: 0 0.25rem;
+}
+
+.about-inline-link {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.about-inline-link:hover {
+  color: #1d4ed8;
+}
+
+.marketing-inner {
+  background: linear-gradient(165deg, #0f172a 0%, #1e293b 48%, #0f172a 100%);
+  border-radius: 16px;
+  padding: 2.25rem 2rem 2rem;
+  color: #e2e8f0;
+  box-shadow:
+    0 20px 50px rgba(15, 23, 42, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.marketing-headline {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.5rem, 3vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #f8fafc;
+}
+
+.marketing-lead {
+  margin: 0 0 2rem;
+  max-width: 52rem;
+  font-size: 1.02rem;
+  line-height: 1.6;
+  color: #94a3b8;
+}
+
+.marketing-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+.marketing-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 1.35rem 1.35rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.marketing-visual {
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 0.35rem;
+}
+
+.marketing-visual--fiscal {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 1rem;
+}
+
+.marketing-visual--catalog {
+  background: linear-gradient(135deg, #fef2f2 0%, #fff 50%, #f1f5f9 100%);
+  padding: 1rem;
+}
+
+.visual-doc {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12);
+  padding: 0.75rem 0.85rem 0.85rem;
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.visual-doc__header {
+  height: 6px;
+  width: 42%;
+  background: linear-gradient(90deg, #bc0515, #f87171);
+  border-radius: 3px;
+}
+
+.visual-doc__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.visual-doc__lines span {
+  display: block;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+}
+
+.visual-doc__lines span:nth-child(1) {
+  width: 88%;
+}
+.visual-doc__lines span:nth-child(2) {
+  width: 72%;
+}
+.visual-doc__lines span:nth-child(3) {
+  width: 56%;
+}
+
+.visual-doc__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.visual-qr {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  width: 52px;
+  height: 52px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.qr-cell {
+  background: #f1f5f9;
+  border-radius: 1px;
+}
+
+.qr-cell--on {
+  background: #0f172a;
+}
+
+.visual-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  background: rgba(188, 5, 21, 0.1);
+  border: 1px solid rgba(188, 5, 21, 0.25);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #9f1239;
+}
+
+.visual-badge .pi {
+  font-size: 0.85rem;
+  color: #bc0515;
+}
+
+.visual-catalog {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  padding: 0.65rem;
+  min-height: 132px;
+}
+
+.visual-catalog__toolbar {
+  height: 8px;
+  width: 36%;
+  background: #e2e8f0;
+  border-radius: 4px;
+  margin-bottom: 0.65rem;
+}
+
+.visual-catalog__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.visual-catalog__row:last-child {
+  border-bottom: none;
+}
+
+.cat-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+  flex-shrink: 0;
+}
+
+.cat-thumb--alt {
+  background: linear-gradient(135deg, #fecaca, #f87171);
+}
+
+.cat-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cat-lines i {
+  display: block;
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+}
+
+.cat-lines i:first-child {
+  width: 70%;
+}
+.cat-lines i:last-child {
+  width: 45%;
+}
+
+.cat-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  padding: 0.2rem 0.45rem;
+  background: #f1f5f9;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.marketing-card-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.01em;
+}
+
+.marketing-card-text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #94a3b8;
+}
+
+.marketing-bullets {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #cbd5e1;
+}
+
+.marketing-bullets li {
+  margin-bottom: 0.35rem;
+}
+
+.marketing-bullets li:last-child {
+  margin-bottom: 0;
+}
+
+.marketing-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.marketing-cta-secondary {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0.35rem 0;
+}
+
+.marketing-cta-secondary:hover {
+  color: #e2e8f0;
+}
+
+.marketing-form-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #64748b;
+  text-align: center;
+  padding-top: 0.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:host ::ng-deep .marketing-cta .p-button {
+  background: #bc0515 !important;
+  border-color: #bc0515 !important;
+}
+
+:host ::ng-deep .marketing-cta .p-button:hover {
+  background: #9a0411 !important;
+  border-color: #9a0411 !important;
+}
+
+@media (max-width: 768px) {
+  .about-page {
+    padding: 1.25rem 0 2rem;
+  }
+
+  .marketing-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .marketing-cta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

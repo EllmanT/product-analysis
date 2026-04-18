@@ -1,0 +1,345 @@
+.fiscal-page {
+  min-height: 100vh;
+  padding: 1.25rem 1.25rem 1.5rem;
+  background: #f9fafb;
+}
+
+.fiscal-card {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+}
+
+.fiscal-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.fiscal-sub {
+  margin: 0 0 1.5rem;
+  color: #64748b;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 560px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 0.35rem;
+}
+
+.company-banner {
+  margin: 1rem 0 1.25rem;
+  padding: 0.75rem 1rem;
+  background: #f1f5f9;
+  border-radius: 8px;
+}
+
+.company-banner .label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+}
+
+.company-banner .value {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.section-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+.hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.stepper {
+  margin: 1.25rem 0 1.25rem;
+}
+
+.stepper-rail {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.75rem;
+}
+
+.stepper-step {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.stepper-step.active {
+  border-color: rgba(188, 5, 21, 0.35);
+  background: linear-gradient(135deg, rgba(188, 5, 21, 0.06), rgba(188, 5, 21, 0.02));
+}
+
+.stepper-step.done {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.stepper-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #334155;
+  flex-shrink: 0;
+}
+
+.stepper-step.active .stepper-dot {
+  background: #bc0515;
+  color: #fff;
+}
+
+.stepper-step.done .stepper-dot {
+  background: #16a34a;
+  color: #fff;
+}
+
+.stepper-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #334155;
+  line-height: 1.15;
+}
+
+.step-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  background: #fff;
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 700px) {
+  .stepper-rail {
+    grid-template-columns: 1fr;
+  }
+  .choice-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.choice {
+  text-align: left;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.choice:hover {
+  transform: translateY(-1px);
+  border-color: rgba(188, 5, 21, 0.35);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.choice.selected {
+  border-color: rgba(188, 5, 21, 0.55);
+  box-shadow: 0 0 0 4px rgba(188, 5, 21, 0.08);
+}
+
+.choice-title {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.choice-sub {
+  margin-top: 0.25rem;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.dropzone {
+  position: relative;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 14px;
+  padding: 1.25rem;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.dropzone.has-file {
+  border-style: solid;
+  background: #fff;
+}
+
+.dropzone-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.dropzone-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  text-align: center;
+  min-height: 140px;
+}
+
+.dropzone-icon {
+  font-size: 1.75rem;
+  color: #bc0515;
+}
+
+.dropzone-title {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dropzone-sub {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 0.35rem;
+}
+
+.step-actions {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .fiscal-card {
+    padding: 1.25rem;
+  }
+}
+
+.link {
+  color: #bc0515;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.link.danger {
+  color: #b91c1c;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.review {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.review-row {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 1rem;
+}
+
+.review-row .k {
+  color: #64748b;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.review-row .v {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.footer-links {
+  margin: 2rem 0 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.footer-links a {
+  color: #bc0515;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+.mb-3 {
+  margin-bottom: 0.75rem;
+}
+
+.mt-3 {
+  margin-top: 0.75rem;
+}

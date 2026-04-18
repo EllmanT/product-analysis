@@ -1,0 +1,21 @@
+:host {
+  display: block;
+}
+
+.guest-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  /* Full-bleed header/footer inside padded .app-content */
+  margin-left: -1.5rem;
+  margin-right: -1.5rem;
+  width: calc(100% + 3rem);
+  box-sizing: border-box;
+}
+
+.guest-layout-main {
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 1.5rem 2rem;
+}

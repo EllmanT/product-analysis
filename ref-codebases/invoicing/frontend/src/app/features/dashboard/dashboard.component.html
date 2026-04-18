@@ -1,0 +1,93 @@
+<div class="dashboard" [class.dashboard--loaded]="!loading()">
+  @if (loading()) {
+    <div class="app-centered-page-loader" role="status" aria-live="polite" aria-busy="true">
+      <p-progressSpinner strokeWidth="3" [style]="{ width: '52px', height: '52px' }" />
+      <p class="app-centered-page-loader-text">Loading your dashboard…</p>
+    </div>
+  } @else {
+  <header class="dashboard-header">
+    <div>
+      <h1 class="dashboard-title">Dashboard</h1>
+      @if (hasCompany()) {
+        <p class="dashboard-subtitle">
+          Analytics for <strong>{{ companyName() }}</strong>
+        </p>
+      } @else if (data()?.has_company === false) {
+        <p class="dashboard-subtitle">Welcome — link a company to see your analytics.</p>
+      }
+    </div>
+  </header>
+
+  @if (error()) {
+    <p-message severity="error" [text]="error()!" />
+    <button type="button" class="p-button mt-3" (click)="loadDashboard()">Retry</button>
+  } @else if (data(); as d) {
+    @if (d.has_company === false) {
+      <p-card styleClass="empty-card">
+        <div class="empty-state">
+          <i class="pi pi-building empty-icon"></i>
+          <h2>No company linked</h2>
+          <p>{{ d.message ?? 'Register or complete setup to connect a company to this account.' }}</p>
+          <div class="empty-actions">
+            <button type="button" class="p-button p-button-outlined" (click)="openCompanySetupDialog()">
+              Company setup
+            </button>
+          </div>
+        </div>
+      </p-card>
+    } @else {
+      <section class="stat-grid">
+        <p-card styleClass="stat-card">
+          <div class="stat-inner">
+            <span class="stat-label">Products</span>
+            <span class="stat-value">{{ d.totals.products }}</span>
+            <span class="stat-hint">Active catalog items</span>
+          </div>
+        </p-card>
+        <p-card styleClass="stat-card">
+          <div class="stat-inner">
+            <span class="stat-label">Customers</span>
+            <span class="stat-value">{{ d.totals.buyers }}</span>
+            <span class="stat-hint">Buyers on file</span>
+          </div>
+        </p-card>
+        <p-card styleClass="stat-card">
+          <div class="stat-inner">
+            <span class="stat-label">Invoices</span>
+            <span class="stat-value">{{ d.totals.invoices }}</span>
+            <span class="stat-hint">All time</span>
+          </div>
+        </p-card>
+        <p-card styleClass="stat-card stat-card-accent">
+          <div class="stat-inner">
+            <span class="stat-label">Total invoiced</span>
+            <span class="stat-value">{{ d.totals.receipt_total_sum | number: '1.2-2' }}</span>
+            <span class="stat-hint">Sum of receipt totals</span>
+          </div>
+        </p-card>
+      </section>
+
+      <section class="charts-section">
+        <p-card styleClass="chart-card">
+          <div class="chart-wrap chart-wrap-tall">
+            <p-chart type="bar" [data]="lineChartData()" [options]="lineChartOptions()" />
+          </div>
+        </p-card>
+
+        <div class="charts-row">
+          <p-card styleClass="chart-card">
+            <div class="chart-wrap chart-wrap-medium">
+              <p-chart type="bar" [data]="barChartData()" [options]="barChartOptions()" />
+            </div>
+          </p-card>
+          <p-card styleClass="chart-card">
+            <div class="chart-wrap chart-wrap-medium doughnut-wrap">
+              <p-chart type="doughnut" [data]="doughnutChartData()" [options]="doughnutChartOptions()" />
+            </div>
+          </p-card>
+        </div>
+      </section>
+    }
+  }
+  }
+</div>

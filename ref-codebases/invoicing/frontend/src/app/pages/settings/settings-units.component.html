@@ -1,0 +1,48 @@
+<header class="app-page-header">
+  <div>
+    <h1 class="app-page-title">Units of measure</h1>
+    <p class="app-page-subtitle">Names used on products and invoices. New names can also appear when you save a product.</p>
+  </div>
+</header>
+
+<section class="app-panel-card">
+  <div class="toolbar">
+    <p-button label="Add unit" icon="pi pi-plus" (onClick)="openDialog()" />
+  </div>
+
+  <p-table [value]="units()" [loading]="loading()" styleClass="p-datatable-striped app-full-width-table">
+    <ng-template #header>
+      <tr>
+        <th>Name</th>
+        <th style="width: 140px">Actions</th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-row>
+      <tr>
+        <td>{{ row.name }}</td>
+        <td>
+          <p-button icon="pi pi-pencil" styleClass="p-button-text p-button-sm" (onClick)="editUnit(row)" />
+          <p-button icon="pi pi-trash" styleClass="p-button-text p-button-danger p-button-sm" (onClick)="deleteUnit(row)" />
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="2" class="empty">No units yet. Add one or they will be created when you save a product with a new unit name.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</section>
+
+<p-dialog [(visible)]="dialogVisible" [header]="editMode() ? 'Edit unit' : 'New unit'" [modal]="true" [style]="{ width: '420px' }">
+  <div class="dialog-body">
+    <label for="unitName">Name *</label>
+    <input id="unitName" type="text" pInputText [(ngModel)]="formName" class="w-full" placeholder="e.g. pcs, kg" />
+  </div>
+  <ng-template #footer>
+    <p-button label="Cancel" styleClass="p-button-text" (onClick)="dialogVisible = false" />
+    <p-button label="Save" [loading]="saving()" (onClick)="save()" [disabled]="!formName.trim()" />
+  </ng-template>
+</p-dialog>
+
+<p-toast />

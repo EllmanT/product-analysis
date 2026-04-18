@@ -1,0 +1,261 @@
+<div class="guest-invoice">
+  <div class="invoice-header">
+    <div class="header-notice">
+      <i class="pi pi-info-circle"></i>
+      <span>
+        Create professional invoices for free.
+        <button type="button" class="link-btn" (click)="signUp()">Sign up</button>
+        to save and manage invoices.
+        <a routerLink="/about" class="link-btn link-btn--inline">Learn more</a>
+      </span>
+    </div>
+  </div>
+
+  <div class="invoice-toolbar">
+    <p-button label="Clear" icon="pi pi-refresh" styleClass="p-button-outlined" (onClick)="clearForm()" />
+    <p-button label="Download PDF" icon="pi pi-download" (onClick)="downloadPDF()" [loading]="downloading()" />
+  </div>
+
+  <div class="invoice-container">
+    <!-- Invoice Header Section -->
+    <div class="invoice-top">
+      <div class="logo-section">
+        @if (logoUrl()) {
+          <div class="logo-preview">
+            <img [src]="logoUrl()" alt="Company Logo" />
+            <button type="button" class="remove-logo" (click)="removeLogo()">
+              <i class="pi pi-times"></i>
+            </button>
+          </div>
+        } @else {
+          <label class="upload-logo-btn">
+            <input type="file" #fileInput accept="image/*" (change)="onLogoUpload($event)" style="display: none;" />
+            <i class="pi pi-plus"></i>
+            <span>Add Your Logo</span>
+          </label>
+        }
+      </div>
+
+      <div class="invoice-title-section">
+        <h1 class="invoice-title">INVOICE</h1>
+        <div class="invoice-number">
+          <label>#</label>
+          <input type="text" pInputText [(ngModel)]="invoiceNumber" class="invoice-no-input" />
+        </div>
+      </div>
+    </div>
+
+    <!-- From/To Section -->
+    <div class="invoice-layout">
+      <div class="left-section">
+        <div class="party-section">
+          <label class="party-label">Who is this from?</label>
+          <textarea pTextarea [(ngModel)]="billFrom" rows="3" placeholder="Your company name&#10;Address&#10;City, State ZIP"></textarea>
+        </div>
+
+        <div class="parties-row">
+          <div class="party-section">
+            <label class="party-label">Bill To</label>
+            <textarea pTextarea [(ngModel)]="billTo" rows="3" placeholder="Who is this to?"></textarea>
+          </div>
+          
+          <div class="party-section">
+            <label class="party-label">Ship To</label>
+            <textarea pTextarea [(ngModel)]="shipTo" rows="3" placeholder="(optional)"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-section">
+        <div class="detail-field">
+          <label>Date</label>
+          <p-datepicker 
+            [(ngModel)]="invoiceDate" 
+            dateFormat="mm/dd/yy" 
+            [showIcon]="true"
+            inputId="invoice-date" />
+        </div>
+        
+        <div class="detail-field">
+          <label>Payment Terms</label>
+          <input type="text" pInputText [(ngModel)]="paymentTerms" placeholder="" />
+        </div>
+        
+        <div class="detail-field">
+          <label>Due Date</label>
+          <p-datepicker 
+            [(ngModel)]="dueDate" 
+            dateFormat="mm/dd/yy" 
+            [showIcon]="true" 
+            [showClear]="true"
+            inputId="due-date" />
+        </div>
+        
+        <div class="detail-field">
+          <label>PO Number</label>
+          <input type="text" pInputText [(ngModel)]="poNumber" placeholder="" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Line Items Table -->
+    <div class="line-items">
+      <div class="line-items-header">
+        <div class="col-item">Item</div>
+        <div class="col-qty">Quantity</div>
+        <div class="col-rate">Rate</div>
+        <div class="col-amount">Amount</div>
+      </div>
+      
+      @for (line of lines(); track $index; let i = $index) {
+        <div class="line-item-row">
+          <div class="col-item">
+            <input type="text" pInputText [(ngModel)]="line.description" placeholder="Description of item/service..." />
+          </div>
+          <div class="col-qty">
+            <p-inputNumber 
+              [(ngModel)]="line.quantity" 
+              [min]="0"
+              [showButtons]="true"
+              (ngModelChange)="recalcLine(i)" />
+          </div>
+          <div class="col-rate">
+            <p-inputNumber 
+              [(ngModel)]="line.rate" 
+              prefix="$"
+              [minFractionDigits]="2"
+              [maxFractionDigits]="2"
+              (ngModelChange)="recalcLine(i)" />
+          </div>
+          <div class="col-amount">
+            <span class="amount-display">${{ line.amount.toFixed(2) }}</span>
+          </div>
+          @if (lines().length > 1) {
+            <button type="button" class="remove-line" (click)="removeLine(i)">
+              <i class="pi pi-times"></i>
+            </button>
+          }
+        </div>
+      }
+      
+      <button type="button" class="add-line-btn" (click)="addLine()">
+        <i class="pi pi-plus"></i>
+        <span>Line Item</span>
+      </button>
+    </div>
+
+    <!-- Totals Section -->
+    <div class="totals-section">
+      <div class="totals-left">
+        <div class="notes-section">
+          <label>Notes</label>
+          <textarea pTextarea [(ngModel)]="notes" rows="2" placeholder="Notes - any relevant information not already covered"></textarea>
+        </div>
+        
+        <div class="terms-section">
+          <label>Terms</label>
+          <textarea pTextarea [(ngModel)]="terms" rows="2" placeholder="Terms and conditions - late fees, payment methods, delivery schedule"></textarea>
+        </div>
+      </div>
+      
+      <div class="totals-right">
+        <div class="total-row">
+          <span>Subtotal</span>
+          <span class="total-value">${{ subtotal().toFixed(2) }}</span>
+        </div>
+        
+        <div class="total-row editable">
+          <div class="total-label">
+            <span>Tax</span>
+            <div class="tax-input-group">
+              <p-inputNumber 
+                [(ngModel)]="taxRate" 
+                suffix="%"
+                [min]="0"
+                [max]="100"
+                [minFractionDigits]="0"
+                [maxFractionDigits]="4"
+                [showButtons]="false"
+                styleClass="small-input" />
+              <button type="button" class="refresh-btn">
+                <i class="pi pi-refresh"></i>
+              </button>
+            </div>
+          </div>
+          <span class="total-value">${{ tax().toFixed(2) }}</span>
+        </div>
+        
+        <div class="total-actions">
+          <button type="button" class="action-link" (click)="toggleDiscount()">
+            <i class="pi pi-plus"></i>
+            <span>Discount</span>
+          </button>
+          <button type="button" class="action-link" (click)="toggleShipping()">
+            <i class="pi pi-plus"></i>
+            <span>Shipping</span>
+          </button>
+        </div>
+        
+        @if (showDiscount()) {
+          <div class="total-row editable">
+            <div class="total-label">
+              <span>Discount</span>
+              <p-inputNumber 
+                [(ngModel)]="discountRate" 
+                suffix="%"
+                [min]="0"
+                [max]="100"
+                [minFractionDigits]="0"
+                [maxFractionDigits]="4"
+                [showButtons]="false"
+                styleClass="small-input" />
+            </div>
+            <span class="total-value negative">-${{ discount().toFixed(2) }}</span>
+          </div>
+        }
+        
+        @if (showShipping()) {
+          <div class="total-row editable">
+            <div class="total-label">
+              <span>Shipping</span>
+              <p-inputNumber 
+                [(ngModel)]="shippingAmount" 
+                prefix="$"
+                [minFractionDigits]="2"
+                [maxFractionDigits]="2"
+                [showButtons]="false"
+                styleClass="small-input" />
+            </div>
+            <span class="total-value">${{ (shippingAmount() || 0).toFixed(2) }}</span>
+          </div>
+        }
+        
+        <div class="total-row grand-total">
+          <span>Total</span>
+          <span class="total-value">${{ total().toFixed(2) }}</span>
+        </div>
+        
+        <div class="total-row editable">
+          <div class="total-label">
+            <span>Amount Paid</span>
+            <p-inputNumber 
+              [(ngModel)]="amountPaid" 
+              prefix="$"
+              [minFractionDigits]="2"
+              [maxFractionDigits]="2"
+              [showButtons]="false"
+              styleClass="small-input" />
+          </div>
+          <span class="total-value">${{ amountPaid().toFixed(2) }}</span>
+        </div>
+        
+        <div class="total-row balance-due">
+          <span>Balance Due</span>
+          <span class="total-value">${{ balanceDue().toFixed(2) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p-toast />
+</div>

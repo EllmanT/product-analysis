@@ -1,0 +1,362 @@
+::ng-deep .fiscalization-dialog {
+  max-width: 550px;
+  border-radius: 12px !important;
+}
+
+::ng-deep .fiscalization-dialog .p-dialog-header {
+  padding: 2rem 2rem 1.5rem;
+  border-bottom: none;
+  background: white;
+}
+
+::ng-deep .fiscalization-dialog .p-dialog-header-close {
+  width: 2rem !important;
+  height: 2rem !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  color: #9ca3af !important;
+  transition: all 0.2s !important;
+  top: 1.5rem !important;
+  right: 1.5rem !important;
+}
+
+::ng-deep .fiscalization-dialog .p-dialog-header-close:hover {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+::ng-deep .fiscalization-dialog .p-dialog-header-close:focus {
+  box-shadow: none !important;
+  outline: 2px solid #e5e7eb !important;
+  outline-offset: 2px !important;
+}
+
+::ng-deep .fiscalization-dialog .p-dialog-header-close-icon {
+  font-size: 1.125rem !important;
+  font-weight: 600 !important;
+}
+
+::ng-deep .fiscalization-dialog .p-dialog-content {
+  padding: 0 2rem 2rem;
+  background: white;
+}
+
+::ng-deep .fiscalization-dialog .p-dialog-footer {
+  padding: 1.5rem 2rem 2rem;
+  border-top: 1px solid #f3f4f6;
+  background: white;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.dialog-icon {
+  font-size: 2.25rem;
+  color: #bc0515;
+  background: #fef2f2;
+  width: 3.5rem;
+  height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.dialog-title {
+  font-size: 1.625rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  letter-spacing: -0.015em;
+}
+
+.dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.dialog-message {
+  font-size: 1.0625rem;
+  color: #4b5563;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.benefits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.75rem;
+  background: linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%);
+  border-radius: 10px;
+  border: 1px solid #fee2e2;
+  box-shadow: 0 1px 2px rgba(188, 5, 21, 0.05);
+}
+
+.benefits-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.benefits-title::before {
+  content: '';
+  width: 3px;
+  height: 1.25rem;
+  background: #bc0515;
+  border-radius: 2px;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  color: #374151;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.benefit-item i {
+  color: #bc0515;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.dialog-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding: 1.125rem 1.25rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.dialog-note i {
+  color: #94a3b8;
+  font-size: 1.125rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 0.875rem;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.dialog-actions button {
+  padding: 0.875rem 1.75rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+}
+
+.dialog-actions button.p-button:not(.p-button-outlined) {
+  background: #bc0515;
+  color: white;
+  box-shadow: 0 2px 4px rgba(188, 5, 21, 0.15);
+}
+
+.dialog-actions button.p-button:not(.p-button-outlined):hover {
+  background: #9a0411;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(188, 5, 21, 0.25);
+}
+
+.dialog-actions button.p-button-outlined {
+  color: #6b7280;
+  border: 1.5px solid #d1d5db;
+  background: white;
+}
+
+.dialog-actions button.p-button-outlined:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+::ng-deep .fiscalization-dialog .p-button {
+  padding: 0.875rem 1.75rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+::ng-deep .fiscalization-dialog .p-button-outlined {
+  color: #6b7280;
+  border-color: #d1d5db;
+  background: white;
+  border-width: 1.5px;
+}
+
+::ng-deep .fiscalization-dialog .p-button-outlined:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+::ng-deep .fiscalization-dialog .p-button:not(.p-button-outlined) {
+  box-shadow: 0 2px 4px rgba(188, 5, 21, 0.15);
+}
+
+::ng-deep .fiscalization-dialog .p-button:not(.p-button-outlined):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(188, 5, 21, 0.25);
+}
+
+.wizard-step {
+  min-height: 8rem;
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  border: 1.5px solid #d1d5db;
+  background: white;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn:hover {
+  border-color: #bc0515;
+  color: #374151;
+}
+
+.mode-btn.active {
+  border-color: #bc0515;
+  background: #fef2f2;
+  color: #bc0515;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-field label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.company-summary {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.5rem 1rem;
+  font-size: 0.9375rem;
+}
+
+.company-summary dt {
+  margin: 0;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.company-summary dd {
+  margin: 0;
+  color: #111827;
+}
+
+.device-native-select {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 0.9375rem;
+  background: white;
+}
+
+.lookup-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+::ng-deep .lookup-loading .spinner {
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
+.device-hint {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0.5rem 0 0;
+}
+
+@media (max-width: 640px) {
+  ::ng-deep .fiscalization-dialog {
+    max-width: 95vw;
+    margin: 1rem;
+  }
+
+  ::ng-deep .fiscalization-dialog .p-dialog-header,
+  ::ng-deep .fiscalization-dialog .p-dialog-content,
+  ::ng-deep .fiscalization-dialog .p-dialog-footer {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .dialog-title {
+    font-size: 1.375rem;
+  }
+
+  .dialog-icon {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.875rem;
+  }
+
+  .benefits-list {
+    padding: 1.5rem;
+  }
+
+  .dialog-actions {
+    flex-direction: column;
+  }
+
+  ::ng-deep .fiscalization-dialog .p-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

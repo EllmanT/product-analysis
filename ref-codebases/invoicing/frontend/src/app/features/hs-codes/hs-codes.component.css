@@ -1,0 +1,99 @@
+:host {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.app-page {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-top: 1rem !important;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.app-panel-card {
+  background: #ffffff !important;
+  border: 1px solid #dbe4ef !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08) !important;
+  padding: 1.25rem 1.5rem !important;
+  width: 100% !important;
+  max-width: none !important;
+  flex: 1 1 auto;
+  min-height: calc(100vh - 220px);
+}
+
+:host ::ng-deep .app-full-width-table,
+:host ::ng-deep .app-full-width-table .p-datatable-table-container,
+:host ::ng-deep .app-full-width-table .p-datatable-table {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.search-wrap {
+  flex: 1;
+  min-width: 240px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 420px;
+}
+
+.search-icon {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.search-wrap input {
+  flex: 1;
+  min-width: 0;
+}
+
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.loading-hint {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-left: auto;
+}
+
+.code-cell {
+  font-size: 0.8125rem;
+  background: #f1f5f9;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+}
+
+.yes {
+  color: #15803d;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.no {
+  color: #94a3b8;
+  font-size: 0.875rem;
+}

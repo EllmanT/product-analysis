@@ -1,0 +1,74 @@
+:host {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.app-page {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding-top: 1rem !important;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.fiscal-day-card {
+  min-height: calc(100vh - 220px);
+}
+
+.fiscal-toolbar {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.status-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.status-item-wide {
+  grid-column: 1 / -1;
+}
+
+.status-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.status-value {
+  color: #0f172a;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+@media (max-width: 800px) {
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+}

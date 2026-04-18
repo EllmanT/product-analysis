@@ -1,0 +1,79 @@
+/* Animated gradient (left panel) */
+.gradientPanel {
+    background: linear-gradient(
+        -45deg,
+        #4c1d95,
+        #5b21b6,
+        #7c3aed,
+        #a21caf,
+        #be185d,
+        #7c3aed,
+        #5b21b6
+    );
+    background-size: 400% 400%;
+    animation: gradientShift 18s ease infinite;
+}
+
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.heroTitle {
+    opacity: 0;
+    animation: fadeSlideUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.heroSubtitle {
+    opacity: 0;
+    animation: fadeSlideUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards;
+}
+
+@keyframes fadeSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.formColumn {
+    opacity: 0;
+    animation: fadeInForm 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+}
+
+@keyframes fadeInForm {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gradientPanel {
+        animation: none;
+        background: linear-gradient(135deg, #5b21b6 0%, #be185d 100%);
+    }
+
+    .heroTitle,
+    .heroSubtitle,
+    .formColumn {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+}

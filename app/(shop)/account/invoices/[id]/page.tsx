@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
 
 type InvoiceItem = {
   name: string;
@@ -12,25 +14,42 @@ type InvoiceItem = {
   lineTotal: string;
 };
 
+type FiscalData = {
+  verificationCode?: string;
+  verificationLink?: string;
+  qrCodeUrl?: string;
+  fiscalDayNo?: number | null;
+  fdmsInvoiceNo?: string;
+  receiptGlobalNo?: string;
+};
+
 type InvoiceData = {
   _id: string;
   invoiceNumber: string;
   quotationId: string;
   items: InvoiceItem[];
   subtotal: string;
+  totalAmount?: number;
+  totalVat?: number;
+  subtotalExclTax?: number;
   status: string;
   createdAt: string;
+  receiptCurrency?: string;
+  paymentMethod?: string;
+  isFiscalized?: boolean;
+  fiscalStatus?: string;
+  fiscalSubmittedAt?: string;
+  receiptNotes?: string;
+  fiscalData?: FiscalData | null;
 };
 
 function fmtDate(s: string): string {
-  return new Date(s).toLocaleDateString("en-GB", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
+  return new Date(s).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function fmtMoney(s: string): string {
-  const n = parseFloat(s);
-  return `$${isNaN(n) ? "0.00" : n.toFixed(2)}`;
+function fmtMoney(n: number | string, currency = "USD"): string {
+  const num = typeof n === "string" ? parseFloat(n) : n;
+  return `${currency} ${isNaN(num) ? "0.00" : num.toFixed(2)}`;
 }
 
 export default function InvoiceDetailPage() {
@@ -38,15 +57,24 @@ export default function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
 
   useEffect(() => {
     (async () => {
-      const res = await fetch(`/api/shop/account/invoices/${id}`, { credentials: "include" });
+      const res = await fetch(`/api/shop/dashboard/invoices/${id}`, { credentials: "include" });
       if (res.status === 401) { router.replace(`/login?redirect=/account/invoices/${id}`); return; }
       if (res.status === 404) { router.replace("/account/invoices"); return; }
       if (res.ok) {
         const json = await res.json() as { success: boolean; data: InvoiceData };
-        if (json.success) setInvoice(json.data);
+        if (json.success) {
+          setInvoice(json.data);
+          const qrSource = json.data.fiscalData?.verificationLink || json.data.fiscalData?.qrCodeUrl;
+          if (qrSource) {
+            QRCode.toDataURL(qrSource, { errorCorrectionLevel: "M", width: 180, margin: 1 })
+              .then((url) => setQrDataUrl(url))
+              .catch(() => {});
+          }
+        }
       }
       setLoading(false);
     })();
@@ -58,7 +86,9 @@ export default function InvoiceDetailPage() {
 
   if (!invoice) return null;
 
-  const pdfUrl = `/api/shop/account/invoices/${invoice._id}/pdf`;
+  const currency = invoice.receiptCurrency || "USD";
+  const isFiscalized = invoice.isFiscalized || invoice.fiscalStatus === "SUBMITTED";
+  const grandTotal = invoice.totalAmount ?? parseFloat(invoice.subtotal);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -73,23 +103,13 @@ export default function InvoiceDetailPage() {
           <span className="font-medium text-slate-900">{invoice.invoiceNumber}</span>
         </nav>
 
-        {/* Invoice card */}
         <div className="relative overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.06)]">
-
-          {/* PAID stamp */}
-          <div
-            className="pointer-events-none absolute right-6 top-20 rotate-[15deg] select-none rounded border-2 border-[#059669] px-3 py-1 text-lg font-bold tracking-widest text-[#059669] opacity-20"
-            aria-hidden
-          >
-            PAID ✓
-          </div>
-
           {/* Header band */}
           <div className="bg-[#064E3B] px-6 py-6">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xl font-bold tracking-wider text-white">STOCKFLOW</p>
-                <p className="mt-0.5 text-xs text-[#6EE7B7]">TAX INVOICE</p>
+                <p className="mt-0.5 text-xs text-[#6EE7B7]">FISCAL INVOICE</p>
               </div>
               <div className="text-right">
                 <p className="font-bold text-white">{invoice.invoiceNumber}</p>
@@ -98,7 +118,7 @@ export default function InvoiceDetailPage() {
             </div>
           </div>
 
-          {/* Details block */}
+          {/* Status + details */}
           <div className="border-b border-slate-100 px-6 py-5">
             <div className="grid grid-cols-2 gap-6">
               <div>
@@ -107,12 +127,33 @@ export default function InvoiceDetailPage() {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Status</p>
-                <span className="mt-1 inline-flex items-center rounded-[6px] bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">
-                  Paid
-                </span>
+                {isFiscalized ? (
+                  <span className="mt-1 inline-flex items-center rounded-[6px] bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">Fiscalized</span>
+                ) : (
+                  <span className="mt-1 inline-flex items-center rounded-[6px] bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">Processing</span>
+                )}
+              </div>
+              {invoice.paymentMethod && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Payment</p>
+                  <p className="mt-1 text-sm font-medium text-slate-900">{invoice.paymentMethod}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Currency</p>
+                <p className="mt-1 text-sm font-medium text-slate-900">{currency}</p>
               </div>
             </div>
           </div>
+
+          {/* Processing notice if not fiscalized */}
+          {!isFiscalized && (
+            <div className="border-b border-amber-100 bg-amber-50 px-6 py-4">
+              <p className="text-sm text-amber-800">
+                Your invoice is being processed. Once fiscalized by ZIMRA, your verification details will appear here.
+              </p>
+            </div>
+          )}
 
           {/* Items table */}
           <div className="overflow-x-auto">
@@ -132,8 +173,8 @@ export default function InvoiceDetailPage() {
                     <td className="px-6 py-3 font-medium text-slate-900">{item.name}</td>
                     <td className="px-6 py-3 font-mono text-xs text-slate-500">{item.standardCode}</td>
                     <td className="px-6 py-3 text-center text-slate-700">{item.quantity}</td>
-                    <td className="px-6 py-3 text-right text-slate-700">{fmtMoney(item.unitPrice)}</td>
-                    <td className="px-6 py-3 text-right font-semibold text-slate-900">{fmtMoney(item.lineTotal)}</td>
+                    <td className="px-6 py-3 text-right text-slate-700">{fmtMoney(item.unitPrice, currency)}</td>
+                    <td className="px-6 py-3 text-right font-semibold text-slate-900">{fmtMoney(item.lineTotal, currency)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -143,28 +184,73 @@ export default function InvoiceDetailPage() {
           {/* Totals */}
           <div className="px-6 py-5">
             <div className="ml-auto w-fit space-y-1">
-              <div className="flex justify-between gap-16 text-sm text-slate-600">
-                <span>Subtotal</span>
-                <span className="font-medium">{fmtMoney(invoice.subtotal)}</span>
-              </div>
+              {invoice.subtotalExclTax != null && (
+                <div className="flex justify-between gap-16 text-sm text-slate-600">
+                  <span>Subtotal (excl tax)</span>
+                  <span className="font-medium">{fmtMoney(invoice.subtotalExclTax, currency)}</span>
+                </div>
+              )}
+              {invoice.totalVat != null && invoice.totalVat > 0 && (
+                <div className="flex justify-between gap-16 text-sm text-slate-600">
+                  <span>VAT</span>
+                  <span className="font-medium">{fmtMoney(invoice.totalVat, currency)}</span>
+                </div>
+              )}
               <div className="flex justify-between gap-16 border-t border-slate-200 pt-2 text-base font-bold">
                 <span className="text-slate-900">Total</span>
-                <span style={{ color: "#059669" }}>{fmtMoney(invoice.subtotal)}</span>
+                <span style={{ color: "#059669" }}>{fmtMoney(grandTotal, currency)}</span>
               </div>
             </div>
           </div>
 
-          {/* Download button */}
-          <div className="border-t border-slate-100 px-6 py-5">
-            <a
-              href={pdfUrl}
-              download
-              className="flex w-full items-center justify-center gap-2 rounded-[8px] bg-[#064E3B] py-3 text-sm font-semibold text-white transition hover:bg-[#065F46]"
-            >
-              Download PDF
-            </a>
-          </div>
+          {/* Fiscal verification block */}
+          {isFiscalized && invoice.fiscalData && (
+            <div className="border-t border-emerald-200 bg-emerald-50 px-6 py-5">
+              <p className="text-sm font-semibold text-emerald-900">✓ Fiscally Verified by ZIMRA</p>
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                {invoice.fiscalData.verificationCode && (
+                  <div>
+                    <dt className="text-xs text-emerald-700">Verification Code</dt>
+                    <dd className="font-mono font-semibold text-slate-900">{invoice.fiscalData.verificationCode}</dd>
+                  </div>
+                )}
+                {invoice.fiscalData.fdmsInvoiceNo && (
+                  <div>
+                    <dt className="text-xs text-emerald-700">FDMS Invoice No</dt>
+                    <dd className="font-mono font-semibold text-slate-900">{invoice.fiscalData.fdmsInvoiceNo}</dd>
+                  </div>
+                )}
+                {invoice.fiscalData.fiscalDayNo != null && (
+                  <div>
+                    <dt className="text-xs text-emerald-700">Fiscal Day No</dt>
+                    <dd className="font-semibold text-slate-900">{invoice.fiscalData.fiscalDayNo}</dd>
+                  </div>
+                )}
+              </dl>
+              {qrDataUrl && (
+                <div className="mt-4 flex flex-col items-start gap-1">
+                  <Image src={qrDataUrl} alt="ZIMRA verification QR code" width={130} height={130} className="rounded border border-emerald-200" />
+                  <p className="text-xs text-emerald-700">Scan to verify this invoice on ZIMRA</p>
+                </div>
+              )}
+            </div>
+          )}
 
+          {/* Actions */}
+          <div className="border-t border-slate-100 px-6 py-5 flex gap-3">
+            <button
+              onClick={() => window.open(`/admin/invoices/${invoice._id}/print`, "_blank")}
+              className="flex-1 rounded-[8px] border border-[#064E3B] py-3 text-sm font-semibold text-[#064E3B] transition hover:bg-[#064E3B] hover:text-white"
+            >
+              Print / Download
+            </button>
+            <Link
+              href="/account/invoices"
+              className="flex items-center justify-center rounded-[8px] bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+            >
+              Back
+            </Link>
+          </div>
         </div>
       </div>
     </div>

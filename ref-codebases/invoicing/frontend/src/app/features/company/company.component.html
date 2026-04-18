@@ -1,0 +1,85 @@
+<div class="company-page">
+  @if (loading()) {
+    <div class="company-loading" role="status" aria-live="polite" aria-busy="true">
+      <p-progressSpinner strokeWidth="3" [style]="{ width: '44px', height: '44px' }" />
+      <p class="company-loading-text">Loading company…</p>
+    </div>
+  } @else {
+    <header class="company-header">
+      <div>
+        <h1 class="company-title">Company & devices</h1>
+        <p class="company-subtitle">Your fiscalization setup status.</p>
+      </div>
+      <button type="button" pButton label="Refresh" icon="pi pi-refresh" class="p-button-outlined" (click)="refresh()"></button>
+    </header>
+
+    @if (error()) {
+      <p-message severity="error" [text]="error()!" />
+    }
+
+    @if (session()?.company; as c) {
+      <p-card styleClass="company-card">
+        <ng-template pTemplate="title">Company</ng-template>
+        <div class="kv">
+          <div><span class="k">TIN</span><span class="v">{{ c.tin }}</span></div>
+          <div><span class="k">VAT</span><span class="v">{{ c.vat_number || '-' }}</span></div>
+          <div><span class="k">Taxpayer Name</span><span class="v">{{ c.legal_name }}</span></div>
+          <div><span class="k">Trade Name</span><span class="v">{{ c.trade_name || '-' }}</span></div>
+          <div><span class="k">Email</span><span class="v">{{ c.email || '-' }}</span></div>
+          <div><span class="k">Phone</span><span class="v">{{ c.phone || '-' }}</span></div>
+          <div><span class="k">Region</span><span class="v">{{ c.region || '-' }}</span></div>
+          <div><span class="k">Station</span><span class="v">{{ c.station || '-' }}</span></div>
+          <div><span class="k">Province</span><span class="v">{{ c.province || '-' }}</span></div>
+          <div><span class="k">City</span><span class="v">{{ c.city || '-' }}</span></div>
+          <div><span class="k">Address</span><span class="v">{{ c.address_line || '-' }}</span></div>
+          <div><span class="k">House Number</span><span class="v">{{ c.house_number || '-' }}</span></div>
+        </div>
+      </p-card>
+    } @else {
+      <p-card styleClass="company-card">
+        <ng-template pTemplate="title">Company</ng-template>
+        <p-message severity="warn" text="No company linked to this account yet." />
+      </p-card>
+    }
+
+    <p-card styleClass="company-card">
+      <ng-template pTemplate="title">Devices</ng-template>
+      @if (!primaryDevice()) {
+        <p-message severity="warn" text="No devices found for this company." />
+      } @else {
+        @if (primaryDevice(); as d) {
+          <div class="devices">
+            <div class="device-row">
+              <div class="device-main">
+                <div class="device-title">{{ d.device_name || 'Device' }}</div>
+                <div class="device-meta">
+                  <span>Serial number: {{ deviceSerial(d) }}</span>
+                  <span>Device Id: {{ d.zimra_device_id || '-' }}</span>
+                  <span>Activation key: {{ d.zimra_activation_key || '-' }}</span>
+                </div>
+              </div>
+              <div class="device-status">
+                <span class="pill" [attr.data-status]="(d.activation_status ?? 'PENDING')">{{ statusLabel(d) }}</span>
+                @if ((d.activation_status ?? '').toString().toUpperCase() === 'FAILED') {
+                  <button
+                    type="button"
+                    pButton
+                    label="Retry activation"
+                    icon="pi pi-replay"
+                    class="p-button-sm p-button-outlined"
+                    [disabled]="retrying()"
+                    (click)="retryActivation()"
+                  ></button>
+                }
+                @if (d.activation_error) {
+                  <div class="device-error">{{ d.activation_error }}</div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      }
+    </p-card>
+  }
+</div>
+

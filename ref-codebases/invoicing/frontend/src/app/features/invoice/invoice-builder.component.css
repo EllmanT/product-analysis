@@ -1,0 +1,388 @@
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.guest-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  margin-bottom: 2rem;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  color: #1e40af;
+  font-size: 0.95rem;
+}
+
+.guest-notice i {
+  font-size: 1.25rem;
+}
+
+.subscription-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  margin-bottom: 2rem;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+  color: #9a3412;
+  font-size: 0.95rem;
+}
+
+.subscription-notice i {
+  font-size: 1.25rem;
+  margin-top: 0.1rem;
+}
+
+.subscription-notice-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  flex: 1;
+}
+
+.subscription-dialog-copy {
+  margin: 0 0 0.5rem;
+  line-height: 1.5;
+  color: #334155;
+}
+
+.builder-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.app-panel-card {
+  background: #ffffff;
+  border: 1px solid #dbe4ef;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  padding: 1.25rem 1.5rem;
+}
+
+.builder-card-heading {
+  margin: 0 0 1.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.builder-card-heading--inline {
+  margin: 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-field label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.form-field input,
+.form-field textarea,
+.form-field p-select,
+.form-field p-datepicker,
+.form-field p-inputNumber,
+.form-field p-autoComplete {
+  width: 100%;
+}
+
+/* Fix PrimeNG input styling - remove black backgrounds */
+::ng-deep .p-inputtext,
+::ng-deep .p-inputnumber-input,
+::ng-deep .p-textarea,
+::ng-deep .p-select,
+::ng-deep .p-datepicker input,
+::ng-deep .p-autocomplete input {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+}
+
+::ng-deep .p-inputtext:enabled:hover,
+::ng-deep .p-inputnumber-input:enabled:hover,
+::ng-deep .p-textarea:enabled:hover,
+::ng-deep .p-select:not(.p-disabled):hover,
+::ng-deep .p-datepicker input:enabled:hover,
+::ng-deep .p-autocomplete input:enabled:hover {
+  border-color: #9ca3af !important;
+}
+
+::ng-deep .p-inputtext:enabled:focus,
+::ng-deep .p-inputnumber-input:enabled:focus,
+::ng-deep .p-textarea:enabled:focus,
+::ng-deep .p-select:not(.p-disabled).p-focus,
+::ng-deep .p-datepicker input:enabled:focus,
+::ng-deep .p-autocomplete input:enabled:focus {
+  border-color: #bc0515 !important;
+  box-shadow: 0 0 0 0.2rem rgba(188, 5, 21, 0.2) !important;
+}
+
+::ng-deep .p-select-option {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+::ng-deep .p-select-option:hover {
+  background: #f3f4f6 !important;
+}
+
+::ng-deep .p-select-option.p-selected {
+  background: #bc0515 !important;
+  color: #ffffff !important;
+}
+
+::ng-deep .p-select-overlay,
+::ng-deep .p-select-panel {
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  z-index: 1100 !important;
+}
+
+::ng-deep .p-select-list {
+  background: #ffffff !important;
+}
+
+::ng-deep .p-select-item {
+  background: #ffffff !important;
+  color: #111827 !important;
+  padding: 0.75rem 1rem !important;
+  cursor: pointer !important;
+}
+
+::ng-deep .p-select-item:hover {
+  background: #f3f4f6 !important;
+}
+
+::ng-deep .p-select-item.p-selected,
+::ng-deep .p-select-item.p-focus {
+  background: #bc0515 !important;
+  color: #ffffff !important;
+}
+
+::ng-deep .p-autocomplete-list-container {
+  background: #ffffff !important;
+}
+
+::ng-deep .p-autocomplete-option {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+::ng-deep .p-autocomplete-option:hover {
+  background: #f3f4f6 !important;
+}
+
+.form-field-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.readonly-field {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+.line-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.line-item {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  position: relative;
+}
+
+.line-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #bc0515;
+  color: white;
+  border-radius: 50%;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.line-content {
+  flex: 1;
+}
+
+.line-grid {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 1fr) minmax(11rem, 2.2fr) 1fr 1fr 0.8fr 1fr;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.line-remove {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.line-remove:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.totals-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.totals-grid {
+  display: flex;
+  gap: 2rem;
+}
+
+.totals-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 400px;
+  margin-left: auto;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 6px;
+}
+
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: 1rem;
+}
+
+.total-row-value {
+  flex-shrink: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.total-row.grand-total {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #bc0515;
+  padding-top: 0.75rem;
+  border-top: 2px solid #e5e7eb;
+}
+
+.payment-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.payment-grid--single {
+  grid-template-columns: minmax(240px, 420px);
+}
+
+.buyer-item,
+.product-item {
+  padding: 0.5rem 0;
+}
+
+.hs-suggest-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.25rem 0;
+  max-width: 22rem;
+}
+
+.hs-suggest-code {
+  font-weight: 600;
+  font-family: ui-monospace, monospace;
+}
+
+.hs-suggest-desc {
+  font-size: 0.8rem;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.text-muted {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+  .invoice-builder .app-page-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    justify-content: stretch;
+  }
+
+  .header-actions ::ng-deep .p-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .line-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-grid {
+    grid-template-columns: 1fr;
+  }
+}

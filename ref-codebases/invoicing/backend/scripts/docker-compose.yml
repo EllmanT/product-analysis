@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ipg-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: e_invoicing
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: ipg-pgbouncer
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    ports:
+      - "6432:5432"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: root
+      DB_PASSWORD: password
+      DB_NAME: e_invoicing
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 3000
+      DEFAULT_POOL_SIZE: 80
+      MIN_POOL_SIZE: 20
+      AUTH_TYPE: md5
+    volumes:
+      - pgbouncer_data:/etc/pgbouncer
+
+  redis:
+    image: redis:7-alpine
+    container_name: ipg-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ipg-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: developers@axissol.com
+      PGADMIN_DEFAULT_PASSWORD: "@x1551n01t@"
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
+  redisdata:
+  pgadmin_data:
+  pgbouncer_data:

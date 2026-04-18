@@ -7,9 +7,10 @@ import {
     IconBuildingStore,
     IconFileUpload,
     IconTrendingUp,
-    IconAlertTriangle
+    IconAlertTriangle,
+    IconCurrencyDollar
   } from "@tabler/icons-react"
-import { FileText, Package, Receipt } from "lucide-react"
+import { Calendar, FileText, Package, Receipt } from "lucide-react"
 
 export const mainSidebarLinks = [
     {
@@ -89,6 +90,23 @@ export const mainSidebarLinks = [
       title: "Invoices",
       url: "/admin/invoices",
       icon: Receipt,
+      adminOnly: true,
+    },
+    {
+      title: "Fiscal Day",
+      url: "/fiscal-day",
+      icon: Calendar,
+      adminOnly: true,
+    },
+
+    {
+      title: "Payments",
+      url: "",
+    },
+    {
+      title: "Exchange Rates",
+      url: "/exchange-rates",
+      icon: IconCurrencyDollar,
       adminOnly: true,
     },
 

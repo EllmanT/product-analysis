@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -15,6 +16,7 @@ export default function FiscalDayPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<"open" | "close" | null>(null);
+  const [lastZReportId, setLastZReportId] = useState<string | null>(null);
 
   async function loadStatus() {
     setLoading(true);
@@ -45,8 +47,13 @@ export default function FiscalDayPage() {
     setSuccessMsg(null);
     try {
       const res = await fetch(`/api/admin/fiscal-day/${action}`, { method: "POST" });
-      const json = await res.json() as { success: boolean; message?: string };
+      const json = await res.json() as {
+        success: boolean;
+        message?: string;
+        report?: { _id: string };
+      };
       if (res.ok && json.success) {
+        setLastZReportId(action === "close" && json.report?._id ? json.report._id : null);
         setSuccessMsg(action === "open" ? "Fiscal day opened successfully." : "Fiscal day closed successfully.");
         await loadStatus();
       } else {
@@ -61,11 +68,23 @@ export default function FiscalDayPage() {
 
   return (
     <div className="flex flex-1 flex-col px-4 py-8 lg:px-6">
-      <h1 className="text-2xl font-bold text-slate-900">Fiscal Day Management</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Manage ZIMRA FDMS fiscal day. Opening and closing the fiscal day must be done at the
-        start and end of each business day as required by ZIMRA regulations.
-      </p>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Fiscal Day Management</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Manage ZIMRA FDMS fiscal day. Opening and closing the fiscal day must be done at the
+            start and end of each business day as required by ZIMRA regulations.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/fiscal-settings">Fiscalization settings</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/z-reports">Z-reports</Link>
+          </Button>
+        </div>
+      </div>
 
       {/* Warning */}
       <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -110,6 +129,17 @@ export default function FiscalDayPage() {
         {successMsg && (
           <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
             {successMsg}
+            {lastZReportId && (
+              <span className="mt-2 block">
+                <Link
+                  href={`/z-reports/${lastZReportId}/print`}
+                  target="_blank"
+                  className="font-semibold text-emerald-900 underline"
+                >
+                  Print Z-report for this close
+                </Link>
+              </span>
+            )}
           </div>
         )}
 

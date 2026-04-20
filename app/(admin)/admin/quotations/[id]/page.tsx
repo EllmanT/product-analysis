@@ -33,18 +33,22 @@ function formatMoney(s: string): string {
   return `$${n.toFixed(2)}`;
 }
 
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function QuotationStatusBadge({ status }: { status: string }) {
-  const base = "inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold";
+  const base = "inline-flex rounded-[6px] px-2.5 py-0.5 text-xs font-semibold";
   if (status === "pending") {
-    return (
-      <span className={`${base} bg-blue-100 text-blue-800`}>Pending</span>
-    );
+    return <span className={`${base} bg-blue-100 text-blue-800`}>Quote issued</span>;
   }
   if (status === "confirmed") {
     return (
-      <span className={`${base} bg-emerald-100 text-emerald-800`}>
-        Confirmed
-      </span>
+      <span className={`${base} bg-amber-100 text-amber-800`}>Ready to pay</span>
     );
   }
   if (status === "invoiced") {
@@ -68,10 +72,17 @@ export default function AdminQuotationDetailPage() {
   const [items, setItems] = useState<QItem[]>([]);
   const [subtotal, setSubtotal] = useState("");
   const [status, setStatus] = useState("");
+  const [paymentStatus, setPaymentStatus] = useState("");
+  const [createdAt, setCreatedAt] = useState("");
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<string | null>(null);
+  const [fulfillmentStatus, setFulfillmentStatus] = useState<string | null>(null);
   const [customer, setCustomer] = useState<CustomerPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [delivering, setDelivering] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const refId = id.length >= 8 ? id.slice(-8).toUpperCase() : id.toUpperCase();
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -99,14 +110,23 @@ export default function AdminQuotationDetailPage() {
           items: QItem[];
           subtotal: string;
           status: string;
+          paymentStatus: string;
+          createdAt: string;
+          checkoutPaymentMethod: string | null;
+          fulfillmentStatus: string | null;
         };
         customer: CustomerPayload | null;
       };
     };
     if (json.success && json.data?.quotation) {
-      setItems(json.data.quotation.items);
-      setSubtotal(json.data.quotation.subtotal);
-      setStatus(json.data.quotation.status);
+      const q = json.data.quotation;
+      setItems(q.items);
+      setSubtotal(q.subtotal);
+      setStatus(q.status);
+      setPaymentStatus(q.paymentStatus);
+      setCreatedAt(q.createdAt);
+      setCheckoutPaymentMethod(q.checkoutPaymentMethod ?? null);
+      setFulfillmentStatus(q.fulfillmentStatus ?? null);
       setCustomer(json.data.customer);
     }
     setLoading(false);
@@ -141,6 +161,36 @@ export default function AdminQuotationDetailPage() {
     }
   }
 
+  async function confirmDelivery() {
+    setDelivering(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/quotations/${id}/confirm-delivery`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json?.error?.message ?? "Could not confirm delivery");
+        return;
+      }
+      await load();
+    } catch {
+      setError("Something went wrong");
+    } finally {
+      setDelivering(false);
+    }
+  }
+
+  const showCodDelivered =
+    checkoutPaymentMethod === "cod" &&
+    fulfillmentStatus === "pending" &&
+    paymentStatus === "unpaid";
+
+  const showManualInvoice =
+    status === "confirmed" &&
+    paymentStatus === "unpaid" &&
+    !showCodDelivered;
+
   if (loading) {
     return (
       <div className="flex flex-1 flex-col px-4 py-8 text-muted-foreground lg:px-6">
@@ -149,7 +199,7 @@ export default function AdminQuotationDetailPage() {
     );
   }
 
-  if (error && !customer) {
+  if (error && !customer && !items.length) {
     return (
       <div className="flex flex-1 flex-col px-4 py-8 text-red-600 lg:px-6">
         {error}
@@ -158,7 +208,7 @@ export default function AdminQuotationDetailPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col bg-[#f8fafc]">
       <div className="mt-2 flex w-full flex-wrap items-center gap-2 px-4 lg:px-6">
         <Separator
           orientation="vertical"
@@ -169,109 +219,77 @@ export default function AdminQuotationDetailPage() {
             Quotations
           </Link>
           <span aria-hidden>/</span>
-          <span className="font-mono text-xs text-slate-900">{id.slice(0, 12)}…</span>
+          <span className="font-mono text-xs text-slate-900">#{refId}</span>
         </nav>
       </div>
 
-      <div className="flex flex-col gap-4 px-4 py-6 lg:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-slate-600">Status</span>
-            <QuotationStatusBadge status={status} />
-          </div>
-          {status === "confirmed" ? (
-            <Button
-              className="bg-blue-600 text-white hover:bg-blue-700"
-              disabled={generating}
-              onClick={() => void generateInvoice()}
-            >
-              {generating ? "Generating…" : "Generate Invoice"}
-            </Button>
-          ) : null}
-        </div>
-
+      <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 lg:grid-cols-3 lg:px-6">
         {error ? (
-          <p className="text-sm text-red-600" role="alert">
+          <p className="lg:col-span-3 text-sm text-red-600" role="alert">
             {error}
           </p>
         ) : null}
 
-        <div className="flex flex-col gap-4">
-          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-900">
-              Customer Details
-            </h2>
-            {customer ? (
-              <dl className="mt-4 space-y-2 text-sm">
-                <div>
-                  <dt className="text-slate-500">Name</dt>
-                  <dd className="font-medium text-slate-900">
-                    {[customer.firstName, customer.lastName]
-                      .filter(Boolean)
-                      .join(" ")}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">Trade name</dt>
-                  <dd className="text-slate-800">{customer.tradeName}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">Email</dt>
-                  <dd className="text-slate-800">{customer.email}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">Phone</dt>
-                  <dd className="text-slate-800">{customer.phone}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">TIN</dt>
-                  <dd className="text-slate-800">{customer.tinNumber}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">VAT</dt>
-                  <dd className="text-slate-800">{customer.vatNumber}</dd>
-                </div>
-                <div>
-                  <dt className="text-slate-500">Address</dt>
-                  <dd className="text-slate-800">{customer.address}</dd>
-                </div>
-              </dl>
-            ) : (
-              <p className="mt-4 text-sm text-slate-500">No customer data.</p>
-            )}
-          </div>
+        <div className="space-y-0 lg:col-span-2">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+            <div className="bg-[#1e3a5f] px-6 py-6 text-white">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-blue-200/95">
+                Quotation
+              </p>
+              <h1 className="mt-1 text-xl font-semibold tracking-tight">#{refId}</h1>
+              {createdAt ? (
+                <p className="mt-1 text-sm text-blue-100/90">{fmtDate(createdAt)}</p>
+              ) : null}
+            </div>
 
-          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-900">
-              Order Items
-            </h2>
-            <div className="mt-4 overflow-x-auto">
+            <div className="border-b border-slate-100 px-6 py-5">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Bill to
+              </h2>
+              {customer ? (
+                <div className="mt-3 text-sm">
+                  <p className="font-semibold text-slate-900">
+                    {[customer.firstName, customer.lastName].filter(Boolean).join(" ")}
+                  </p>
+                  <p className="text-slate-700">{customer.tradeName}</p>
+                  <p className="mt-2 text-slate-600">{customer.email}</p>
+                  <p className="text-slate-600">{customer.phone}</p>
+                  <p className="mt-2 text-xs text-slate-500">
+                    TIN {customer.tinNumber} · VAT {customer.vatNumber}
+                  </p>
+                  <p className="mt-1 text-slate-600">{customer.address}</p>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">No customer data.</p>
+              )}
+            </div>
+
+            <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] text-sm">
-                <thead className="border-b border-slate-200 text-left text-xs font-semibold uppercase text-slate-600">
+                <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="py-2 pr-4">Product</th>
-                    <th className="py-2 pr-4">Code</th>
-                    <th className="py-2 pr-4">Qty</th>
-                    <th className="py-2 pr-4">Unit price</th>
-                    <th className="py-2">Line total</th>
+                    <th className="px-6 py-3">Product</th>
+                    <th className="px-6 py-3">SKU</th>
+                    <th className="px-6 py-3 text-center">Qty</th>
+                    <th className="px-6 py-3 text-right">Unit</th>
+                    <th className="px-6 py-3 text-right">Line total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {items.map((row) => (
-                    <tr key={`${row.productId}-${row.standardCode}`}>
-                      <td className="py-3 pr-4 font-medium text-slate-900">
-                        {row.name}
-                      </td>
-                      <td className="py-3 pr-4 font-mono text-xs text-slate-600">
+                    <tr
+                      key={`${row.productId}-${row.standardCode}`}
+                      className="border-b border-slate-100 last:border-0"
+                    >
+                      <td className="px-6 py-3 font-medium text-slate-900">{row.name}</td>
+                      <td className="px-6 py-3 font-mono text-xs text-slate-600">
                         {row.standardCode}
                       </td>
-                      <td className="py-3 pr-4 text-slate-700">
-                        {row.quantity}
-                      </td>
-                      <td className="py-3 pr-4 text-slate-700">
+                      <td className="px-6 py-3 text-center text-slate-700">{row.quantity}</td>
+                      <td className="px-6 py-3 text-right text-slate-700">
                         {formatMoney(row.unitPrice)}
                       </td>
-                      <td className="py-3 font-semibold text-slate-900">
+                      <td className="px-6 py-3 text-right font-semibold text-slate-900">
                         {formatMoney(row.lineTotal)}
                       </td>
                     </tr>
@@ -279,11 +297,89 @@ export default function AdminQuotationDetailPage() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-4 text-lg font-bold text-slate-900">
-              Subtotal: {formatMoney(subtotal)}
-            </p>
+
+            <div className="border-t border-slate-100 px-6 py-4">
+              <div className="ml-auto w-full max-w-xs space-y-1">
+                <div className="flex justify-between text-sm text-slate-600">
+                  <span>Subtotal</span>
+                  <span className="font-medium text-slate-900">{formatMoney(subtotal)}</span>
+                </div>
+                <div className="flex justify-between border-t border-slate-200 pt-2 text-base font-bold text-slate-900">
+                  <span>Total</span>
+                  <span className="text-[#1E40AF]">{formatMoney(subtotal)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <aside className="space-y-4 lg:col-span-1">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Status
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <QuotationStatusBadge status={status} />
+              {paymentStatus === "paid" ? (
+                <span className="inline-flex rounded-[6px] bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">
+                  Paid
+                </span>
+              ) : (
+                <span className="inline-flex rounded-[6px] bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800">
+                  Unpaid
+                </span>
+              )}
+            </div>
+            {checkoutPaymentMethod ? (
+              <p className="mt-3 text-xs text-slate-600">
+                Payment method:{" "}
+                <span className="font-medium text-slate-800">
+                  {checkoutPaymentMethod === "cod"
+                    ? "Cash on delivery"
+                    : checkoutPaymentMethod === "card"
+                      ? "Card"
+                      : "EcoCash"}
+                </span>
+              </p>
+            ) : null}
+            {checkoutPaymentMethod === "cod" && fulfillmentStatus ? (
+              <p className="mt-1 text-xs text-slate-600">
+                Delivery:{" "}
+                <span className="font-medium capitalize">{fulfillmentStatus}</span>
+              </p>
+            ) : null}
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold text-slate-900">Actions</p>
+            <div className="mt-3 flex flex-col gap-2">
+              {showCodDelivered ? (
+                <Button
+                  className="w-full bg-emerald-600 text-white hover:bg-emerald-700"
+                  disabled={delivering}
+                  onClick={() => void confirmDelivery()}
+                >
+                  {delivering ? "Confirming…" : "Confirm delivery & issue invoice"}
+                </Button>
+              ) : null}
+              {showManualInvoice ? (
+                <Button
+                  className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                  disabled={generating}
+                  onClick={() => void generateInvoice()}
+                >
+                  {generating ? "Generating…" : "Generate invoice (manual fallback)"}
+                </Button>
+              ) : null}
+              {!showCodDelivered && !showManualInvoice ? (
+                <p className="text-xs text-slate-500">
+                  Invoices are created automatically after online payment or COD delivery
+                  confirmation when fiscalization succeeds.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   );

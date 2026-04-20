@@ -1,4 +1,6 @@
 import type { IInvoice } from "@/database/invoice.model";
+import { buildTlsFromDoc, getFiscalSettingsDoc } from "@/lib/services/fiscalSettings.service";
+import { zimraRequest, type ZimraTlsConfig } from "@/lib/zimraHttp";
 
 export interface FiscalResult {
   verificationCode: string;
@@ -13,33 +15,92 @@ export interface FiscalResult {
   rawResponse: unknown;
 }
 
-const ZIMRA_BASE = process.env.ZIMRA_API_URL ?? "https://fdmsapitest.zimra.co.zw";
 const TIMEOUT_MS = 30_000;
 
-async function fetchWithTimeout(url: string, options?: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+function zimraConfiguredHost(base: string): string {
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
+    return new URL(base).host;
+  } catch {
+    return "(invalid ZIMRA base URL)";
   }
 }
 
-export async function checkFiscalDayStatus(): Promise<{ isOpen: boolean; status: string }> {
-  const url = `${ZIMRA_BASE}/api/VirtualDevice/GetStatus`;
-  const res = await fetchWithTimeout(url, {
-    headers: { "Content-Type": "application/json", Accept: "*/*" },
-  });
+function parseZimraJsonFromText(
+  rawBody: string,
+  statusCode: number,
+  operation: string,
+  baseUrl: string
+): Record<string, unknown> {
+  const trimmed = rawBody.trim();
+  if (!trimmed) {
+    throw new Error(
+      `ZIMRA ${operation}: empty response (HTTP ${statusCode}). ` +
+        `Ensure the Virtual Device is running and the fiscal settings base URL is correct ` +
+        `(host: ${zimraConfiguredHost(baseUrl)}). Client TLS certificates may be required for HTTPS.`
+    );
+  }
+  try {
+    return JSON.parse(trimmed) as Record<string, unknown>;
+  } catch {
+    throw new Error(
+      `ZIMRA ${operation}: response is not JSON (HTTP ${statusCode}). Body preview: ${trimmed.slice(0, 160)}`
+    );
+  }
+}
 
-  const data = await res.json() as Record<string, unknown>;
+function withDeviceQuery(path: string, deviceId?: string): string {
+  if (!deviceId?.trim()) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}deviceId=${encodeURIComponent(deviceId.trim())}`;
+}
+
+async function getZimraContext(): Promise<{
+  base: string;
+  deviceId?: string;
+  tls: ZimraTlsConfig | null;
+}> {
+  const doc = await getFiscalSettingsDoc();
+  const fromSettings = doc.zimraApiUrl?.trim();
+  const base = (fromSettings || process.env.ZIMRA_API_URL || "https://fdmsapitest.zimra.co.zw").replace(
+    /\/$/,
+    ""
+  );
+  const tls = buildTlsFromDoc(doc);
+  const deviceId = doc.deviceId?.trim() || undefined;
+  return { base, deviceId, tls };
+}
+
+async function zimraCall(
+  path: string,
+  init: { method: "GET" | "POST"; body?: Record<string, unknown> },
+  operation: string
+): Promise<Record<string, unknown>> {
+  const ctx = await getZimraContext();
+  const urlPath = withDeviceQuery(path, ctx.deviceId);
+  const url = `${ctx.base}${urlPath}`;
+  const headers: Record<string, string> = { Accept: "*/*" };
+  let body: string | undefined;
+  if (init.method === "POST") {
+    headers["Content-Type"] = "application/json";
+    body = JSON.stringify(init.body ?? {});
+  }
+  const { statusCode, rawBody } = await zimraRequest(
+    url,
+    { method: init.method, headers, body },
+    ctx.tls,
+    TIMEOUT_MS
+  );
+  return parseZimraJsonFromText(rawBody, statusCode, operation, ctx.base);
+}
+
+export async function checkFiscalDayStatus(): Promise<{ isOpen: boolean; status: string }> {
+  const data = await zimraCall("/api/VirtualDevice/GetStatus", { method: "GET" }, "GetStatus");
   const code = String(data["Code"] ?? data["code"] ?? "");
 
   if (code !== "1") {
     throw new Error(`ZIMRA device not ready: ${String(data["Message"] ?? data["message"] ?? "Unknown error")}`);
   }
 
-  // Handle both casing variants the ZIMRA API returns
   const inner = (data["Data"] ?? data["data"] ?? {}) as Record<string, unknown>;
   const fiscalDayStatus = String(
     inner["fiscalDayStatus"] ?? inner["FiscalDayStatus"] ?? data["fiscalDayStatus"] ?? data["FiscalDayStatus"] ?? ""
@@ -52,12 +113,7 @@ export async function checkFiscalDayStatus(): Promise<{ isOpen: boolean; status:
 }
 
 export async function openFiscalDay(): Promise<void> {
-  const url = `${ZIMRA_BASE}/api/VirtualDevice/OpenFiscalDay`;
-  const res = await fetchWithTimeout(url, {
-    headers: { "Content-Type": "application/json", Accept: "*/*" },
-  });
-
-  const data = await res.json() as Record<string, unknown>;
+  const data = await zimraCall("/api/VirtualDevice/OpenFiscalDay", { method: "GET" }, "OpenFiscalDay");
   const code = String(data["Code"] ?? data["code"] ?? "");
 
   if (code !== "1") {
@@ -65,24 +121,20 @@ export async function openFiscalDay(): Promise<void> {
   }
 }
 
-export async function closeFiscalDay(): Promise<void> {
-  const url = `${ZIMRA_BASE}/api/VirtualDevice/CloseFiscalDay`;
-  const res = await fetchWithTimeout(url, {
-    headers: { "Content-Type": "application/json", Accept: "*/*" },
-  });
-
-  const data = await res.json() as Record<string, unknown>;
+/** Returns full ZIMRA JSON payload (persist for Z-reports). */
+export async function closeFiscalDay(): Promise<Record<string, unknown>> {
+  const data = await zimraCall("/api/VirtualDevice/CloseFiscalDay", { method: "GET" }, "CloseFiscalDay");
   const code = String(data["Code"] ?? data["code"] ?? "");
 
   if (code !== "1") {
     throw new Error(String(data["Message"] ?? data["message"] ?? "Failed to close fiscal day"));
   }
+  return data;
 }
 
 export function buildSubmitReceiptPayload(invoice: IInvoice): Record<string, unknown> {
   const buyer = invoice.buyerSnapshot;
 
-  // Compute invoice tax amount exactly as ZimraFiscalService.php does
   let invoiceTaxAmount = 0;
   if (invoice.taxInclusive) {
     for (const line of invoice.lines) {
@@ -152,14 +204,11 @@ export async function submitReceipt(invoice: IInvoice): Promise<FiscalResult> {
     throw new Error("Invoice has no line items to fiscalize. Please add at least one line.");
   }
 
-  const url = `${ZIMRA_BASE}/api/VirtualDevice/SubmitReceipt`;
-  const res = await fetchWithTimeout(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "*/*" },
-    body: JSON.stringify(payload),
-  });
-
-  const response = await res.json() as Record<string, unknown>;
+  const response = await zimraCall(
+    "/api/VirtualDevice/SubmitReceipt",
+    { method: "POST", body: payload },
+    "SubmitReceipt"
+  );
 
   const code = String(response["Code"] ?? response["code"] ?? "");
   if (code !== "1") {
@@ -168,7 +217,6 @@ export async function submitReceipt(invoice: IInvoice): Promise<FiscalResult> {
     );
   }
 
-  // Extract fiscal result — handle multiple casing variants from ZIMRA
   const data = (response["data"] ?? response["Data"] ?? response) as Record<string, unknown>;
 
   return {

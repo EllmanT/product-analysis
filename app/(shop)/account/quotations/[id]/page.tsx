@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Clock, CheckSquare, CreditCard, Award, FileText } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Banknote, CreditCard, Award, FileText, Smartphone } from "lucide-react";
 
 type QuotationItem = {
   name: string;
@@ -13,6 +13,8 @@ type QuotationItem = {
   lineTotal: string;
 };
 
+type CheckoutPayMethod = "cod" | "card" | "ecocash";
+
 type QuotationData = {
   _id: string;
   items: QuotationItem[];
@@ -20,6 +22,8 @@ type QuotationData = {
   status: string;
   paymentStatus: string;
   createdAt: string;
+  checkoutPaymentMethod: CheckoutPayMethod | null;
+  fulfillmentStatus: "pending" | "delivered" | null;
 };
 
 type CustomerData = {
@@ -40,6 +44,12 @@ function fmtMoney(s: string): string {
   return `$${isNaN(n) ? "0.00" : n.toFixed(2)}`;
 }
 
+function quotationStatusLabel(status: string): string {
+  if (status === "confirmed") return "Ready to pay";
+  if (status === "pending") return "Quote issued";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     pending: "bg-blue-100 text-blue-800",
@@ -49,65 +59,36 @@ function StatusBadge({ status }: { status: string }) {
   };
   return (
     <span className={`inline-flex items-center rounded-[6px] px-2.5 py-0.5 text-xs font-semibold ${map[status] ?? "bg-gray-100 text-gray-600"}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {quotationStatusLabel(status)}
     </span>
   );
 }
 
-// ── Timeline step helper ──────────────────────────────────────
 type StepState = "done" | "active" | "upcoming";
-
-function TimelineStep({
-  icon,
-  label,
-  state,
-  isLast,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  state: StepState;
-  isLast: boolean;
-}) {
-  const circleClass =
-    state === "done"
-      ? "bg-emerald-500 text-white"
-      : state === "active"
-      ? "bg-[#1E40AF] text-white ring-4 ring-blue-100"
-      : "bg-slate-100 text-slate-400";
-
-  return (
-    <div className="flex flex-1 flex-col items-center">
-      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${circleClass} transition-all`}>
-        {icon}
-      </div>
-      <p className={`mt-2 text-center text-xs font-medium ${state === "upcoming" ? "text-slate-400" : "text-slate-700"}`}>
-        {label}
-      </p>
-      {!isLast && (
-        <div className="absolute top-5 left-full h-0.5 w-full -translate-y-1/2 bg-slate-200" />
-      )}
-    </div>
-  );
-}
 
 function Timeline({ status, paymentStatus }: { status: string; paymentStatus: string }) {
   function getStepState(stepIndex: number): StepState {
-    // 0=Submitted, 1=Confirmed, 2=Payment, 3=Invoice
-    let activeStep = 0;
-    if (status === "confirmed" && paymentStatus === "unpaid") activeStep = 1;
-    else if (paymentStatus === "paid") activeStep = 2;
-    if (status === "invoiced") activeStep = 3;
-
-    if (stepIndex < activeStep) return "done";
-    if (stepIndex === activeStep) return "active";
+    if (status === "cancelled") {
+      if (stepIndex === 0) return "done";
+      return "upcoming";
+    }
+    if (status === "invoiced") {
+      return "done";
+    }
+    if (paymentStatus === "paid") {
+      if (stepIndex <= 1) return "done";
+      if (stepIndex === 2) return "active";
+      return "upcoming";
+    }
+    if (stepIndex === 0) return "done";
+    if (stepIndex === 1) return "active";
     return "upcoming";
   }
 
   const steps = [
-    { label: "Quotation Submitted", icon: <FileText className="h-4 w-4" /> },
-    { label: "Confirmed", icon: <CheckSquare className="h-4 w-4" /> },
-    { label: "Payment Received", icon: <CreditCard className="h-4 w-4" /> },
-    { label: "Invoice Issued", icon: <Award className="h-4 w-4" /> },
+    { label: "Quote issued", icon: <FileText className="h-4 w-4" /> },
+    { label: "Payment", icon: <CreditCard className="h-4 w-4" /> },
+    { label: "Fiscal invoice", icon: <Award className="h-4 w-4" /> },
   ];
 
   return (
@@ -147,12 +128,23 @@ function Timeline({ status, paymentStatus }: { status: string; paymentStatus: st
 function ActionCard({
   quotation,
   onShareCopied,
+  onRefresh,
 }: {
   quotation: QuotationData;
   onShareCopied: (msg: string) => void;
+  onRefresh: () => void;
 }) {
+  const router = useRouter();
   const refId = quotation._id.slice(-8).toUpperCase();
   const pdfUrl = `/api/shop/account/quotations/${quotation._id}/pdf`;
+  const [selected, setSelected] = useState<CheckoutPayMethod | null>(
+    quotation.checkoutPaymentMethod
+  );
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setSelected(quotation.checkoutPaymentMethod);
+  }, [quotation.checkoutPaymentMethod, quotation._id]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/account/quotations/${quotation._id}`;
@@ -163,6 +155,59 @@ function ActionCard({
       prompt("Copy this link:", url);
     }
   };
+
+  async function saveMethodAndContinue(method: CheckoutPayMethod) {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/shop/quotations/${quotation._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ checkoutPaymentMethod: method }),
+      });
+      const json = (await res.json()) as { error?: { message?: string } };
+      if (!res.ok) {
+        onShareCopied(json?.error?.message ?? "Could not save payment method");
+        return;
+      }
+      onRefresh();
+      if (method === "card") {
+        router.push(
+          `/payment/card?quotationId=${quotation._id}&amount=${encodeURIComponent(quotation.subtotal)}`
+        );
+      } else if (method === "ecocash") {
+        router.push(`/payment/ecocash?quotationId=${quotation._id}`);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const methodOptions: {
+    key: CheckoutPayMethod;
+    title: string;
+    description: string;
+    icon: ReactNode;
+  }[] = [
+    {
+      key: "cod",
+      title: "Cash on delivery",
+      description: "Pay when you receive your order. Your fiscal invoice is issued after delivery is confirmed.",
+      icon: <Banknote className="h-5 w-5" />,
+    },
+    {
+      key: "card",
+      title: "Card (Visa / Mastercard)",
+      description: "Pay securely online with your card via our payment partner.",
+      icon: <CreditCard className="h-5 w-5" />,
+    },
+    {
+      key: "ecocash",
+      title: "EcoCash",
+      description: "Pay with EcoCash from your mobile wallet.",
+      icon: <Smartphone className="h-5 w-5" />,
+    },
+  ];
 
   if (quotation.status === "cancelled") {
     return (
@@ -204,19 +249,134 @@ function ActionCard({
     );
   }
 
-  if (quotation.status === "confirmed" && quotation.paymentStatus === "unpaid") {
+  if (
+    quotation.paymentStatus === "unpaid" &&
+    (quotation.status === "confirmed" || quotation.status === "pending")
+  ) {
+    const method = quotation.checkoutPaymentMethod;
+
+    if (method === "cod") {
+      return (
+        <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Amount Due</p>
+          <p className="text-3xl font-semibold tabular-nums tracking-tight text-[#1E40AF]">
+            {fmtMoney(quotation.subtotal)}
+          </p>
+          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-900">Cash on delivery</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Pay when you receive your order. Your fiscal tax invoice will be issued after the delivery is confirmed by our team.
+            </p>
+            {quotation.fulfillmentStatus === "pending" ? (
+              <p className="mt-3 text-xs font-medium text-amber-800">Delivery pending — invoice follows confirmation.</p>
+            ) : null}
+          </div>
+          <a
+            href={pdfUrl}
+            download
+            className="mt-4 block w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Download Quotation PDF
+          </a>
+          <button
+            type="button"
+            onClick={() => void handleShare()}
+            className="mt-2 block w-full rounded-[8px] border border-slate-200 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Share Link
+          </button>
+        </div>
+      );
+    }
+
+    if (method === "card") {
+      return (
+        <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Amount Due</p>
+          <p className="text-3xl font-semibold tabular-nums tracking-tight text-[#1E40AF]">
+            {fmtMoney(quotation.subtotal)}
+          </p>
+          <p className="mt-2 text-sm text-slate-600">Card payment (Visa / Mastercard or ZimSwitch)</p>
+          <Link
+            href={`/payment/card?quotationId=${quotation._id}&amount=${encodeURIComponent(quotation.subtotal)}`}
+            className="mt-4 block w-full rounded-[8px] bg-[#1E40AF] py-3 text-center text-sm font-semibold text-white transition hover:bg-[#1E3A8A]"
+          >
+            Continue to payment
+          </Link>
+          <a
+            href={pdfUrl}
+            download
+            className="mt-2 block w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Download Quotation PDF
+          </a>
+        </div>
+      );
+    }
+
+    if (method === "ecocash") {
+      return (
+        <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Amount Due</p>
+          <p className="text-3xl font-semibold tabular-nums tracking-tight text-[#1E40AF]">
+            {fmtMoney(quotation.subtotal)}
+          </p>
+          <p className="mt-2 text-sm text-slate-600">Complete payment with EcoCash</p>
+          <Link
+            href={`/payment/ecocash?quotationId=${quotation._id}`}
+            className="mt-4 block w-full rounded-[8px] bg-[#1E40AF] py-3 text-center text-sm font-semibold text-white transition hover:bg-[#1E3A8A]"
+          >
+            Pay with EcoCash
+          </Link>
+          <a
+            href={pdfUrl}
+            download
+            className="mt-2 block w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Download Quotation PDF
+          </a>
+        </div>
+      );
+    }
+
     return (
       <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Amount Due</p>
         <p className="text-3xl font-semibold tabular-nums tracking-tight text-[#1E40AF]">
           {fmtMoney(quotation.subtotal)}
         </p>
-        <Link
-          href={`/payment/card?quotationId=${quotation._id}&amount=${quotation.subtotal}`}
-          className="mt-4 block w-full rounded-[8px] bg-[#1E40AF] py-3 text-center text-sm font-semibold text-white transition hover:bg-[#1E3A8A]"
+        <p className="mt-3 text-sm font-medium text-slate-800">How would you like to pay?</p>
+        <div className="mt-3 space-y-2">
+          {methodOptions.map((opt) => {
+            const active = selected === opt.key;
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setSelected(opt.key)}
+                className={`flex w-full gap-3 rounded-lg border p-3 text-left transition ${
+                  active
+                    ? "border-[#1E40AF] bg-blue-50/80 ring-1 ring-[#1E40AF]"
+                    : "border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                <span className="mt-0.5 shrink-0 text-[#1E40AF]">{opt.icon}</span>
+                <span>
+                  <span className="block text-sm font-semibold text-slate-900">{opt.title}</span>
+                  <span className="mt-0.5 block text-xs text-slate-600">{opt.description}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          disabled={!selected || saving}
+          onClick={() => selected && void saveMethodAndContinue(selected)}
+          className="mt-4 w-full rounded-[8px] bg-[#1E40AF] py-3 text-center text-sm font-semibold text-white transition hover:bg-[#1E3A8A] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Pay Now
-        </Link>
+          {saving ? "Please wait…" : "Continue"}
+        </button>
         <a
           href={pdfUrl}
           download
@@ -224,20 +384,14 @@ function ActionCard({
         >
           Download Quotation PDF
         </a>
-        <p className="mt-3 text-center text-xs text-slate-500">Secure payment processed by StockFlow</p>
+        <p className="mt-3 text-center text-xs text-slate-500">Secure checkout</p>
       </div>
     );
   }
 
-  // Pending
   return (
     <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
-      <div className="flex items-start gap-3 rounded-lg bg-amber-50 p-4">
-        <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-        <p className="text-sm text-amber-800">
-          Awaiting confirmation from our team. You'll be notified by email when your quotation is confirmed.
-        </p>
-      </div>
+      <p className="text-sm text-slate-600">Ref: #{refId}</p>
       <a
         href={pdfUrl}
         download
@@ -251,7 +405,6 @@ function ActionCard({
       >
         Share Link
       </button>
-      <p className="mt-3 text-center text-xs text-slate-500">Ref: #{refId}</p>
     </div>
   );
 }
@@ -264,22 +417,28 @@ export default function QuotationDetailPage() {
   const [customer, setCustomer] = useState<CustomerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
+      setLoading(true);
       const res = await fetch(`/api/shop/quotations/${id}`, { credentials: "include" });
       if (res.status === 401) { router.replace(`/login?redirect=/account/quotations/${id}`); return; }
       if (res.status === 404) { router.replace("/account/quotations"); return; }
       if (res.ok) {
         const json = await res.json() as { success: boolean; data: { quotation: QuotationData; customer: CustomerData | null } };
-        if (json.success) {
+        if (json.success && !cancelled) {
           setQuotation(json.data.quotation);
           setCustomer(json.data.customer);
         }
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     })();
-  }, [id, router]);
+    return () => {
+      cancelled = true;
+    };
+  }, [id, router, refreshTick]);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -374,7 +533,11 @@ export default function QuotationDetailPage() {
           {/* Right column — sticky action card */}
           <div className="lg:col-span-1">
             <div className="sticky top-6">
-              <ActionCard quotation={quotation} onShareCopied={showToast} />
+              <ActionCard
+                quotation={quotation}
+                onShareCopied={showToast}
+                onRefresh={() => setRefreshTick((t) => t + 1)}
+              />
               {customer && (
                 <div className="mt-4 rounded-xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
                   <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Customer Info</h3>

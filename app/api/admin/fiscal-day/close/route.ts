@@ -10,8 +10,18 @@ export async function POST(_request: Request) {
     const denied = requireAdmin(session);
     if (denied) return denied;
 
-    await closeFiscalDay();
-    return NextResponse.json({ success: true });
+    const report = await closeFiscalDay();
+    return NextResponse.json({
+      success: true,
+      report: {
+        _id: String(report._id),
+        closedAt: report.closedAt,
+        fiscalDayNo: report.fiscalDayNo,
+        totalSalesUsd: report.totalSalesUsd,
+        totalSalesZwg: report.totalSalesZwg,
+        source: report.source,
+      },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to close fiscal day";
     return NextResponse.json({ success: false, message }, { status: 422 });

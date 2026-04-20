@@ -41,8 +41,8 @@ export async function POST(request: Request) {
 
     if (!quotation) throw new NotFoundError("Quotation");
 
-    if (quotation.status !== "confirmed") {
-      throw new RequestError(400, "Only confirmed quotations can be paid");
+    if (!["pending", "confirmed"].includes(quotation.status)) {
+      throw new RequestError(400, "This quotation cannot be paid");
     }
 
     if (quotation.paymentStatus === "paid") {

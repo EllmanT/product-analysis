@@ -98,6 +98,18 @@ export const mainSidebarLinks = [
       icon: Calendar,
       adminOnly: true,
     },
+    {
+      title: "Fiscal settings",
+      url: "/fiscal-settings",
+      icon: IconSettings,
+      adminOnly: true,
+    },
+    {
+      title: "Z-reports",
+      url: "/z-reports",
+      icon: FileText,
+      adminOnly: true,
+    },
 
     {
       title: "Payments",

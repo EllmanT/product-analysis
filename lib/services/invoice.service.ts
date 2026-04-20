@@ -6,11 +6,11 @@ import Quotation, { type IQuotationItem } from "@/database/quotation.model";
 import dbConnect from "@/lib/mongoose";
 import { generateInvoiceNumber } from "@/lib/utils/invoiceNumber";
 import { computeLineTotals, computeInvoiceTotals } from "@/lib/utils/invoiceCalculations";
+import type { IZReportDoc } from "@/database/zReport.model";
+import { closeFiscalDayWithReport, openFiscalDayOnly } from "@/lib/services/fiscalDayOps.service";
 import {
   submitReceipt,
   checkFiscalDayStatus,
-  openFiscalDay as zimraOpenFiscalDay,
-  closeFiscalDay as zimraCloseFiscalDay,
 } from "@/lib/services/zimraFiscal.service";
 
 const DEFAULT_TAX_CODE = process.env.INVOICE_DEFAULT_TAX_CODE ?? "A";
@@ -42,8 +42,8 @@ export async function generateInvoice(
   const quotation = await Quotation.findById(quotationId);
   if (!quotation) throw new Error("Quotation not found");
 
-  if (quotation.status !== "confirmed") {
-    throw new Error("Only confirmed quotations can be invoiced");
+  if (!["pending", "confirmed"].includes(quotation.status)) {
+    throw new Error("Only issued quotations can be invoiced");
   }
 
   const customer = await Customer.findById(quotation.customerId);
@@ -172,9 +172,9 @@ export async function getFiscalDayStatus() {
 }
 
 export async function openFiscalDay() {
-  await zimraOpenFiscalDay();
+  await openFiscalDayOnly();
 }
 
-export async function closeFiscalDay() {
-  await zimraCloseFiscalDay();
+export async function closeFiscalDay(): Promise<IZReportDoc> {
+  return closeFiscalDayWithReport("manual");
 }

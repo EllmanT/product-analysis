@@ -8,6 +8,10 @@ export type QuotationStatus =
 
 export type QuotationPaymentStatus = "unpaid" | "paid";
 
+export type CheckoutPaymentMethod = "cod" | "card" | "ecocash";
+
+export type QuotationFulfillmentStatus = "pending" | "delivered";
+
 export interface IQuotationItem {
   productId: Types.ObjectId;
   name: string;
@@ -25,6 +29,11 @@ export interface IQuotation {
   paymentStatus: QuotationPaymentStatus;
   paidAt?: Date;
   paymentReference?: string;
+  /** How the customer intends to pay (chosen before completing payment or COD). */
+  checkoutPaymentMethod?: CheckoutPaymentMethod;
+  paymentMethodChosenAt?: Date;
+  /** For COD: delivery must be confirmed before fiscal invoice. */
+  fulfillmentStatus?: QuotationFulfillmentStatus;
 }
 
 export interface IQuotationDoc extends IQuotation, Document {}
@@ -66,6 +75,15 @@ const QuotationSchema = new Schema<IQuotation>(
     },
     paidAt: { type: Date },
     paymentReference: { type: String },
+    checkoutPaymentMethod: {
+      type: String,
+      enum: ["cod", "card", "ecocash"],
+    },
+    paymentMethodChosenAt: { type: Date },
+    fulfillmentStatus: {
+      type: String,
+      enum: ["pending", "delivered"],
+    },
   },
   { timestamps: true }
 );

@@ -56,10 +56,13 @@ function buildPayload(
     merchantNumber: phoneNumber,
     currencyCode: currency,
     countryCode: "ZW",
-    terminalID: process.env.ECOCASH_TERMINAL_ID,
-    location: process.env.ECOCASH_LOCATION,
-    superMerchantName: process.env.ECOCASH_SUPER_MERCHANT,
-    merchantName: process.env.ECOCASH_MERCHANT_NAME,
+    terminalID:
+      process.env.ECOCASH_TERMINAL_ID?.trim() || "REVPOS-ECO",
+    location: process.env.ECOCASH_LOCATION?.trim() || "Harare, Zimbabwe",
+    superMerchantName:
+      process.env.ECOCASH_SUPER_MERCHANT?.trim() || "AXIS SOLUTIONS PVT LTD",
+    merchantName:
+      process.env.ECOCASH_MERCHANT_NAME?.trim() || "StockFlow",
   };
 }
 
@@ -97,10 +100,17 @@ export async function initiatePayment(
   });
 
   const apiUrl = process.env.ECOCASH_API_URL;
-  const username = process.env.ECOCASH_USERNAME?.trim();
+  /** Matches Laravel `config/ecocash.php` default when env is unset. */
+  const username =
+    process.env.ECOCASH_USERNAME?.trim() || "AXIS";
   const password = process.env.ECOCASH_PASSWORD?.trim();
 
   if (!apiUrl) throw new Error("ECOCASH_API_URL is not configured");
+  if (!password) {
+    throw new Error(
+      "ECOCASH_PASSWORD is not configured. Set ECOCASH_PASSWORD (and ECOCASH_USERNAME if not using the default AXIS) in .env.local."
+    );
+  }
 
   const basicAuth = Buffer.from(`${username}:${password}`).toString("base64");
 

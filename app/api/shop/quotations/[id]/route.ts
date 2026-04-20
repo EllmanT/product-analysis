@@ -17,6 +17,9 @@ import { NextResponse } from "next/server";
 const PatchSchema = z.union([
   z.object({ action: z.literal("confirm") }),
   z.object({ paymentStatus: z.enum(["unpaid", "paid"]) }),
+  z.object({
+    checkoutPaymentMethod: z.enum(["cod", "card", "ecocash"]),
+  }),
 ]);
 
 export async function GET(
@@ -68,6 +71,8 @@ export async function GET(
             status: q.status,
             paymentStatus: q.paymentStatus,
             createdAt: q.createdAt,
+            checkoutPaymentMethod: q.checkoutPaymentMethod ?? null,
+            fulfillmentStatus: q.fulfillmentStatus ?? null,
           },
           customer: customer
             ? {
@@ -136,6 +141,30 @@ export async function PATCH(
           data: {
             _id: doc._id.toString(),
             status: doc.status,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    if ("checkoutPaymentMethod" in parsed.data) {
+      if (doc.paymentStatus !== "unpaid") {
+        throw new RequestError(400, "Payment method can only be set on unpaid quotations");
+      }
+      const m = parsed.data.checkoutPaymentMethod;
+      doc.checkoutPaymentMethod = m;
+      doc.paymentMethodChosenAt = new Date();
+      if (m === "cod") {
+        doc.fulfillmentStatus = "pending";
+      }
+      await doc.save();
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            _id: doc._id.toString(),
+            checkoutPaymentMethod: doc.checkoutPaymentMethod,
+            fulfillmentStatus: doc.fulfillmentStatus ?? null,
           },
         },
         { status: 200 }

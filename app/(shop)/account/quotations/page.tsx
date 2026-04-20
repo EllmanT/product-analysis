@@ -25,6 +25,12 @@ function fmtMoney(s: string): string {
   return `$${isNaN(n) ? "0.00" : n.toFixed(2)}`;
 }
 
+function quotationStatusLabel(status: string): string {
+  if (status === "confirmed") return "Ready to pay";
+  if (status === "pending") return "Quote issued";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     pending: "bg-blue-100 text-blue-800",
@@ -35,7 +41,7 @@ function StatusBadge({ status }: { status: string }) {
   const cls = map[status] ?? "bg-gray-100 text-gray-600";
   return (
     <span className={`inline-flex items-center rounded-[6px] px-2.5 py-0.5 text-xs font-semibold ${cls}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {quotationStatusLabel(status)}
     </span>
   );
 }

@@ -53,6 +53,8 @@ export async function GET(
             status: q.status,
             paymentStatus: q.paymentStatus,
             createdAt: q.createdAt,
+            checkoutPaymentMethod: q.checkoutPaymentMethod ?? null,
+            fulfillmentStatus: q.fulfillmentStatus ?? null,
           },
           customer: customer
             ? {

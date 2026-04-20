@@ -13,6 +13,8 @@ import Quotation from "./quotation.model";
 import Invoice from "./invoice.model";
 import HomepageConfig from "./homepage-config.model";
 import ShopPublicStats from "./shop-public-stats.model";
+import FiscalSettings from "./fiscalSettings.model";
+import ZReport from "./zReport.model";
 
 export {
   Account,
@@ -29,4 +31,6 @@ export {
   Invoice,
   HomepageConfig,
   ShopPublicStats,
+  FiscalSettings,
+  ZReport,
 };

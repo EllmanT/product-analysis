@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+lib/utils/_cert_extract_21806/
+lib/utils/_cert_extract*/
 
 # debug
 npm-debug.log*

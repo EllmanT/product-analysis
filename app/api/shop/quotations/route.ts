@@ -127,7 +127,7 @@ export async function POST(request: Request) {
       customerId: new Types.ObjectId(customerId),
       items,
       subtotal,
-      status: "pending",
+      status: "confirmed",
       paymentStatus: "unpaid",
     });
 

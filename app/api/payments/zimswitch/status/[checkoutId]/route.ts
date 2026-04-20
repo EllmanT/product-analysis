@@ -10,7 +10,7 @@ import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
 
 export async function GET(
   _request: Request,
-  { params }: { params: { checkoutId: string } }
+  context: { params: Promise<{ checkoutId: string }> }
 ) {
   try {
     await dbConnect();
@@ -18,7 +18,7 @@ export async function GET(
     const customerId = await getShopCustomerIdFromCookies();
     if (!customerId) throw new UnauthorisedError("Please sign in");
 
-    const { checkoutId } = params;
+    const { checkoutId } = await context.params;
     const checkout = await ZimswitchCheckout.findOne({ checkoutId });
     if (!checkout) throw new NotFoundError("Checkout");
 

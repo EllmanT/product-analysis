@@ -1,5 +1,10 @@
 import type { IInvoice } from "@/database/invoice.model";
-import { buildTlsFromDoc, getFiscalSettingsDoc } from "@/lib/services/fiscalSettings.service";
+import {
+  buildTlsFromDoc,
+  getFiscalSettingsDoc,
+  resolveZimraBaseUrl,
+} from "@/lib/services/fiscalSettings.service";
+import { getFdmsAuthorizationHeader } from "@/lib/zimraFdmsAuth";
 import { zimraRequest, type ZimraTlsConfig } from "@/lib/zimraHttp";
 
 export interface FiscalResult {
@@ -33,10 +38,25 @@ function parseZimraJsonFromText(
 ): Record<string, unknown> {
   const trimmed = rawBody.trim();
   if (!trimmed) {
+    const host = zimraConfiguredHost(baseUrl);
+    if (statusCode === 401) {
+      throw new Error(
+        `ZIMRA ${operation}: HTTP 401 with an empty body (host: ${host}). ` +
+          `Axis Virtual Device on HTTP requires login first: set ZIMRA_VD_EMAIL and ZIMRA_VD_PASSWORD in .env.local (POST /api/Auth/login), then retry.`
+      );
+    }
+    if (statusCode === 404) {
+      throw new Error(
+        `ZIMRA ${operation}: HTTP 404 with an empty body (host: ${host}). ` +
+          `The FDMS paths under /api/VirtualDevice/ are usually served by the ZIMRA Virtual Fiscal Device on your machine, not by the public fdmsapi*.zimra.co.zw host alone. ` +
+          `In Fiscal settings, set the custom API base URL to the HTTPS base shown in your FDMS / Virtual Device docs (often https://127.0.0.1 and a port). ` +
+          `If you intend to use the public test API host, confirm with ZIMRA that VirtualDevice endpoints are exposed there and that your client certificate matches that environment.`
+      );
+    }
     throw new Error(
       `ZIMRA ${operation}: empty response (HTTP ${statusCode}). ` +
-        `Ensure the Virtual Device is running and the fiscal settings base URL is correct ` +
-        `(host: ${zimraConfiguredHost(baseUrl)}). Client TLS certificates may be required for HTTPS.`
+        `Ensure the Virtual Fiscal Device is running and the fiscal settings base URL matches it ` +
+        `(host: ${host}). Client TLS certificates are required for HTTPS FDMS.`
     );
   }
   try {
@@ -48,23 +68,13 @@ function parseZimraJsonFromText(
   }
 }
 
-function withDeviceQuery(path: string, deviceId?: string): string {
-  if (!deviceId?.trim()) return path;
-  const sep = path.includes("?") ? "&" : "?";
-  return `${path}${sep}deviceId=${encodeURIComponent(deviceId.trim())}`;
-}
-
 async function getZimraContext(): Promise<{
   base: string;
   deviceId?: string;
   tls: ZimraTlsConfig | null;
 }> {
   const doc = await getFiscalSettingsDoc();
-  const fromSettings = doc.zimraApiUrl?.trim();
-  const base = (fromSettings || process.env.ZIMRA_API_URL || "https://fdmsapitest.zimra.co.zw").replace(
-    /\/$/,
-    ""
-  );
+  const base = resolveZimraBaseUrl(doc);
   const tls = buildTlsFromDoc(doc);
   const deviceId = doc.deviceId?.trim() || undefined;
   return { base, deviceId, tls };
@@ -76,9 +86,11 @@ async function zimraCall(
   operation: string
 ): Promise<Record<string, unknown>> {
   const ctx = await getZimraContext();
-  const urlPath = withDeviceQuery(path, ctx.deviceId);
-  const url = `${ctx.base}${urlPath}`;
+  // VirtualDevice routes match production Laravel ZimraFiscalService: no ?deviceId= on the URL (mTLS + gateway bind the device).
+  const url = `${ctx.base}${path}`;
   const headers: Record<string, string> = { Accept: "*/*" };
+  const auth = await getFdmsAuthorizationHeader(ctx.base);
+  if (auth) headers["Authorization"] = auth;
   let body: string | undefined;
   if (init.method === "POST") {
     headers["Content-Type"] = "application/json";

@@ -44,12 +44,17 @@ export async function zimraRequest(
 
   const tlsOpts = isHttps ? buildHttpsOptions(tls) : {};
 
+  const hdrs: Record<string, string> = { ...(init.headers ?? {}) };
+  if (init.method === "POST" && init.body && !hdrs["Content-Length"] && !hdrs["content-length"]) {
+    hdrs["Content-Length"] = String(Buffer.byteLength(init.body));
+  }
+
   const options: http.RequestOptions = {
     hostname: url.hostname,
     port: url.port || (isHttps ? 443 : 80),
     path: `${url.pathname}${url.search}`,
     method: init.method,
-    headers: { ...init.headers },
+    headers: hdrs,
     ...tlsOpts,
   };
 
@@ -73,6 +78,15 @@ export async function zimraRequest(
 
     req.on("error", (e) => {
       clearTimeout(timer);
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/mac verify failure/i.test(msg)) {
+        reject(
+          new Error(
+            "Client certificate (PFX) failed to load: passphrase may be wrong. Open Fiscal settings, re-upload the PFX with the correct password, or switch to PEM certificate + key."
+          )
+        );
+        return;
+      }
       reject(e);
     });
     if (init.body && init.method === "POST") {

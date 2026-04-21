@@ -10,6 +10,7 @@ import {
 
 const patchSchema = z.object({
   zimraApiUrl: z.string().nullable().optional(),
+  zimraUseProductionUrl: z.boolean().optional(),
   deviceId: z.string().nullable().optional(),
   deviceSerialNumber: z.string().nullable().optional(),
   autoScheduleEnabled: z.boolean().optional(),

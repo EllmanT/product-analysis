@@ -1,9 +1,37 @@
+import tls from "node:tls";
+
 import FiscalSettings, { type IFiscalSettingsDoc } from "@/database/fiscalSettings.model";
+import {
+  tryExtractDeviceSerialFromCertPem,
+  tryExtractDeviceSerialFromPfx,
+} from "@/lib/fiscalCertSerial";
+import { ZIMRA_DEFAULT_TEST_BASE } from "@/lib/zimraConstants";
 import dbConnect from "@/lib/mongoose";
 import type { ZimraTlsConfig } from "@/lib/zimraHttp";
 
+/** Resolved base URL after optional custom URL, env, and production toggle. */
+export function resolveZimraBaseUrl(doc: IFiscalSettingsDoc): string {
+  const raw =
+    doc.zimraApiUrl?.trim() ||
+    process.env.ZIMRA_API_URL?.trim() ||
+    ZIMRA_DEFAULT_TEST_BASE;
+  let base = raw.replace(/\/$/, "");
+  if (doc.zimraUseProductionUrl === true) {
+    try {
+      const u = new URL(base);
+      u.hostname = u.hostname.replace(/test/gi, "");
+      base = `${u.protocol}//${u.host}`.replace(/\/$/, "");
+    } catch {
+      base = base.replace(/test/gi, "");
+    }
+  }
+  return base;
+}
+
 export type FiscalSettingsSafe = {
   zimraApiUrl: string | null;
+  zimraUseProductionUrl: boolean;
+  effectiveZimraUrl: string;
   deviceId: string | null;
   deviceSerialNumber: string | null;
   hasClientCert: boolean;
@@ -50,6 +78,8 @@ export async function getFiscalSettingsSafe(): Promise<FiscalSettingsSafe> {
 function toSafe(doc: IFiscalSettingsDoc): FiscalSettingsSafe {
   return {
     zimraApiUrl: doc.zimraApiUrl?.trim() || null,
+    zimraUseProductionUrl: doc.zimraUseProductionUrl === true,
+    effectiveZimraUrl: resolveZimraBaseUrl(doc),
     deviceId: doc.deviceId?.trim() || null,
     deviceSerialNumber: doc.deviceSerialNumber?.trim() || null,
     hasClientCert: Boolean(doc.clientCertPem?.trim()),
@@ -70,16 +100,17 @@ function toSafe(doc: IFiscalSettingsDoc): FiscalSettingsSafe {
 }
 
 export function buildTlsFromDoc(doc: IFiscalSettingsDoc): ZimraTlsConfig | null {
-  if (doc.clientPfxBase64?.trim()) {
-    return {
-      pfxBase64: doc.clientPfxBase64,
-      pfxPassphrase: doc.clientPfxPassphrase,
-    };
-  }
+  // Prefer PEM when both are set so a stale/wrong PFX passphrase cannot block mTLS (PFX was checked first before).
   if (doc.clientCertPem?.trim() && doc.clientKeyPem?.trim()) {
     return {
       certPem: doc.clientCertPem,
       keyPem: doc.clientKeyPem,
+    };
+  }
+  if (doc.clientPfxBase64?.trim()) {
+    return {
+      pfxBase64: doc.clientPfxBase64,
+      pfxPassphrase: doc.clientPfxPassphrase,
     };
   }
   return null;
@@ -88,6 +119,7 @@ export function buildTlsFromDoc(doc: IFiscalSettingsDoc): ZimraTlsConfig | null 
 export async function patchFiscalSettings(
   input: Partial<{
     zimraApiUrl: string | null;
+    zimraUseProductionUrl: boolean;
     deviceId: string | null;
     deviceSerialNumber: string | null;
     autoScheduleEnabled: boolean;
@@ -104,6 +136,8 @@ export async function patchFiscalSettings(
   const doc = await getFiscalSettingsDoc();
   const set: Record<string, unknown> = {};
   if (input.zimraApiUrl !== undefined) set.zimraApiUrl = input.zimraApiUrl ?? "";
+  if (input.zimraUseProductionUrl !== undefined)
+    set.zimraUseProductionUrl = input.zimraUseProductionUrl;
   if (input.deviceId !== undefined) set.deviceId = input.deviceId ?? "";
   if (input.deviceSerialNumber !== undefined) set.deviceSerialNumber = input.deviceSerialNumber ?? "";
   if (input.autoScheduleEnabled !== undefined) set.autoScheduleEnabled = input.autoScheduleEnabled;
@@ -140,16 +174,36 @@ export async function setPemCertificates(certPem: string, keyPem: string): Promi
   doc.clientKeyPem = keyPem;
   doc.clientPfxBase64 = "";
   doc.clientPfxPassphrase = "";
+  const serial = tryExtractDeviceSerialFromCertPem(certPem);
+  if (serial) doc.deviceSerialNumber = serial;
   await doc.save();
 }
 
 export async function setPfxCertificate(base64: string, passphrase: string): Promise<void> {
+  const pfxBuf = Buffer.from(base64, "base64");
+  try {
+    tls.createSecureContext({
+      pfx: pfxBuf,
+      ...(passphrase ? { passphrase } : {}),
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/mac verify|bad decrypt|pkcs12|invalid password/i.test(msg)) {
+      throw new Error(
+        "PFX could not be loaded (wrong passphrase or bad file). Re-enter the password or export a new PFX."
+      );
+    }
+    throw e;
+  }
+
   await dbConnect();
   const doc = await getFiscalSettingsDoc();
   doc.clientPfxBase64 = base64;
   doc.clientPfxPassphrase = passphrase;
   doc.clientCertPem = "";
   doc.clientKeyPem = "";
+  const serial = tryExtractDeviceSerialFromPfx(pfxBuf, passphrase);
+  if (serial) doc.deviceSerialNumber = serial;
   await doc.save();
 }
 

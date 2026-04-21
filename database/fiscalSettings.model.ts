@@ -3,6 +3,8 @@ import { Document, model, models, Schema } from "mongoose";
 /** Singleton-style fiscal / ZIMRA configuration (admin-editable). */
 export interface IFiscalSettings {
   zimraApiUrl?: string;
+  /** When true, hostname has "test" removed (e.g. fdmsapitest → fdmsapi). */
+  zimraUseProductionUrl?: boolean;
   deviceId?: string;
   deviceSerialNumber?: string;
   /** PEM client certificate (optional if using PFX). */
@@ -34,6 +36,7 @@ export interface IFiscalSettingsDoc extends IFiscalSettings, Document {}
 const FiscalSettingsSchema = new Schema<IFiscalSettings>(
   {
     zimraApiUrl: { type: String },
+    zimraUseProductionUrl: { type: Boolean, default: false },
     deviceId: { type: String },
     deviceSerialNumber: { type: String },
     clientCertPem: { type: String },

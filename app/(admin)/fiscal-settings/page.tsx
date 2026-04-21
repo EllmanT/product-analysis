@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type InputHTMLAttributes } from "react";
 
+import type { CertBundleValidation } from "@/lib/fiscalCertBundle";
+import { ZIMRA_DEFAULT_TEST_BASE } from "@/lib/zimraConstants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +12,8 @@ import { Switch } from "@/components/ui/switch";
 
 type Settings = {
   zimraApiUrl: string | null;
+  zimraUseProductionUrl: boolean;
+  effectiveZimraUrl: string;
   deviceId: string | null;
   deviceSerialNumber: string | null;
   hasClientCert: boolean;
@@ -42,6 +46,8 @@ export default function FiscalSettingsPage() {
   const [ok, setOk] = useState<string | null>(null);
 
   const [zimraApiUrl, setZimraApiUrl] = useState("");
+  const [zimraProduction, setZimraProduction] = useState(false);
+  const [effectiveZimraUrl, setEffectiveZimraUrl] = useState(ZIMRA_DEFAULT_TEST_BASE);
   const [deviceId, setDeviceId] = useState("");
   const [deviceSerial, setDeviceSerial] = useState("");
   const [hasPem, setHasPem] = useState(false);
@@ -60,6 +66,9 @@ export default function FiscalSettingsPage() {
   const [keyFile, setKeyFile] = useState<File | null>(null);
   const [pfxFile, setPfxFile] = useState<File | null>(null);
   const [pfxPass, setPfxPass] = useState("");
+  const [bundleZip, setBundleZip] = useState<File | null>(null);
+  const [folderFiles, setFolderFiles] = useState<File[]>([]);
+  const [bundleValidation, setBundleValidation] = useState<CertBundleValidation | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,6 +82,8 @@ export default function FiscalSettingsPage() {
       }
       const d = json.data;
       setZimraApiUrl(d.zimraApiUrl ?? "");
+      setZimraProduction(d.zimraUseProductionUrl === true);
+      setEffectiveZimraUrl(d.effectiveZimraUrl || ZIMRA_DEFAULT_TEST_BASE);
       setDeviceId(d.deviceId ?? "");
       setDeviceSerial(d.deviceSerialNumber ?? "");
       setHasPem(d.hasClientCert && d.hasClientKey);
@@ -119,6 +130,7 @@ export default function FiscalSettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           zimraApiUrl: zimraApiUrl.trim() || null,
+          zimraUseProductionUrl: zimraProduction,
           deviceId: deviceId.trim() || null,
           deviceSerialNumber: deviceSerial.trim() || null,
           autoScheduleEnabled: autoSchedule,
@@ -238,6 +250,98 @@ export default function FiscalSettingsPage() {
     }
   }
 
+  async function checkBundle() {
+    setSaving(true);
+    setError(null);
+    setOk(null);
+    setBundleValidation(null);
+    try {
+      const fd = new FormData();
+      fd.append("dryRun", "true");
+      fd.append("passphrase", pfxPass);
+      if (bundleZip) {
+        fd.append("mode", "bundle_zip");
+        fd.append("bundle", bundleZip);
+      } else if (folderFiles.length > 0) {
+        fd.append("mode", "bundle_folder");
+        for (const f of folderFiles) fd.append("files", f);
+      } else {
+        setError("Select a .zip file or a certificate folder first.");
+        setSaving(false);
+        return;
+      }
+      const res = await fetch("/api/admin/fiscal-settings/certificates", {
+        method: "POST",
+        body: fd,
+      });
+      const json = (await res.json()) as {
+        success: boolean;
+        validation?: CertBundleValidation;
+        storable?: boolean;
+        message?: string;
+      };
+      if (json.validation) setBundleValidation(json.validation);
+      if (!res.ok || !json.success) {
+        setError(json.message ?? "Check failed");
+        return;
+      }
+      setOk(
+        json.storable
+          ? "Bundle looks complete — you can apply it to store certificates."
+          : "Bundle is incomplete — see details below."
+      );
+    } catch {
+      setError("Check failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function applyBundle() {
+    setSaving(true);
+    setError(null);
+    setOk(null);
+    setBundleValidation(null);
+    try {
+      const fd = new FormData();
+      fd.append("dryRun", "false");
+      fd.append("passphrase", pfxPass);
+      if (bundleZip) {
+        fd.append("mode", "bundle_zip");
+        fd.append("bundle", bundleZip);
+      } else if (folderFiles.length > 0) {
+        fd.append("mode", "bundle_folder");
+        for (const f of folderFiles) fd.append("files", f);
+      } else {
+        setError("Select a .zip file or a certificate folder first.");
+        setSaving(false);
+        return;
+      }
+      const res = await fetch("/api/admin/fiscal-settings/certificates", {
+        method: "POST",
+        body: fd,
+      });
+      const json = (await res.json()) as {
+        success: boolean;
+        validation?: CertBundleValidation;
+        message?: string;
+      };
+      if (json.validation) setBundleValidation(json.validation);
+      if (!res.ok || !json.success) {
+        setError(json.message ?? "Upload failed");
+        return;
+      }
+      setOk("Certificate bundle saved.");
+      setBundleZip(null);
+      setFolderFiles([]);
+      await load();
+    } catch {
+      setError("Upload failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="px-4 py-8 lg:px-6">
@@ -271,15 +375,46 @@ export default function FiscalSettingsPage() {
 
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-base font-semibold text-slate-800">Connection &amp; device</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          API base defaults to the ZIMRA <strong>test</strong> host. Turn on production to drop{" "}
+          <code className="rounded bg-slate-100 px-1 text-xs">test</code> from the hostname (e.g.{" "}
+          <code className="rounded bg-slate-100 px-1 text-xs">fdmsapitest</code> →{" "}
+          <code className="rounded bg-slate-100 px-1 text-xs">fdmsapi</code>).
+          Paths under <code className="rounded bg-slate-100 px-1 text-xs">/api/VirtualDevice/</code> are
+          usually served by the <strong>Virtual Fiscal Device</strong> on your PC; if you get HTTP 404 on
+          fdmsapi*.zimra.co.zw, set a custom base such as{" "}
+          <code className="rounded bg-slate-100 px-1 text-xs">https://127.0.0.1:port</code> from your FDMS docs.
+        </p>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2 flex flex-col gap-3 rounded-lg border border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium text-slate-800">Production ZIMRA URL</p>
+              <p className="text-xs text-slate-500">
+                Off = test environment. On = same settings but hostname has “test” removed.
+              </p>
+            </div>
+            <Switch checked={zimraProduction} onCheckedChange={setZimraProduction} />
+          </div>
+          <div className="md:col-span-2 space-y-2 rounded-lg border border-emerald-100 bg-emerald-50/60 px-4 py-3">
+            <Label className="text-slate-700">Effective API base (used for FDMS calls)</Label>
+            <p className="font-mono text-sm font-semibold text-emerald-900 break-all">{effectiveZimraUrl}</p>
+          </div>
           <div className="md:col-span-2 space-y-2">
-            <Label htmlFor="apiUrl">ZIMRA API base URL</Label>
+            <Label htmlFor="apiUrl">Custom base URL override (optional)</Label>
             <Input
               id="apiUrl"
-              placeholder="https://fdmsapitest.zimra.co.zw or http://127.0.0.1:port"
+              placeholder={`Leave empty for ${ZIMRA_DEFAULT_TEST_BASE} (or ZIMRA_API_URL from env)`}
               value={zimraApiUrl}
               onChange={(e) => setZimraApiUrl(e.target.value)}
             />
+            <p className="text-xs text-slate-500">
+              Use for a local Virtual Device (e.g. <code className="rounded bg-slate-100 px-1">http://127.0.0.1:port</code>
+              or <code className="rounded bg-slate-100 px-1">http://140.82.25.196:10007</code>
+              ). HTTP Axis Virtual Device also needs <code className="rounded bg-slate-100 px-1">ZIMRA_VD_EMAIL</code> and{" "}
+              <code className="rounded bg-slate-100 px-1">ZIMRA_VD_PASSWORD</code> in <code className="rounded bg-slate-100 px-1">.env.local</code>{" "}
+              (POST <code className="rounded bg-slate-100 px-1">/api/Auth/login</code>). Production toggle still adjusts the hostname when it
+              contains “test”.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="devId">Device ID</Label>
@@ -291,13 +426,16 @@ export default function FiscalSettingsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="serial">Device serial (reference)</Label>
+            <Label htmlFor="serial">Device serial</Label>
             <Input
               id="serial"
-              placeholder="Serial on certificate / FDMS"
+              placeholder="e.g. VR-… (filled from certificate when possible)"
               value={deviceSerial}
               onChange={(e) => setDeviceSerial(e.target.value)}
             />
+            <p className="text-xs text-slate-500">
+              We read <code className="rounded bg-slate-100 px-1">serialNumber=…</code> from the client cert subject, or fall back to the X.509 serial, when you upload PEM/PFX or a bundle.
+            </p>
           </div>
         </div>
       </section>
@@ -310,6 +448,135 @@ export default function FiscalSettingsPage() {
         <p className="mt-2 text-xs text-slate-500">
           PEM stored: {hasPem ? "yes" : "no"} · PFX stored: {hasPfx ? "yes" : "no"}
         </p>
+
+        <Separator className="my-4" />
+
+        <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4">
+          <h3 className="text-sm font-semibold text-slate-800">Zip or folder (auto-detect)</h3>
+          <p className="mt-1 text-xs text-slate-600">
+            Upload the same zip ZIMRA gave you (e.g. <code className="rounded bg-white px-1">certificates_21806.zip</code>) or choose the extracted folder.
+            The system finds <strong>PFX</strong> or <strong>cert + key</strong>, ignores CSRs, and reports anything missing.
+          </p>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="space-y-1">
+              <Label className="text-xs">Zip archive</Label>
+              <Input
+                type="file"
+                accept=".zip,application/zip"
+                onChange={(e) => {
+                  setBundleZip(e.target.files?.[0] ?? null);
+                  setFolderFiles([]);
+                  setBundleValidation(null);
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Or certificate folder</Label>
+              <Input
+                type="file"
+                multiple
+                className="cursor-pointer"
+                {...({
+                  webkitdirectory: "",
+                  directory: "",
+                } as InputHTMLAttributes<HTMLInputElement>)}
+                onChange={(e) => {
+                  setFolderFiles(Array.from(e.target.files ?? []));
+                  setBundleZip(null);
+                  setBundleValidation(null);
+                }}
+              />
+            </div>
+            <div className="space-y-1 sm:min-w-[140px]">
+              <Label className="text-xs">PFX passphrase (if needed)</Label>
+              <Input
+                type="password"
+                placeholder="Optional"
+                value={pfxPass}
+                onChange={(e) => setPfxPass(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" variant="secondary" onClick={() => void checkBundle()} disabled={saving}>
+                Check bundle
+              </Button>
+              <Button type="button" size="sm" onClick={() => void applyBundle()} disabled={saving}>
+                Save bundle
+              </Button>
+            </div>
+          </div>
+          {(bundleZip || folderFiles.length > 0) && (
+            <p className="mt-2 text-xs text-slate-500">
+              {bundleZip ? `Zip: ${bundleZip.name}` : `Folder: ${folderFiles.length} file(s)`}
+            </p>
+          )}
+        </div>
+
+        {bundleValidation && (
+          <div
+            className={`mt-4 rounded-lg border p-4 text-sm ${
+              bundleValidation.missing.length
+                ? "border-amber-200 bg-amber-50 text-amber-950"
+                : "border-emerald-200 bg-emerald-50 text-emerald-950"
+            }`}
+          >
+            <p className="font-semibold">Bundle validation</p>
+            <p className="mt-1 text-xs">
+              TLS material detected:{" "}
+              <strong>{bundleValidation.tlsReady ? bundleValidation.tlsReady.toUpperCase() : "none"}</strong>
+            </p>
+            {bundleValidation.usedFiles.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-medium text-slate-700">Used for storage</p>
+                <ul className="mt-1 list-inside list-disc text-xs">
+                  {bundleValidation.usedFiles.map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {bundleValidation.filesScanned.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-medium text-slate-700">Files scanned</p>
+                <p className="mt-1 font-mono text-[11px] leading-relaxed text-slate-600">
+                  {bundleValidation.filesScanned.join(", ")}
+                </p>
+              </div>
+            )}
+            {bundleValidation.missing.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-medium text-red-800">Missing / blocking</p>
+                <ul className="mt-1 list-inside list-disc text-xs text-red-900">
+                  {bundleValidation.missing.map((m) => (
+                    <li key={m}>{m}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {bundleValidation.warnings.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-medium text-amber-900">Warnings</p>
+                <ul className="mt-1 list-inside list-disc text-xs">
+                  {bundleValidation.warnings.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {bundleValidation.ignored.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-medium text-slate-600">Ignored (not used for mTLS)</p>
+                <ul className="mt-1 max-h-28 overflow-y-auto font-mono text-[11px] text-slate-600">
+                  {bundleValidation.ignored.map((i) => (
+                    <li key={i.path}>
+                      {i.path} — {i.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
         <Separator className="my-4" />
 

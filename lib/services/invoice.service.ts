@@ -12,6 +12,10 @@ import {
   submitReceipt,
   checkFiscalDayStatus,
 } from "@/lib/services/zimraFiscal.service";
+import {
+  getZimraQrEmbedString,
+  isInvoiceZimraVerifiedForDisplay,
+} from "@/lib/utils/zimraInvoiceDisplay";
 
 const DEFAULT_TAX_CODE = process.env.INVOICE_DEFAULT_TAX_CODE ?? "A";
 const DEFAULT_TAX_PERCENT = parseFloat(process.env.INVOICE_DEFAULT_TAX_PERCENT ?? "15");
@@ -145,7 +149,7 @@ export async function fiscalizeInvoice(invoiceId: string) {
   const invoice = await Invoice.findById(invoiceId);
   if (!invoice) throw new Error("Invoice not found");
 
-  if (invoice.isFiscalized || invoice.fiscalStatus === "SUBMITTED") {
+  if (isInvoiceZimraVerifiedForDisplay(invoice)) {
     throw new Error("Invoice already fiscalized");
   }
 
@@ -160,8 +164,8 @@ export async function fiscalizeInvoice(invoiceId: string) {
   invoice.fiscalStatus = "SUBMITTED";
   invoice.status = "sent";
   invoice.fiscalSubmittedAt = new Date();
-  // Store verification link as QR data for backward compat
-  invoice.qrCodeData = fiscalResult.verificationLink || fiscalResult.qrCodeUrl || invoice.qrCodeData;
+  invoice.qrCodeData =
+    getZimraQrEmbedString(fiscalResult) || invoice.qrCodeData;
   await invoice.save();
 
   return invoice;

@@ -42,6 +42,7 @@ const WD_LABELS: { v: number; label: string }[] = [
 export default function FiscalSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncingDevice, setSyncingDevice] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -117,6 +118,26 @@ export default function FiscalSettingsPage() {
       setList(next.length ? next : [day]);
     } else {
       setList([...list, day].sort((a, b) => a - b));
+    }
+  }
+
+  async function syncDeviceFromZimra() {
+    setSyncingDevice(true);
+    setError(null);
+    setOk(null);
+    try {
+      const res = await fetch("/api/admin/fiscal-settings/sync-device", { method: "POST" });
+      const json = (await res.json()) as { success: boolean; message?: string };
+      if (!res.ok || !json.success) {
+        setError(typeof json.message === "string" ? json.message : "Sync failed");
+        return;
+      }
+      setOk("Device ID and serial updated from ZIMRA GetConfig.");
+      await load();
+    } catch {
+      setError("Sync failed");
+    } finally {
+      setSyncingDevice(false);
     }
   }
 
@@ -408,12 +429,13 @@ export default function FiscalSettingsPage() {
               onChange={(e) => setZimraApiUrl(e.target.value)}
             />
             <p className="text-xs text-slate-500">
-              Use for a local Virtual Device (e.g. <code className="rounded bg-slate-100 px-1">http://127.0.0.1:port</code>
-              or <code className="rounded bg-slate-100 px-1">http://140.82.25.196:10007</code>
-              ). HTTP Axis Virtual Device also needs <code className="rounded bg-slate-100 px-1">ZIMRA_VD_EMAIL</code> and{" "}
-              <code className="rounded bg-slate-100 px-1">ZIMRA_VD_PASSWORD</code> in <code className="rounded bg-slate-100 px-1">.env.local</code>{" "}
-              (POST <code className="rounded bg-slate-100 px-1">/api/Auth/login</code>). Production toggle still adjusts the hostname when it
-              contains “test”.
+              Shared Axis VD example: <code className="rounded bg-slate-100 px-1">http://140.82.25.196:10005</code> (no Bearer
+              auth — leave <code className="rounded bg-slate-100 px-1">ZIMRA_VD_EMAIL</code> /{" "}
+              <code className="rounded bg-slate-100 px-1">ZIMRA_VD_PASSWORD</code> unset) or{" "}
+              <code className="rounded bg-slate-100 px-1">http://140.82.25.196:10007</code> (same API paths; set those env
+              vars for POST <code className="rounded bg-slate-100 px-1">/api/Auth/login</code>). Also{" "}
+              <code className="rounded bg-slate-100 px-1">http://127.0.0.1:port</code> per FDMS docs. Production toggle only
+              rewrites hostnames containing “test”.
             </p>
           </div>
           <div className="space-y-2">
@@ -436,6 +458,23 @@ export default function FiscalSettingsPage() {
             <p className="text-xs text-slate-500">
               We read <code className="rounded bg-slate-100 px-1">serialNumber=…</code> from the client cert subject, or fall back to the X.509 serial, when you upload PEM/PFX or a bundle.
             </p>
+          </div>
+          <div className="md:col-span-2 flex flex-col gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-slate-800">Sync device from ZIMRA</p>
+              <p className="text-xs text-slate-500">
+                Calls <code className="rounded bg-white px-1">GET /api/VirtualDevice/GetConfig</code> and saves{" "}
+                <strong>Device ID</strong> and <strong>serial</strong> (useful for shared test hosts such as :10005).
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={syncingDevice || loading}
+              onClick={() => void syncDeviceFromZimra()}
+            >
+              {syncingDevice ? "Syncing…" : "Sync device from ZIMRA"}
+            </Button>
           </div>
         </div>
       </section>

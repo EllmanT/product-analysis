@@ -6,11 +6,15 @@ import {
 } from "@/lib/services/fiscalSettings.service";
 import { getFdmsAuthorizationHeader } from "@/lib/zimraFdmsAuth";
 import { zimraRequest, type ZimraTlsConfig } from "@/lib/zimraHttp";
+import logger from "@/lib/logger";
+import { isBareZimraPortalUrl } from "@/lib/utils/zimraInvoiceDisplay";
 
 export interface FiscalResult {
   verificationCode: string;
   verificationLink: string;
   qrCodeUrl: string;
+  /** Raw receipt hash or non-URL QR payload from ZIMRA (encode as QR when no link). */
+  receiptHash: string;
   fiscalDayNo: number | null;
   fdmsInvoiceNo: string;
   receiptGlobalNo: string;
@@ -18,6 +22,16 @@ export interface FiscalResult {
   receiptId: string;
   deviceId: string;
   rawResponse: unknown;
+}
+
+export interface VirtualDeviceConfigSummary {
+  deviceId: string;
+  deviceSerialNumber: string;
+  fiscalDayNo: number | null;
+  verificationLink: string;
+  qrUrl: string;
+  applicableTaxes: unknown;
+  raw: Record<string, unknown>;
 }
 
 const TIMEOUT_MS = 30_000;
@@ -68,6 +82,109 @@ function parseZimraJsonFromText(
   }
 }
 
+/** Merge nested Data/data with top-level keys (root wins on collision — matches ZIMRA envelopes). */
+function mergeZimraRootAndData(response: Record<string, unknown>): Record<string, unknown> {
+  const innerRaw = response["Data"] ?? response["data"];
+  const inner =
+    innerRaw && typeof innerRaw === "object" && !Array.isArray(innerRaw)
+      ? (innerRaw as Record<string, unknown>)
+      : null;
+  const rest = { ...response };
+  delete rest.Data;
+  delete rest.data;
+  if (!inner) return rest;
+  return { ...inner, ...rest };
+}
+
+function pickStr(obj: Record<string, unknown>, ...keys: string[]): string {
+  for (const k of keys) {
+    const v = obj[k];
+    if (v != null && String(v).trim() !== "") return String(v);
+  }
+  return "";
+}
+
+function parseFiscalDayNo(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function getSubmitReceiptPath(): string {
+  const custom = process.env.ZIMRA_SUBMIT_RECEIPT_PATH?.trim();
+  if (custom) {
+    const p = custom.startsWith("/") ? custom : `/${custom}`;
+    return p;
+  }
+  const flag = process.env.ZIMRA_USE_SUBMIT_RECEIPT_EXT?.trim().toLowerCase();
+  if (flag === "1" || flag === "true" || flag === "yes") {
+    return "/api/VirtualDevice/SubmitReceiptExt";
+  }
+  return "/api/VirtualDevice/SubmitReceipt";
+}
+
+function longestNonBareZimraHttpUrl(merged: Record<string, unknown>): string {
+  const found: string[] = [];
+  for (const v of Object.values(merged)) {
+    if (typeof v !== "string") continue;
+    const t = v.trim();
+    if (!/^https?:\/\//i.test(t)) continue;
+    if (!isBareZimraPortalUrl(t)) found.push(t);
+  }
+  if (!found.length) return "";
+  return found.reduce((a, b) => (b.length > a.length ? b : a), found[0]);
+}
+
+function mapResponseToFiscalResult(response: Record<string, unknown>): FiscalResult {
+  const merged = mergeZimraRootAndData(response);
+
+  let verificationLink = pickStr(
+    merged,
+    "verificationLink",
+    "VerificationLink",
+    "verificationURL",
+    "VerificationURL"
+  );
+  const fromScan = longestNonBareZimraHttpUrl(merged);
+  if (fromScan && (!verificationLink || isBareZimraPortalUrl(verificationLink))) {
+    verificationLink = fromScan;
+  }
+  const qrRaw = merged["QRCode"] ?? merged["qrCode"];
+  const qrStr = qrRaw != null ? String(qrRaw).trim() : "";
+  const qrIsHttp = /^https?:\/\//i.test(qrStr);
+
+  let qrCodeUrl = "";
+  let receiptHashFromQr = "";
+  if (qrIsHttp) qrCodeUrl = qrStr;
+  else if (qrStr) receiptHashFromQr = qrStr;
+
+  const qrUrlField = pickStr(merged, "qrCodeUrl", "qrUrl");
+  if (!qrCodeUrl && qrUrlField && /^https?:\/\//i.test(qrUrlField)) {
+    qrCodeUrl = qrUrlField;
+  } else if (!qrCodeUrl && !receiptHashFromQr && qrUrlField) {
+    receiptHashFromQr = qrUrlField;
+  }
+
+  const receiptHash =
+    pickStr(merged, "receiptHash", "ReceiptHash") || receiptHashFromQr;
+
+  return {
+    verificationCode: pickStr(merged, "verificationCode", "VerificationCode"),
+    verificationLink,
+    qrCodeUrl,
+    receiptHash,
+    fiscalDayNo: parseFiscalDayNo(
+      merged["fiscalDayNo"] ?? merged["FiscalDayNo"]
+    ),
+    fdmsInvoiceNo: pickStr(merged, "fdmsInvoiceNo", "FDMSInvoiceNo"),
+    receiptGlobalNo: pickStr(merged, "receiptGlobalNo", "ReceiptGlobalNo"),
+    receiptCounter: pickStr(merged, "receiptCounter", "ReceiptCounter"),
+    receiptId: pickStr(merged, "receiptId", "ReceiptId"),
+    deviceId: pickStr(merged, "DeviceID", "deviceId"),
+    rawResponse: response,
+  };
+}
+
 async function getZimraContext(): Promise<{
   base: string;
   deviceId?: string;
@@ -86,7 +203,6 @@ async function zimraCall(
   operation: string
 ): Promise<Record<string, unknown>> {
   const ctx = await getZimraContext();
-  // VirtualDevice routes match production Laravel ZimraFiscalService: no ?deviceId= on the URL (mTLS + gateway bind the device).
   const url = `${ctx.base}${path}`;
   const headers: Record<string, string> = { Accept: "*/*" };
   const auth = await getFdmsAuthorizationHeader(ctx.base);
@@ -103,6 +219,38 @@ async function zimraCall(
     TIMEOUT_MS
   );
   return parseZimraJsonFromText(rawBody, statusCode, operation, ctx.base);
+}
+
+/** GET /api/VirtualDevice/GetConfig — device identity and tax table for shared / test VD. */
+export async function getVirtualDeviceConfig(): Promise<VirtualDeviceConfigSummary> {
+  const data = await zimraCall("/api/VirtualDevice/GetConfig", { method: "GET" }, "GetConfig");
+  const code = String(data["Code"] ?? data["code"] ?? "");
+  if (code !== "1") {
+    throw new Error(String(data["Message"] ?? data["message"] ?? "GetConfig failed"));
+  }
+  const merged = mergeZimraRootAndData(data);
+  const inner = (data["Data"] ?? data["data"]) as Record<string, unknown> | undefined;
+  const applicableTaxes =
+    inner && typeof inner === "object" && "applicableTaxes" in inner
+      ? inner["applicableTaxes"]
+      : undefined;
+
+  const deviceSerialNumber =
+    pickStr(merged, "DeviceSerialNumber", "deviceSerialNumber", "deviceSerialNo") ||
+    pickStr(
+      inner && typeof inner === "object" ? (inner as Record<string, unknown>) : {},
+      "deviceSerialNo"
+    );
+
+  return {
+    deviceId: pickStr(merged, "DeviceID", "deviceId"),
+    deviceSerialNumber,
+    fiscalDayNo: parseFiscalDayNo(data["FiscalDayNo"] ?? data["fiscalDayNo"] ?? merged["FiscalDayNo"]),
+    verificationLink: pickStr(merged, "VerificationLink", "verificationLink"),
+    qrUrl: pickStr(merged, "qrUrl", "QRCode", "qrCode"),
+    applicableTaxes: applicableTaxes ?? [],
+    raw: data,
+  };
 }
 
 export async function checkFiscalDayStatus(): Promise<{ isOpen: boolean; status: string }> {
@@ -202,6 +350,17 @@ export function buildSubmitReceiptPayload(invoice: IInvoice): Record<string, unk
   };
 }
 
+/** SubmitReceiptExt body: same as SubmitReceipt plus reference fields (empty for first sale / FiscalInvoice). */
+export function buildSubmitReceiptExtPayload(invoice: IInvoice): Record<string, unknown> {
+  const base = buildSubmitReceiptPayload(invoice);
+  return {
+    ...base,
+    refDeviceID: "",
+    refReceiptGlobalnumber: "",
+    refFiscalDay: "",
+  };
+}
+
 export async function submitReceipt(invoice: IInvoice): Promise<FiscalResult> {
   const dayStatus = await checkFiscalDayStatus();
   if (!dayStatus.isOpen) {
@@ -210,17 +369,16 @@ export async function submitReceipt(invoice: IInvoice): Promise<FiscalResult> {
     );
   }
 
-  const payload = buildSubmitReceiptPayload(invoice);
+  const path = getSubmitReceiptPath();
+  const useExt = path.includes("SubmitReceiptExt");
+  const payload = useExt ? buildSubmitReceiptExtPayload(invoice) : buildSubmitReceiptPayload(invoice);
 
   if (!Array.isArray(payload.receiptLines) || (payload.receiptLines as unknown[]).length === 0) {
     throw new Error("Invoice has no line items to fiscalize. Please add at least one line.");
   }
 
-  const response = await zimraCall(
-    "/api/VirtualDevice/SubmitReceipt",
-    { method: "POST", body: payload },
-    "SubmitReceipt"
-  );
+  const operation = useExt ? "SubmitReceiptExt" : "SubmitReceipt";
+  const response = await zimraCall(path, { method: "POST", body: payload }, operation);
 
   const code = String(response["Code"] ?? response["code"] ?? "");
   if (code !== "1") {
@@ -229,25 +387,14 @@ export async function submitReceipt(invoice: IInvoice): Promise<FiscalResult> {
     );
   }
 
-  const data = (response["data"] ?? response["Data"] ?? response) as Record<string, unknown>;
+  logger.info(
+    {
+      operation,
+      path,
+      responsePreview: JSON.stringify(response).slice(0, 4000),
+    },
+    "ZIMRA submit receipt response"
+  );
 
-  return {
-    verificationCode: String(data["verificationCode"] ?? data["VerificationCode"] ?? ""),
-    verificationLink: String(data["verificationLink"] ?? data["VerificationLink"] ?? ""),
-    qrCodeUrl: String(data["qrCodeUrl"] ?? data["QRCode"] ?? data["qrCode"] ?? ""),
-    fiscalDayNo:
-      data["fiscalDayNo"] != null
-        ? Number(data["fiscalDayNo"])
-        : data["FiscalDayNo"] != null
-        ? Number(data["FiscalDayNo"])
-        : null,
-    fdmsInvoiceNo: String(data["fdmsInvoiceNo"] ?? data["FDMSInvoiceNo"] ?? ""),
-    receiptGlobalNo: String(data["receiptGlobalNo"] ?? data["ReceiptGlobalNo"] ?? ""),
-    receiptCounter: String(data["receiptCounter"] ?? data["ReceiptCounter"] ?? ""),
-    receiptId: String(data["receiptId"] ?? data["ReceiptId"] ?? ""),
-    deviceId: String(
-      data["DeviceID"] ?? data["deviceId"] ?? data["DeviceSerialNumber"] ?? ""
-    ),
-    rawResponse: response,
-  };
+  return mapResponseToFiscalResult(response);
 }

@@ -44,6 +44,8 @@ export interface IFiscalData {
   verificationCode: string;
   verificationLink: string;
   qrCodeUrl: string;
+  /** Receipt hash or raw QR payload when ZIMRA does not return a verification URL. */
+  receiptHash?: string;
   fiscalDayNo: number | null;
   fdmsInvoiceNo: string;
   receiptGlobalNo: string;
@@ -136,6 +138,7 @@ const FiscalDataSchema = new Schema<IFiscalData>(
     verificationCode: { type: String, default: "" },
     verificationLink: { type: String, default: "" },
     qrCodeUrl: { type: String, default: "" },
+    receiptHash: { type: String, default: "" },
     fiscalDayNo: { type: Number, default: null },
     fdmsInvoiceNo: { type: String, default: "" },
     receiptGlobalNo: { type: String, default: "" },

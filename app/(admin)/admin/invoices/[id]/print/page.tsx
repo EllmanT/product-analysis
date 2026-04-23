@@ -5,8 +5,14 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import QRCode from "qrcode";
 
+import {
+  getZimraQrEmbedString,
+  isInvoiceZimraVerifiedForDisplay,
+} from "@/lib/utils/zimraInvoiceDisplay";
+
 type InvLine = {
   lineNo: number;
+  lineType?: string;
   hsCode?: string;
   description: string;
   quantity: number;
@@ -22,6 +28,7 @@ type FiscalData = {
   verificationCode: string;
   verificationLink: string;
   qrCodeUrl: string;
+  receiptHash?: string;
   fiscalDayNo: number | null;
   fdmsInvoiceNo: string;
   receiptGlobalNo: string;
@@ -97,18 +104,24 @@ export default function PrintInvoicePage() {
     if (!id) return;
     fetch(`/api/admin/invoices/${id}`)
       .then((r) => {
-        if (r.status === 401) { router.replace("/sign-in"); return null; }
+        if (r.status === 401) {
+          router.replace("/sign-in");
+          return null;
+        }
         return r.json() as Promise<{ success: boolean; data: { invoice: InvoiceDetail; seller: Seller } }>;
       })
       .then((json) => {
         if (json?.success && json.data?.invoice) {
-          setInvoice(json.data.invoice);
+          const inv = json.data.invoice;
+          setInvoice(inv);
           setSeller(json.data.seller ?? null);
-          const qrSource = json.data.invoice.fiscalData?.verificationLink || json.data.invoice.fiscalData?.qrCodeUrl;
-          if (qrSource) {
-            QRCode.toDataURL(qrSource, { errorCorrectionLevel: "M", width: 180, margin: 1 })
-              .then((url) => setQrDataUrl(url))
-              .catch(() => {});
+          if (isInvoiceZimraVerifiedForDisplay(inv)) {
+            const s = getZimraQrEmbedString(inv.fiscalData);
+            if (s) {
+              void QRCode.toDataURL(s, { errorCorrectionLevel: "M", width: 140, margin: 1 })
+                .then(setQrDataUrl)
+                .catch(() => setQrDataUrl(""));
+            }
           }
         }
         setLoading(false);
@@ -116,7 +129,6 @@ export default function PrintInvoicePage() {
       .catch(() => setLoading(false));
   }, [id, router]);
 
-  // Auto-print once loaded
   useEffect(() => {
     if (!loading && invoice) {
       const timer = setTimeout(() => window.print(), 600);
@@ -133,7 +145,8 @@ export default function PrintInvoicePage() {
   }
 
   const currency = invoice.receiptCurrency || "USD";
-  const isFiscalized = invoice.isFiscalized || invoice.fiscalStatus === "SUBMITTED";
+  const isZimraVerified = isInvoiceZimraVerifiedForDisplay(invoice);
+  const verifyUrl = isZimraVerified ? getZimraQrEmbedString(invoice.fiscalData) : "";
 
   return (
     <>
@@ -155,12 +168,14 @@ export default function PrintInvoicePage() {
 
       <div className="no-print fixed right-4 top-4 flex gap-2">
         <button
+          type="button"
           onClick={() => window.print()}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
         >
           Print
         </button>
         <button
+          type="button"
           onClick={() => window.close()}
           className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
         >
@@ -169,137 +184,270 @@ export default function PrintInvoicePage() {
       </div>
 
       <div className="page">
-        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: "#064E3B" }}>STOCKFLOW</div>
-            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{seller?.tradeName || seller?.legalName || ""}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>STOCKFLOW</div>
+            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+              {seller?.tradeName || seller?.legalName || ""}
+            </div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 18, fontWeight: 700 }}>{receiptTypeLabel(invoice.receiptType)}</div>
-            <div className="mono" style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>{invoice.invoiceNumber}</div>
-            <div style={{ fontSize: 11, color: "#6b7280" }}>{new Date(invoice.receiptDate ?? invoice.createdAt).toLocaleDateString()}</div>
-            <div style={{ fontSize: 11, color: "#6b7280" }}>{currency} · {invoice.paymentMethod}</div>
+            <div className="mono" style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>
+              {invoice.invoiceNumber}
+            </div>
+            <div style={{ fontSize: 11, color: "#64748b" }}>
+              {new Date(invoice.receiptDate ?? invoice.createdAt).toLocaleDateString()}
+            </div>
+            <div style={{ fontSize: 11, color: "#64748b" }}>
+              {currency} · {invoice.paymentMethod}
+            </div>
           </div>
         </div>
 
-        {/* Seller + Buyer */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
           <div style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: "10px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", marginBottom: 4, textTransform: "uppercase" }}>Seller</div>
-            {seller?.legalName && <div><strong>{seller.legalName}</strong></div>}
-            {seller?.tradeName && seller.tradeName !== seller.legalName && <div style={{ color: "#6b7280" }}>{seller.tradeName}</div>}
-            {seller?.tin && <div>TIN: <span className="mono">{seller.tin}</span></div>}
-            {seller?.vatNumber && <div>VAT: <span className="mono">{seller.vatNumber}</span></div>}
-            {seller?.address && <div>{seller.address}</div>}
-            {seller?.city && <div>{seller.city}{seller.region ? `, ${seller.region}` : ""}</div>}
-            {seller?.phone && <div>Tel: {seller.phone}</div>}
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#64748b",
+                marginBottom: 4,
+                textTransform: "uppercase",
+              }}
+            >
+              Seller
+            </div>
+            {seller?.legalName && (
+              <div style={{ fontWeight: 600 }}>{seller.legalName}</div>
+            )}
+            {seller?.tradeName && (
+              <div style={seller.tradeName !== seller.legalName ? { color: "#64748b" } : undefined}>
+                {seller.tradeName}
+              </div>
+            )}
+            {seller?.tin && (
+              <div>
+                TIN: <span className="mono">{seller.tin}</span>
+              </div>
+            )}
+            {seller?.vatNumber && (
+              <div>
+                VAT: <span className="mono">{seller.vatNumber}</span>
+              </div>
+            )}
             {seller?.email && <div>{seller.email}</div>}
+            {seller?.phone && <div>Tel: {seller.phone}</div>}
+            {seller?.address && <div>{seller.address}</div>}
+            {(seller?.city || seller?.region) && (
+              <div>
+                {seller?.city}
+                {seller?.region ? `, ${seller.region}` : ""}
+              </div>
+            )}
           </div>
           <div style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: "10px 12px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", marginBottom: 4, textTransform: "uppercase" }}>Bill To</div>
-            {invoice.buyerSnapshot?.registerName && <div><strong>{invoice.buyerSnapshot.registerName}</strong></div>}
-            {invoice.buyerSnapshot?.tradeName && invoice.buyerSnapshot.tradeName !== invoice.buyerSnapshot.registerName && (
-              <div style={{ color: "#6b7280" }}>{invoice.buyerSnapshot.tradeName}</div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#64748b",
+                marginBottom: 4,
+                textTransform: "uppercase",
+              }}
+            >
+              Bill To
+            </div>
+            {invoice.buyerSnapshot?.registerName && (
+              <div><strong>{invoice.buyerSnapshot.registerName}</strong></div>
             )}
-            {invoice.buyerSnapshot?.tin && <div>TIN: <span className="mono">{invoice.buyerSnapshot.tin}</span></div>}
-            {invoice.buyerSnapshot?.vatNumber && <div>VAT: <span className="mono">{invoice.buyerSnapshot.vatNumber}</span></div>}
+            {invoice.buyerSnapshot?.tradeName &&
+              invoice.buyerSnapshot.tradeName !== invoice.buyerSnapshot.registerName && (
+                <div style={{ color: "#64748b" }}>{invoice.buyerSnapshot.tradeName}</div>
+              )}
+            {invoice.buyerSnapshot?.tin && (
+              <div>
+                TIN: <span className="mono">{invoice.buyerSnapshot.tin}</span>
+              </div>
+            )}
+            {invoice.buyerSnapshot?.vatNumber && (
+              <div>
+                VAT: <span className="mono">{invoice.buyerSnapshot.vatNumber}</span>
+              </div>
+            )}
             {invoice.buyerSnapshot?.email && <div>{invoice.buyerSnapshot.email}</div>}
             {invoice.buyerSnapshot?.phone && <div>Tel: {invoice.buyerSnapshot.phone}</div>}
             {invoice.buyerSnapshot?.address && <div>{invoice.buyerSnapshot.address}</div>}
-            {invoice.buyerSnapshot?.city && <div>{invoice.buyerSnapshot.city}{invoice.buyerSnapshot.province ? `, ${invoice.buyerSnapshot.province}` : ""}</div>}
+            {invoice.buyerSnapshot?.city && (
+              <div>
+                {invoice.buyerSnapshot.city}
+                {invoice.buyerSnapshot.province ? `, ${invoice.buyerSnapshot.province}` : ""}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Line Items */}
-        <table style={{ marginBottom: 16 }}>
+        <table style={{ marginBottom: 16, fontSize: 11 }}>
           <thead>
             <tr>
-              <th style={{ width: 30 }}>#</th>
+              <th style={{ width: 28 }}>#</th>
+              <th style={{ width: 56 }}>Type</th>
               <th>Description</th>
-              <th style={{ width: 70 }}>HS Code</th>
-              <th style={{ width: 50 }} className="right">Qty</th>
-              <th style={{ width: 90 }} className="right">Unit Price</th>
-              <th style={{ width: 60 }} className="center">Tax</th>
-              <th style={{ width: 70 }} className="right">Tax%</th>
-              <th style={{ width: 80 }} className="right">VAT Amt</th>
-              <th style={{ width: 90 }} className="right">Total (Incl)</th>
+              <th style={{ width: 64 }}>HS</th>
+              <th style={{ width: 44 }} className="right">
+                Qty
+              </th>
+              <th style={{ width: 78 }} className="right">
+                Unit
+              </th>
+              <th style={{ width: 48 }} className="center">
+                Tax
+              </th>
+              <th style={{ width: 44 }} className="right">
+                Tax%
+              </th>
+              <th style={{ width: 78 }} className="right">
+                Excl
+              </th>
+              <th style={{ width: 72 }} className="right">
+                VAT
+              </th>
+              <th style={{ width: 86 }} className="right">
+                Incl
+              </th>
             </tr>
           </thead>
           <tbody>
             {invoice.lines.map((line) => (
               <tr key={line.lineNo}>
                 <td>{line.lineNo}</td>
+                <td style={{ fontSize: 10, color: "#64748b" }}>{line.lineType || "—"}</td>
                 <td>{line.description}</td>
-                <td className="mono" style={{ fontSize: 10, color: "#6b7280" }}>{line.hsCode || "—"}</td>
+                <td className="mono" style={{ fontSize: 10, color: "#64748b" }}>
+                  {line.hsCode || "—"}
+                </td>
                 <td className="right">{line.quantity}</td>
                 <td className="right mono">{fmt(line.unitPrice, currency)}</td>
                 <td className="center">{line.taxCode}</td>
                 <td className="right">{line.taxPercent}%</td>
+                <td className="right mono">{fmt(line.lineTotalExcl, currency)}</td>
                 <td className="right mono">{fmt(line.vatAmount, currency)}</td>
-                <td className="right mono" style={{ fontWeight: 600 }}>{fmt(line.lineTotalIncl, currency)}</td>
+                <td className="right mono" style={{ fontWeight: 600 }}>
+                  {fmt(line.lineTotalIncl, currency)}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* Totals */}
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
           <table style={{ width: 280 }}>
             <tbody>
               <tr>
-                <td style={{ border: "none", padding: "3px 0", color: "#6b7280" }}>Subtotal (excl tax)</td>
-                <td style={{ border: "none", padding: "3px 0", textAlign: "right" }} className="mono">{fmt(invoice.subtotalExclTax, currency)}</td>
+                <td style={{ border: "none", padding: "3px 0", color: "#64748b" }}>Subtotal (excl tax)</td>
+                <td style={{ border: "none", padding: "3px 0", textAlign: "right" }} className="mono">
+                  {fmt(invoice.subtotalExclTax, currency)}
+                </td>
               </tr>
               <tr>
-                <td style={{ border: "none", padding: "3px 0", color: "#6b7280" }}>VAT Total</td>
-                <td style={{ border: "none", padding: "3px 0", textAlign: "right" }} className="mono">{fmt(invoice.totalVat, currency)}</td>
+                <td style={{ border: "none", padding: "3px 0", color: "#64748b" }}>VAT Total</td>
+                <td style={{ border: "none", padding: "3px 0", textAlign: "right" }} className="mono">
+                  {fmt(invoice.totalVat, currency)}
+                </td>
               </tr>
               <tr style={{ borderTop: "2px solid #111" }}>
                 <td style={{ border: "none", padding: "6px 0 3px", fontWeight: 700, fontSize: 14 }}>GRAND TOTAL</td>
-                <td style={{ border: "none", padding: "6px 0 3px", textAlign: "right", fontWeight: 700, fontSize: 14 }} className="mono">{fmt(invoice.totalAmount, currency)}</td>
+                <td
+                  style={{ border: "none", padding: "6px 0 3px", textAlign: "right", fontWeight: 700, fontSize: 14 }}
+                  className="mono"
+                >
+                  {fmt(invoice.totalAmount, currency)}
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        {/* Fiscal Verification Block */}
-        {isFiscalized && invoice.fiscalData && (
-          <div style={{ border: "2px solid #059669", borderRadius: 8, padding: "12px 16px", marginBottom: 16, background: "#f0fdf4" }}>
-            <div style={{ fontWeight: 700, fontSize: 13, color: "#065f46", marginBottom: 8 }}>✓ FISCALLY VERIFIED — ZIMRA</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 11 }}>
-              <div>
-                <span style={{ color: "#6b7280" }}>Verification Code: </span>
-                <span className="mono" style={{ fontWeight: 600 }}>{invoice.fiscalData.verificationCode || "—"}</span>
+        {isZimraVerified && invoice.fiscalData && (
+          <div
+            style={{
+              borderTop: "1px solid #e5e7eb",
+              paddingTop: 12,
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: "0.05em",
+                color: "#64748b",
+                textTransform: "uppercase",
+                marginBottom: 8,
+              }}
+            >
+              ZIMRA verification
+            </div>
+            <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start", gap: 14 }}>
+              <div style={{ flex: "0 0 auto" }}>
+                {qrDataUrl && (
+                  <>
+                    <Image src={qrDataUrl} alt="ZIMRA QR" width={112} height={112} unoptimized />
+                    <div style={{ fontSize: 8, color: "#64748b", marginTop: 4, maxWidth: 160 }}>
+                      Scan to verify
+                    </div>
+                    {verifyUrl && /^https?:\/\//i.test(verifyUrl) && (
+                      <div
+                        className="mono"
+                        style={{ fontSize: 7, color: "#2563eb", marginTop: 4, maxWidth: 240, wordBreak: "break-all" }}
+                      >
+                        {verifyUrl}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-              <div>
-                <span style={{ color: "#6b7280" }}>FDMS Invoice No: </span>
-                <span className="mono" style={{ fontWeight: 600 }}>{invoice.fiscalData.fdmsInvoiceNo || "—"}</span>
-              </div>
-              <div>
-                <span style={{ color: "#6b7280" }}>Fiscal Day No: </span>
-                <span style={{ fontWeight: 600 }}>{invoice.fiscalData.fiscalDayNo ?? "—"}</span>
-              </div>
-              <div>
-                <span style={{ color: "#6b7280" }}>Receipt Global No: </span>
-                <span style={{ fontWeight: 600 }}>{invoice.fiscalData.receiptGlobalNo || "—"}</span>
+              <div style={{ flex: "1 1 160px", minWidth: 0, fontSize: 9, lineHeight: 1.45, color: "#334155" }}>
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 8, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>
+                    Submitted
+                  </div>
+                  <div>
+                    {invoice.fiscalSubmittedAt
+                      ? new Date(invoice.fiscalSubmittedAt).toLocaleString()
+                      : "—"}
+                  </div>
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 8, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>
+                    Verification code
+                  </div>
+                  <div className="mono">{invoice.fiscalData.verificationCode || "—"}</div>
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 8, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>
+                    FDMS invoice no.
+                  </div>
+                  <div className="mono">{invoice.fiscalData.fdmsInvoiceNo || "—"}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 8, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase" }}>
+                    Fiscal day / receipt global
+                  </div>
+                  <div>
+                    {invoice.fiscalData.fiscalDayNo ?? "—"} / {invoice.fiscalData.receiptGlobalNo || "—"}
+                  </div>
+                </div>
               </div>
             </div>
-            {qrDataUrl && (
-              <div style={{ marginTop: 12, textAlign: "center" }}>
-                <Image src={qrDataUrl} alt="ZIMRA QR" width={130} height={130} style={{ margin: "0 auto", border: "1px solid #d1fae5", padding: 4 }} />
-                <div style={{ fontSize: 10, color: "#065f46", marginTop: 4 }}>Scan to verify this invoice on ZIMRA</div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* Payment method + notes */}
-        <div style={{ fontSize: 11, color: "#6b7280", borderTop: "1px solid #e5e7eb", paddingTop: 8 }}>
+        <div style={{ fontSize: 11, color: "#64748b", borderTop: "1px solid #e5e7eb", paddingTop: 8 }}>
           <span>Payment Method: {invoice.paymentMethod}</span>
           {invoice.receiptNotes && <span style={{ marginLeft: 16 }}>Notes: {invoice.receiptNotes}</span>}
         </div>
-        <div style={{ marginTop: 8, fontSize: 10, color: "#9ca3af", textAlign: "center" }}>
+        <div style={{ marginTop: 8, fontSize: 10, color: "#94a3b8", textAlign: "center" }}>
           This is a computer-generated document. No signature is required.
         </div>
       </div>

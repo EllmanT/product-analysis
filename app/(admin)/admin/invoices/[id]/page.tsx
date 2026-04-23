@@ -3,11 +3,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import QRCode from "qrcode";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  getZimraQrEmbedString,
+  isInvoiceZimraVerifiedForDisplay,
+} from "@/lib/utils/zimraInvoiceDisplay";
 
 type InvLine = {
   lineNo: number;
@@ -27,6 +31,7 @@ type FiscalData = {
   verificationCode: string;
   verificationLink: string;
   qrCodeUrl: string;
+  receiptHash?: string;
   fiscalDayNo: number | null;
   fdmsInvoiceNo: string;
   receiptGlobalNo: string;
@@ -86,11 +91,19 @@ function fmt(n: number, currency = "USD") {
   return `${currency} ${n.toFixed(2)}`;
 }
 
-function StatusBadge({ isFiscalized, fiscalStatus }: { isFiscalized: boolean; fiscalStatus: string }) {
-  if (isFiscalized || fiscalStatus === "SUBMITTED") {
-    return <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">SUBMITTED</span>;
+function StatusBadge({ zimraVerified }: { zimraVerified: boolean }) {
+  if (zimraVerified) {
+    return (
+      <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+        ZIMRA verified
+      </span>
+    );
   }
-  return <span className="inline-flex rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">DRAFT</span>;
+  return (
+    <span className="inline-flex rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700">
+      Not fiscalized
+    </span>
+  );
 }
 
 export default function AdminInvoiceDetailPage() {
@@ -108,16 +121,26 @@ export default function AdminInvoiceDetailPage() {
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [fiscalDayOpen, setFiscalDayOpen] = useState<boolean | null>(null);
   const [fiscalDayStatus, setFiscalDayStatus] = useState<string>("");
-  const qrRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     setError(null);
     const res = await fetch(`/api/admin/invoices/${id}`);
-    if (res.status === 401) { router.replace("/sign-in"); return; }
-    if (res.status === 403) { setError("Admin access required."); setLoading(false); return; }
-    if (!res.ok) { setError("Invoice not found."); setLoading(false); return; }
+    if (res.status === 401) {
+      router.replace("/sign-in");
+      return;
+    }
+    if (res.status === 403) {
+      setError("Admin access required.");
+      setLoading(false);
+      return;
+    }
+    if (!res.ok) {
+      setError("Invoice not found.");
+      setLoading(false);
+      return;
+    }
 
     const json = await res.json() as { success: boolean; data: { invoice: InvoiceDetail; seller: Seller } };
     if (json.success && json.data?.invoice) {
@@ -145,14 +168,22 @@ export default function AdminInvoiceDetailPage() {
     void loadFiscalDayStatus();
   }, [load, loadFiscalDayStatus]);
 
-  // Generate QR code when fiscal data is available
   useEffect(() => {
-    if (qrRef.current) return;
-    const qrSource = invoice?.fiscalData?.verificationLink || invoice?.fiscalData?.qrCodeUrl;
-    if (!qrSource) return;
-    qrRef.current = true;
-    QRCode.toDataURL(qrSource, { errorCorrectionLevel: "M", width: 180, margin: 1 })
-      .then((url) => setQrDataUrl(url))
+    if (!invoice) {
+      setQrDataUrl("");
+      return;
+    }
+    if (!isInvoiceZimraVerifiedForDisplay(invoice)) {
+      setQrDataUrl("");
+      return;
+    }
+    const s = getZimraQrEmbedString(invoice.fiscalData);
+    if (!s) {
+      setQrDataUrl("");
+      return;
+    }
+    void QRCode.toDataURL(s, { errorCorrectionLevel: "M", width: 160, margin: 1 })
+      .then(setQrDataUrl)
       .catch(() => setQrDataUrl(""));
   }, [invoice]);
 
@@ -167,7 +198,6 @@ export default function AdminInvoiceDetailPage() {
         return;
       }
       await load();
-      qrRef.current = false;
     } catch {
       setFiscalError("Network error during fiscalization");
     } finally {
@@ -199,239 +229,298 @@ export default function AdminInvoiceDetailPage() {
 
   if (!invoice) return null;
 
-  const isFiscalized = invoice.isFiscalized || invoice.fiscalStatus === "SUBMITTED";
+  const isZimraVerified = isInvoiceZimraVerifiedForDisplay(invoice);
   const currency = invoice.receiptCurrency || "USD";
+  const verifyUrl = isZimraVerified ? getZimraQrEmbedString(invoice.fiscalData) : "";
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* Fiscal Day Status Bar */}
       <div className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border bg-white px-4 py-3 shadow-sm lg:mx-6">
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-slate-700">Fiscal Day:</span>
           {fiscalDayOpen === null ? (
             <span className="text-sm text-slate-500">Checking…</span>
           ) : fiscalDayOpen ? (
-            <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">Open</span>
+            <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+              Open
+            </span>
           ) : (
-            <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800">Closed</span>
+            <span className="inline-flex rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800">
+              Closed
+            </span>
           )}
           {fiscalDayStatus && <span className="text-xs text-slate-400">({fiscalDayStatus})</span>}
         </div>
         {!fiscalDayOpen && fiscalDayOpen !== null && (
-          <p className="text-xs text-amber-700">⚠ You must open the fiscal day before fiscalizing invoices.</p>
+          <p className="text-xs text-amber-700">
+            You must open the fiscal day before fiscalizing invoices.
+          </p>
         )}
       </div>
 
-      {/* Breadcrumb */}
       <div className="mt-2 flex w-full flex-wrap items-center gap-2 px-4 no-print lg:px-6">
         <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
         <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href="/admin/invoices" className="hover:text-foreground">Invoices</Link>
+          <Link href="/admin/invoices" className="hover:text-foreground">
+            Invoices
+          </Link>
           <span aria-hidden>/</span>
           <span className="font-mono text-xs text-slate-900">{invoice.invoiceNumber}</span>
         </nav>
       </div>
 
       <div className="flex flex-col gap-4 px-4 py-6 lg:px-6">
-
-        {/* Header card */}
-        <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+        {/* Single invoice document */}
+        <div className="rounded-md border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
-              <p className="text-sm text-slate-500">Invoice Number</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Invoice</p>
               <p className="font-mono text-2xl font-bold tracking-tight text-slate-900">{invoice.invoiceNumber}</p>
               <p className="mt-1 text-sm text-slate-600">
                 {invoice.receiptType} · {invoice.receiptCurrency} · {invoice.paymentMethod}
               </p>
               <p className="text-sm text-slate-600">
-                Date: {new Date(invoice.receiptDate ?? invoice.createdAt).toLocaleString()}
+                {new Date(invoice.receiptDate ?? invoice.createdAt).toLocaleString()}
               </p>
             </div>
-            <StatusBadge isFiscalized={isFiscalized} fiscalStatus={invoice.fiscalStatus} />
+            <StatusBadge zimraVerified={isZimraVerified} />
           </div>
-        </div>
 
-        {/* Fiscalize button or fiscal data */}
-        {!isFiscalized ? (
-          <div className="rounded-md border border-blue-200 bg-blue-50 p-5">
-            <h2 className="text-base font-semibold text-blue-900">Fiscalize this Invoice</h2>
-            <p className="mt-1 text-sm text-blue-800">
-              Submit this invoice to ZIMRA FDMS. This action is permanent and cannot be undone.
-              Ensure the fiscal day is open before proceeding.
-            </p>
-            {fiscalError && (
-              <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
-                <strong>ZIMRA Error:</strong> {fiscalError}
-              </div>
-            )}
-            <div className="mt-4">
-              <Button
-                type="button"
-                className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
-                disabled={fiscalizing || fiscalDayOpen === false}
-                onClick={() => void fiscalize()}
-              >
-                {fiscalizing ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                    </svg>
-                    Submitting to ZIMRA…
-                  </span>
-                ) : "Fiscalize Invoice"}
-              </Button>
-            </div>
-          </div>
-        ) : (
-          /* Fiscal Data Card */
-          <div className="rounded-md border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-emerald-900">✓ Fiscally Verified</h2>
-            <p className="mt-0.5 text-xs text-emerald-700">
-              Submitted {invoice.fiscalSubmittedAt ? new Date(invoice.fiscalSubmittedAt).toLocaleString() : ""}
-            </p>
-            <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-emerald-700">Verification Code</dt>
-                <dd className="font-mono font-semibold text-slate-900">{invoice.fiscalData?.verificationCode || "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-emerald-700">FDMS Invoice No</dt>
-                <dd className="font-mono font-semibold text-slate-900">{invoice.fiscalData?.fdmsInvoiceNo || "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-emerald-700">Fiscal Day No</dt>
-                <dd className="font-semibold text-slate-900">{invoice.fiscalData?.fiscalDayNo ?? "—"}</dd>
-              </div>
-              <div>
-                <dt className="text-emerald-700">Receipt Global No</dt>
-                <dd className="font-semibold text-slate-900">{invoice.fiscalData?.receiptGlobalNo || "—"}</dd>
-              </div>
-              {invoice.fiscalData?.verificationLink && (
-                <div className="sm:col-span-2">
-                  <dt className="text-emerald-700">Verification Link</dt>
-                  <dd>
-                    <a
-                      href={invoice.fiscalData.verificationLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="break-all text-blue-600 hover:underline"
-                    >
-                      {invoice.fiscalData.verificationLink}
-                    </a>
-                  </dd>
+          {!isZimraVerified && (
+            <div className="mt-4 rounded-md border border-blue-200 bg-blue-50/80 p-4">
+              <h2 className="text-sm font-semibold text-blue-900">Fiscalize this invoice</h2>
+              <p className="mt-1 text-xs text-blue-800">
+                Submit to ZIMRA FDMS. Permanent once submitted. Open the fiscal day first.
+              </p>
+              {fiscalError && (
+                <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800" role="alert">
+                  <strong>ZIMRA:</strong> {fiscalError}
                 </div>
               )}
-            </dl>
-            {qrDataUrl && (
-              <div className="mt-4 flex flex-col items-start gap-1">
-                <Image src={qrDataUrl} alt="ZIMRA verification QR code" width={130} height={130} className="rounded border border-emerald-200" />
-                <p className="text-xs text-emerald-700">Scan to verify on ZIMRA</p>
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                  disabled={fiscalizing || fiscalDayOpen === false}
+                  onClick={() => void fiscalize()}
+                >
+                  {fiscalizing ? "Submitting…" : "Fiscalize invoice"}
+                </Button>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Seller + Buyer */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-900">Seller</h2>
-            <dl className="mt-3 space-y-1 text-sm">
-              {seller?.legalName && <div><dt className="inline text-slate-500">Legal Name: </dt><dd className="inline font-medium">{seller.legalName}</dd></div>}
-              {seller?.tradeName && <div><dt className="inline text-slate-500">Trade Name: </dt><dd className="inline">{seller.tradeName}</dd></div>}
-              {seller?.tin && <div><dt className="inline text-slate-500">TIN: </dt><dd className="inline font-mono">{seller.tin}</dd></div>}
-              {seller?.vatNumber && <div><dt className="inline text-slate-500">VAT: </dt><dd className="inline font-mono">{seller.vatNumber}</dd></div>}
-              {seller?.address && <div><dt className="inline text-slate-500">Address: </dt><dd className="inline">{seller.address}</dd></div>}
-              {seller?.phone && <div><dt className="inline text-slate-500">Phone: </dt><dd className="inline">{seller.phone}</dd></div>}
-              {seller?.email && <div><dt className="inline text-slate-500">Email: </dt><dd className="inline">{seller.email}</dd></div>}
-            </dl>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Seller</h2>
+              {seller && (
+                <dl className="mt-2 space-y-1 text-sm text-slate-800">
+                  {seller.legalName && <div className="font-medium">{seller.legalName}</div>}
+                  {seller.tradeName && <div className="text-slate-800">{seller.tradeName}</div>}
+                  {seller.tin && (
+                    <div>
+                      <span className="text-slate-500">TIN: </span>
+                      <span className="font-mono">{seller.tin}</span>
+                    </div>
+                  )}
+                  {seller.vatNumber && (
+                    <div>
+                      <span className="text-slate-500">VAT: </span>
+                      <span className="font-mono">{seller.vatNumber}</span>
+                    </div>
+                  )}
+                  {seller.email && <div>{seller.email}</div>}
+                  {seller.phone && <div>Tel: {seller.phone}</div>}
+                  {seller.address && <div>{seller.address}</div>}
+                  {(seller.city || seller.region) && (
+                    <div>
+                      {seller.city}
+                      {seller.region ? `, ${seller.region}` : ""}
+                    </div>
+                  )}
+                </dl>
+              )}
+            </div>
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bill to</h2>
+              {invoice.buyerSnapshot ? (
+                <dl className="mt-2 space-y-1 text-sm text-slate-800">
+                  {invoice.buyerSnapshot.registerName && (
+                    <div className="font-medium">{invoice.buyerSnapshot.registerName}</div>
+                  )}
+                  {invoice.buyerSnapshot.tradeName && <div>{invoice.buyerSnapshot.tradeName}</div>}
+                  {invoice.buyerSnapshot.tin && (
+                    <div>
+                      <span className="text-slate-500">TIN: </span>
+                      <span className="font-mono">{invoice.buyerSnapshot.tin}</span>
+                    </div>
+                  )}
+                  {invoice.buyerSnapshot.vatNumber && (
+                    <div>
+                      <span className="text-slate-500">VAT: </span>
+                      <span className="font-mono">{invoice.buyerSnapshot.vatNumber}</span>
+                    </div>
+                  )}
+                  {invoice.buyerSnapshot.email && <div>{invoice.buyerSnapshot.email}</div>}
+                  {invoice.buyerSnapshot.phone && <div>Tel: {invoice.buyerSnapshot.phone}</div>}
+                  {invoice.buyerSnapshot.address && <div>{invoice.buyerSnapshot.address}</div>}
+                  {(invoice.buyerSnapshot.city || invoice.buyerSnapshot.province) && (
+                    <div>
+                      {invoice.buyerSnapshot.city}
+                      {invoice.buyerSnapshot.province ? `, ${invoice.buyerSnapshot.province}` : ""}
+                    </div>
+                  )}
+                </dl>
+              ) : (
+                <p className="mt-2 text-sm text-slate-500">No buyer data.</p>
+              )}
+            </div>
           </div>
-          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-900">Customer / Buyer</h2>
-            {invoice.buyerSnapshot ? (
-              <dl className="mt-3 space-y-1 text-sm">
-                {invoice.buyerSnapshot.registerName && <div><dt className="inline text-slate-500">Name: </dt><dd className="inline font-medium">{invoice.buyerSnapshot.registerName}</dd></div>}
-                {invoice.buyerSnapshot.tradeName && <div><dt className="inline text-slate-500">Trade Name: </dt><dd className="inline">{invoice.buyerSnapshot.tradeName}</dd></div>}
-                {invoice.buyerSnapshot.tin && <div><dt className="inline text-slate-500">TIN: </dt><dd className="inline font-mono">{invoice.buyerSnapshot.tin}</dd></div>}
-                {invoice.buyerSnapshot.vatNumber && <div><dt className="inline text-slate-500">VAT: </dt><dd className="inline font-mono">{invoice.buyerSnapshot.vatNumber}</dd></div>}
-                {invoice.buyerSnapshot.email && <div><dt className="inline text-slate-500">Email: </dt><dd className="inline">{invoice.buyerSnapshot.email}</dd></div>}
-                {invoice.buyerSnapshot.phone && <div><dt className="inline text-slate-500">Phone: </dt><dd className="inline">{invoice.buyerSnapshot.phone}</dd></div>}
-                {invoice.buyerSnapshot.address && <div><dt className="inline text-slate-500">Address: </dt><dd className="inline">{invoice.buyerSnapshot.address}</dd></div>}
-              </dl>
-            ) : (
-              <p className="mt-3 text-sm text-slate-500">No buyer data.</p>
-            )}
-          </div>
-        </div>
 
-        {/* Line Items */}
-        {invoice.lines && invoice.lines.length > 0 && (
-          <div className="rounded-md border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-900">Line Items</h2>
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[700px] text-sm">
-                <thead className="border-b border-slate-200 text-left text-xs font-semibold uppercase text-slate-600">
-                  <tr>
-                    <th className="py-2 pr-3">#</th>
-                    <th className="py-2 pr-3">Description</th>
-                    <th className="py-2 pr-3">HS Code</th>
-                    <th className="py-2 pr-3 text-right">Qty</th>
-                    <th className="py-2 pr-3 text-right">Unit Price</th>
-                    <th className="py-2 pr-3 text-center">Tax</th>
-                    <th className="py-2 pr-3 text-right">VAT</th>
-                    <th className="py-2 text-right">Total (Incl)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {invoice.lines.map((line) => (
-                    <tr key={line.lineNo}>
-                      <td className="py-2.5 pr-3 text-slate-500">{line.lineNo}</td>
-                      <td className="py-2.5 pr-3 font-medium text-slate-900">{line.description}</td>
-                      <td className="py-2.5 pr-3 font-mono text-xs text-slate-500">{line.hsCode || "—"}</td>
-                      <td className="py-2.5 pr-3 text-right text-slate-700">{line.quantity}</td>
-                      <td className="py-2.5 pr-3 text-right text-slate-700">{fmt(line.unitPrice, currency)}</td>
-                      <td className="py-2.5 pr-3 text-center text-slate-700">{line.taxCode} ({line.taxPercent}%)</td>
-                      <td className="py-2.5 pr-3 text-right text-slate-700">{fmt(line.vatAmount, currency)}</td>
-                      <td className="py-2.5 text-right font-semibold text-slate-900">{fmt(line.lineTotalIncl, currency)}</td>
+          {invoice.lines && invoice.lines.length > 0 && (
+            <div className="mt-6">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Line items</h2>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full min-w-[880px] text-sm">
+                  <thead className="border-b border-slate-200 text-left text-xs font-semibold text-slate-600">
+                    <tr>
+                      <th className="py-2 pr-2">#</th>
+                      <th className="py-2 pr-2">Type</th>
+                      <th className="py-2 pr-2">Description</th>
+                      <th className="py-2 pr-2">HS</th>
+                      <th className="py-2 pr-2 text-right">Qty</th>
+                      <th className="py-2 pr-2 text-right">Unit</th>
+                      <th className="py-2 pr-2 text-center">Tax</th>
+                      <th className="py-2 pr-2 text-right">Excl</th>
+                      <th className="py-2 pr-2 text-right">VAT</th>
+                      <th className="py-2 pr-2 text-right">Incl</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {invoice.lines.map((line) => (
+                      <tr key={line.lineNo}>
+                        <td className="py-2 pr-2 text-slate-500">{line.lineNo}</td>
+                        <td className="py-2 pr-2 text-xs text-slate-600">{line.lineType || "—"}</td>
+                        <td className="py-2 pr-2 font-medium text-slate-900">{line.description}</td>
+                        <td className="py-2 pr-2 font-mono text-xs text-slate-500">{line.hsCode || "—"}</td>
+                        <td className="py-2 pr-2 text-right">{line.quantity}</td>
+                        <td className="py-2 pr-2 text-right">{fmt(line.unitPrice, currency)}</td>
+                        <td className="py-2 pr-2 text-center">
+                          {line.taxCode} ({line.taxPercent}%)
+                        </td>
+                        <td className="py-2 pr-2 text-right">{fmt(line.lineTotalExcl, currency)}</td>
+                        <td className="py-2 pr-2 text-right">{fmt(line.vatAmount, currency)}</td>
+                        <td className="py-2 pr-2 text-right font-semibold">{fmt(line.lineTotalIncl, currency)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex flex-col items-end gap-1 text-sm">
+                <div className="flex w-52 justify-between">
+                  <span className="text-slate-500">Subtotal (excl)</span>
+                  <span>{fmt(invoice.subtotalExclTax, currency)}</span>
+                </div>
+                <div className="flex w-52 justify-between">
+                  <span className="text-slate-500">VAT</span>
+                  <span>{fmt(invoice.totalVat, currency)}</span>
+                </div>
+                <div className="flex w-52 justify-between border-t border-slate-200 pt-1 text-base font-bold">
+                  <span>Total</span>
+                  <span>{fmt(invoice.totalAmount, currency)}</span>
+                </div>
+              </div>
             </div>
-            <div className="mt-4 flex flex-col items-end gap-1 text-sm">
-              <div className="flex w-48 justify-between">
-                <span className="text-slate-500">Subtotal (excl tax)</span>
-                <span>{fmt(invoice.subtotalExclTax, currency)}</span>
-              </div>
-              <div className="flex w-48 justify-between">
-                <span className="text-slate-500">VAT</span>
-                <span>{fmt(invoice.totalVat, currency)}</span>
-              </div>
-              <div className="flex w-48 justify-between border-t border-slate-200 pt-1 text-base font-bold">
-                <span>Grand Total</span>
-                <span>{fmt(invoice.totalAmount, currency)}</span>
-              </div>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Actions */}
-        <div className="no-print flex flex-wrap gap-3">
-          <Button type="button" variant="outline" onClick={() => window.open(`/admin/invoices/${id}/print`, "_blank")}>
-            Print Invoice
-          </Button>
-          {!isFiscalized && invoice.status === "draft" && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={marking}
-              onClick={() => void markSent()}
-            >
-              {marking ? "Updating…" : "Mark as Sent"}
-            </Button>
+          {isZimraVerified && invoice.fiscalData && (
+            <div className="mt-8 border-t border-slate-200 pt-6">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                ZIMRA verification
+              </p>
+              <div className="flex flex-row flex-wrap items-start gap-4">
+                <div className="flex shrink-0 flex-col gap-1">
+                  {qrDataUrl && (
+                    <Image
+                      src={qrDataUrl}
+                      alt="ZIMRA verification QR"
+                      width={112}
+                      height={112}
+                      className="border border-slate-200"
+                    />
+                  )}
+                  <p className="max-w-[140px] text-[10px] leading-snug text-slate-500">
+                    Scan to open verification.
+                  </p>
+                  {verifyUrl && /^https?:\/\//i.test(verifyUrl) && (
+                    <a
+                      href={verifyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="max-w-[220px] break-all text-[10px] text-blue-600 hover:underline"
+                    >
+                      {verifyUrl}
+                    </a>
+                  )}
+                </div>
+                <dl className="min-w-0 space-y-1.5 text-[11px] leading-snug text-slate-700">
+                  <div>
+                    <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      Submitted
+                    </dt>
+                    <dd className="font-normal text-slate-700">
+                      {invoice.fiscalSubmittedAt
+                        ? new Date(invoice.fiscalSubmittedAt).toLocaleString()
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      Verification code
+                    </dt>
+                    <dd className="font-mono text-[11px] text-slate-800">
+                      {invoice.fiscalData.verificationCode || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      FDMS invoice no.
+                    </dt>
+                    <dd className="font-mono text-[11px] text-slate-800">
+                      {invoice.fiscalData.fdmsInvoiceNo || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      Fiscal day / receipt global
+                    </dt>
+                    <dd className="text-[11px]">
+                      {invoice.fiscalData.fiscalDayNo ?? "—"} / {invoice.fiscalData.receiptGlobalNo || "—"}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          )}
+
+          {invoice.receiptNotes && (
+            <p className="mt-4 border-t border-slate-100 pt-4 text-xs text-slate-600">
+              Notes: {invoice.receiptNotes}
+            </p>
           )}
         </div>
 
+        <div className="no-print flex flex-wrap gap-3">
+          <Button type="button" variant="outline" onClick={() => window.open(`/admin/invoices/${id}/print`, "_blank")}>
+            Print invoice
+          </Button>
+          {!isZimraVerified && invoice.status === "draft" && (
+            <Button type="button" variant="outline" disabled={marking} onClick={() => void markSent()}>
+              {marking ? "Updating…" : "Mark as sent"}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

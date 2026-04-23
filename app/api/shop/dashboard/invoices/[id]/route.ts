@@ -5,6 +5,7 @@ import Invoice, { type IInvoice } from "@/database/invoice.model";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError, UnauthorisedError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
+import { getSellerForPublicInvoice } from "@/lib/services/invoiceSeller.service";
 import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
 
 type InvoiceLean = IInvoice & { _id: Types.ObjectId; createdAt: Date; updatedAt: Date };
@@ -27,6 +28,8 @@ export async function GET(
     }).lean<InvoiceLean | null>();
 
     if (!inv) throw new NotFoundError("Invoice");
+
+    const seller = await getSellerForPublicInvoice();
 
     return NextResponse.json({
       success: true,
@@ -59,6 +62,7 @@ export async function GET(
         fiscalData: inv.fiscalData ?? null,
         lines: inv.lines ?? [],
         buyerSnapshot: inv.buyerSnapshot ?? null,
+        seller,
       },
     });
   } catch (error) {

@@ -8,6 +8,7 @@ import handleError from "@/lib/handlers/error";
 import { NotFoundError, RequestError, ValidationError } from "@/lib/http-errors";
 import { requireAdmin } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
+import { getSellerForAdminSession } from "@/lib/services/invoiceSeller.service";
 import { NextResponse } from "next/server";
 
 const PatchSchema = z.object({
@@ -33,6 +34,8 @@ export async function GET(
     const customer = await Customer.findById(inv.customerId).select(
       "firstName lastName tradeName email phone tinNumber vatNumber address"
     );
+
+    const seller = await getSellerForAdminSession(session);
 
     const itemsPlain = inv.items.map((row: IInvoiceItem) => ({
       productId: String(row.productId),
@@ -87,18 +90,7 @@ export async function GET(
                 address: customer.address,
               }
             : null,
-          // Seller from env vars
-          seller: {
-            legalName: process.env.INVOICE_COMPANY_LEGAL_NAME ?? "",
-            tradeName: process.env.INVOICE_COMPANY_TRADE_NAME ?? "",
-            tin: process.env.INVOICE_COMPANY_TIN ?? "",
-            vatNumber: process.env.INVOICE_COMPANY_VAT_NUMBER ?? "",
-            address: process.env.INVOICE_COMPANY_ADDRESS ?? "",
-            phone: process.env.INVOICE_COMPANY_PHONE ?? "",
-            email: process.env.INVOICE_COMPANY_EMAIL ?? "",
-            region: process.env.INVOICE_COMPANY_REGION ?? "",
-            city: process.env.INVOICE_COMPANY_CITY ?? "",
-          },
+          seller,
         },
       },
       { status: 200 }

@@ -350,13 +350,20 @@ export default function DashboardPage() {
                           <span className="inline-flex items-center rounded-[6px] bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">Paid</span>
                         </td>
                         <td className="px-5 py-3">
-                          <Link
-                            href={`/account/invoices/${inv._id}`}
-                            target="_blank"
-                            className="rounded-[8px] border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                          >
-                            Download
-                          </Link>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                              href={`/account/invoices/${inv._id}`}
+                              className="rounded-[8px] bg-[#1E40AF] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#1E3A8A]"
+                            >
+                              View
+                            </Link>
+                            <a
+                              href={`/api/shop/dashboard/invoices/${inv._id}/pdf`}
+                              className="rounded-[8px] border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              Download PDF
+                            </a>
+                          </div>
                         </td>
                       </tr>
                     ))}

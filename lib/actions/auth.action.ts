@@ -139,13 +139,19 @@ export async function signInWithCredentials(
   const { email, password } = validationResult.params!;
 
   try {
-    const existingUser = await User.findOne({ email });
+    const emailTrimmed = email.trim();
+    const emailRegex = new RegExp(
+      `^${emailTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+      "i"
+    );
+    const existingUser = await User.findOne({ email: emailRegex });
     if (!existingUser) throw new NotFoundError("User");
 
     const existingAccount = await Account.findOne({
+      userId: existingUser._id,
       provider: "credentials",
-      providerAccountId: email,
-    });
+      providerAccountId: existingUser.email,
+    }).sort({ updatedAt: -1 });
 
     if (!existingAccount) throw new NotFoundError("Account");
 

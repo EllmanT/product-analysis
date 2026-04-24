@@ -49,7 +49,13 @@ const dbConnect = async (): Promise<Mongoose> => {
         return result;
       })
       .catch((error) => {
+        const msg = error instanceof Error ? error.message : String(error);
         logger.error("Failed to connect to Mongodb", error);
+        if (msg.includes("querySrv") || msg.includes("ENOTFOUND")) {
+          logger.error(
+            "MongoDB DNS failed: the host in MONGODB_URI is not a real Atlas cluster (wrong URL, deleted cluster, or typo). In Atlas: Database → your cluster → Connect → copy a fresh connection string and update Vercel MONGODB_URI."
+          );
+        }
         throw error;
       });
   }

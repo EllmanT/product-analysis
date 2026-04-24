@@ -2,17 +2,29 @@
 
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
+import { AuthError, CredentialsSignin } from "next-auth";
 
 import { signIn } from "@/auth";
 import Account from "@/database/account.model";
 import User from "@/database/user.model";
+import { stripAuthJsErrorSuffix } from "@/lib/auth/credentials-signin-error";
+import { Store } from "@/database";
+import { AuthCredentials } from "@/types/action";
 
 import action from "../handlers/action";
 import handleError from "../handlers/error";
-import { NotFoundError } from "../http-errors";
 import { SignInSchema, SignUpSchema } from "../validations";
-import { Store } from "@/database";
-import { AuthCredentials } from "@/types/action";
+import { UnauthorisedError } from "../http-errors";
+
+function mapAuthSignInFailure(error: unknown): ErrorResponse {
+  if (error instanceof CredentialsSignin || error instanceof AuthError) {
+    const msg = stripAuthJsErrorSuffix((error as Error).message);
+    return handleError(
+      new UnauthorisedError(msg || "Sign in failed")
+    ) as ErrorResponse;
+  }
+  return handleError(error) as ErrorResponse;
+}
 
 export async function signUpWithCredentials(
   params: AuthCredentials
@@ -83,8 +95,12 @@ await User.updateOne(
 // Commit the transaction
 await session.commitTransaction();
 
-await signIn("credentials", { email, password, redirect: false });
-return { success: true };
+try {
+  await signIn("credentials", { email, password, redirect: false });
+  return { success: true };
+} catch (error) {
+  return mapAuthSignInFailure(error);
+}
 
 }else{
 
@@ -112,8 +128,12 @@ await Account.create(
 // Commit the transaction
 await session.commitTransaction();
 
-await signIn("credentials", { email, password, redirect: false });
-return { success: true };
+try {
+  await signIn("credentials", { email, password, redirect: false });
+  return { success: true };
+} catch (error) {
+  return mapAuthSignInFailure(error);
+}
 
 }
 
@@ -139,34 +159,9 @@ export async function signInWithCredentials(
   const { email, password } = validationResult.params!;
 
   try {
-    const emailTrimmed = email.trim();
-    const emailRegex = new RegExp(
-      `^${emailTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
-      "i"
-    );
-    const existingUser = await User.findOne({ email: emailRegex });
-    if (!existingUser) throw new NotFoundError("User");
-
-    const existingAccount = await Account.findOne({
-      userId: existingUser._id,
-      provider: "credentials",
-      providerAccountId: existingUser.email,
-    }).sort({ updatedAt: -1 });
-
-    if (!existingAccount) throw new NotFoundError("Account");
-
-    const passwordMatch = await bcrypt.compare(
-      password,
-      existingAccount.password
-    );
-
-    if (!passwordMatch) throw new Error("Invalid password");
-    
     await signIn("credentials", { email, password, redirect: false });
-
     return { success: true };
   } catch (error) {
-    return handleError(error) as ErrorResponse;
-  } finally {
+    return mapAuthSignInFailure(error);
   }
 }

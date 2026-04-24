@@ -25,8 +25,8 @@ import {
 import { Input } from "@/components/ui/input";
 import ForgotPasswordModal from "@/components/auth/ForgotPasswordModal";
 
-// import { toast } from "@/hooks/use-toast";
 import ROUTES from "@/constants/route";
+import { toast } from "sonner";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "../ui/select";
 
 interface AuthFormProps<T extends FieldValues> {
@@ -60,23 +60,12 @@ const AuthForm = <T extends FieldValues>({
     const result = (await onSubmit(data)) as ActionResponse;
 
     if (result?.success) {
-      // toast({
-      //   title: "Success",
-      //   description:
-      //     formType === "SIGN_IN"
-      //       ? "You have successfully signed in"
-      //       : "You have successfully signed up",
-      // });
-      console.log(result?.status)
-
       router.push(ROUTES.HOME);
     } else {
-      // toast({
-      //   title: `Error ${result?.status}`,
-      //   description: result?.error?.message,
-      //   variant: "destructive",
-      // });
-      console.log(result?.status)
+      const message =
+        result?.error?.message ??
+        (formType === "SIGN_IN" ? "Sign in failed." : "Sign up failed.");
+      toast.error(message);
     }
   };
 

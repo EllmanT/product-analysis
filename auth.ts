@@ -1,11 +1,11 @@
-import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
-import { IAccountDoc } from "./database/account.model";
-import User, { IUserDoc } from "./database/user.model";
+import Account from "./database/account.model";
+import User from "./database/user.model";
+import { authorizeCredentialsOrThrow } from "./lib/auth/authenticate-credentials";
 import { getBootstrapAdminEmailSet } from "./lib/auth/bootstrap-admin";
 import { normalizeRole } from "./lib/auth/role";
 import { api } from "./lib/api";
@@ -18,48 +18,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Google,
     Credentials({
       async authorize(credentials) {
-
         const validatedFields = SignInSchema.safeParse(credentials);
 
-        if (validatedFields.success) {
-          const { email, password } = validatedFields.data!;
-
-          console.log("email", email)
-          const newVariable=email;
-          console.log("new variable", newVariable)
-          const { data: existingAccount } = (await api.accounts.getByProvider(
-            newVariable
-          )) as ActionResponse<IAccountDoc>;
-                console.log("in the sign in 03")
-
-          if (!existingAccount) return null;
-          const { data: existingUser } = (await api.users.getById(
-            existingAccount.userId.toString()
-          )) as ActionResponse<IUserDoc>;
-      console.log("in the sign in 04")
-
-          if (!existingUser) return null;
-
-          const isValidPassword = await bcrypt.compare(
-            password,
-            existingAccount.password!
-          );
-
-          console.log("isValidPassword", isValidPassword)
-                console.log("in the sign in 05")
-
-
-          if (isValidPassword) {
-            return {
-              id: existingUser.id,
-              name: existingUser.name,
-              email: existingUser.email,
-              image: existingUser.image,
-              role: normalizeRole(existingUser.role),
-            };
-          }
+        if (!validatedFields.success) {
+          return null;
         }
-        return null;
+
+        const { email, password } = validatedFields.data;
+        return await authorizeCredentialsOrThrow(email, password);
       },
     }),
   ],
@@ -71,18 +37,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async jwt({ token, user, account }) {
       if (account) {
-        const { data: existingAccount, success } =
-          (await api.accounts.getByProvider(
-            account.type === "credentials"
-              ? token.email!
-              : account.providerAccountId
-          )) as ActionResponse<IAccountDoc>;
-
-        if (!success || !existingAccount) return token;
-
-        const userId = existingAccount.userId;
-
-        if (userId) token.sub = userId.toString();
+        await dbConnect();
+        if (account.type === "credentials" && token.email) {
+          const emailTrimmed = token.email.trim();
+          const emailRegex = new RegExp(
+            `^${emailTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+            "i"
+          );
+          const existingUser = await User.findOne({ email: emailRegex });
+          if (existingUser) {
+            const existingAccount = await Account.findOne({
+              userId: existingUser._id,
+              provider: "credentials",
+              providerAccountId: existingUser.email,
+            }).sort({ updatedAt: -1 });
+            if (existingAccount?.userId) {
+              token.sub = existingAccount.userId.toString();
+            }
+          }
+        } else if (account.provider && account.providerAccountId) {
+          const existingAccount = await Account.findOne({
+            provider: account.provider,
+            providerAccountId: account.providerAccountId,
+          });
+          if (existingAccount?.userId) {
+            token.sub = existingAccount.userId.toString();
+          }
+        }
       }
 
       if (user && "role" in user && user.role) {
@@ -118,12 +99,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async signIn({ user, profile, account }) {
-      console.log("in the sign in 1")
       if (account?.type === "credentials") return true;
-            console.log("in the sign in 2")
 
       if (!account || !user) return false;
-      console.log("in the sign in 3")
 
       const userInfo = {
         name: user.name!,
@@ -134,8 +112,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             ? (profile?.login as string)
             : (user.name?.toLowerCase() as string),
       };
-            console.log("in the sign in 4")
-
 
       const { success } = (await api.auth.oAuthSignIn({
         user: userInfo,

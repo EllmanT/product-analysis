@@ -5,41 +5,45 @@ import User from "@/database/user.model";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError, ValidationError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
-import { AccountSchema } from "@/lib/validations";
 
-//POST api/users/email
 export async function POST(request: Request) {
-  const providerEmail = await request.json();
-  console.log("providerEmail", providerEmail, typeof providerEmail);
-
-  if (!providerEmail) {
-    throw new NotFoundError("Body not found pkp");
-  }
-
   try {
-    await dbConnect();
-    const validatedData = AccountSchema.partial().safeParse({
-      providerEmail,
-    });
+    const providerEmail = await request.json();
 
-    if (!validatedData.success) {
-      throw new ValidationError(validatedData.error.flatten().fieldErrors);
+    if (
+      providerEmail === null ||
+      providerEmail === undefined ||
+      (typeof providerEmail === "string" && !providerEmail.trim())
+    ) {
+      throw new ValidationError({
+        body: ["Provider identifier is required"],
+      });
     }
 
+    await dbConnect();
+
     const trimmed = String(providerEmail).trim();
+
+    // OAuth provider account IDs (e.g. Google `sub`) are not emails.
+    if (!trimmed.includes("@")) {
+      const account = await Account.findOne({ providerAccountId: trimmed });
+      if (!account) throw new NotFoundError("Account");
+      return NextResponse.json({ success: true, data: account }, { status: 200 });
+    }
+
     const emailRegex = new RegExp(
       `^${trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
       "i"
     );
     const user = await User.findOne({ email: emailRegex });
-    if (!user) throw new NotFoundError("User not found");
+    if (!user) throw new NotFoundError("User");
 
     const account = await Account.findOne({
       userId: user._id,
       provider: "credentials",
       providerAccountId: user.email,
     }).sort({ updatedAt: -1 });
-    if (!account) throw new NotFoundError("User not found");
+    if (!account) throw new NotFoundError("Account");
 
     return NextResponse.json({ success: true, data: account }, { status: 200 });
   } catch (error) {

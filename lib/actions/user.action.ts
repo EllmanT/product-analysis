@@ -40,6 +40,10 @@ params:CreateUserParams
       throw new Error("User with this email already exists");
     }
 
+    if (password == null || password === "") {
+      throw new Error("Password is required");
+    }
+
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const [newUser] = await User.create([{ surname, name, email, branchId, storeId}], {

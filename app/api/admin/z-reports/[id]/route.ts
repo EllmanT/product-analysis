@@ -22,7 +22,7 @@ export async function GET(
 
     await dbConnect();
     const report = await ZReport.findById(id).lean();
-    if (!report) {
+    if (!report || Array.isArray(report)) {
       return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
     }
 

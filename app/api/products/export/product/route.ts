@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { Store, WeeklyProductSummaries } from "@/database";
 import dbConnect from "@/lib/mongoose";
-import { addDays, startOfWeek } from "date-fns";
+import { getStartAndEndOfWeek } from "@/lib/getStartAndEndOfWeek";
 
 export async function GET(req: NextRequest) {
   console.log("📥 Incoming export request...");
@@ -165,19 +165,4 @@ return new NextResponse(Buffer.from(buffer), {
     console.error("❌ Error occurred during export:", error);
     return new Response("Internal server error during export.", { status: 500 });
   }
-}
-
-
-export function getStartAndEndOfWeek(week: number, year: number) {
-  // Jan 1st of the year
-  const jan1 = new Date(year, 0, 1);
-
-  // Get the date of the first Monday of the year
-  const firstMonday = startOfWeek(jan1, { weekStartsOn: 1 });
-
-  // Add (week - 1) * 7 days to get the Monday of that week
-  const weekStart = addDays(firstMonday, (week - 1) * 7);
-  const weekEnd = addDays(weekStart, 6);
-
-  return { weekStart, weekEnd };
 }

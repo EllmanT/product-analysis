@@ -19,14 +19,16 @@ export default function Page() {
 
 const [date, setDate] = React.useState<Date | undefined>(undefined);
 const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
-  const handleStartDateChange = (date: Date) => {
-    console.log("Selected Date:", date)
-    setDate(date)
-  }
-    const handleEndDateChange = (enddate: Date) => {
-    console.log("Selected Date:", enddate)
-    setEndDate(enddate)
-  }
+  const handleStartDateChange = (next: Date | undefined) => {
+    if (!next) return;
+    console.log("Selected Date:", next);
+    setDate(next);
+  };
+    const handleEndDateChange = (enddate: Date | undefined) => {
+    if (!enddate) return;
+    console.log("Selected Date:", enddate);
+    setEndDate(enddate);
+  };
 const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
    e.preventDefault()
   const params = new URLSearchParams(window.location.search);

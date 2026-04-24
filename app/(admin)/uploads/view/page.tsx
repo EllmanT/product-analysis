@@ -1,21 +1,12 @@
 
 "use client"
-import { ChartAreaInteractive } from "@/components/charts/LineChartInteractive";
-import { SectionCards } from "@/components/statistics/StatisticsSection";
-
 // import data from "./data.json";
 import { projects} from "@/app/data";
-import { columns } from "@/components/data-table/columns/columns";
 import { DataTable } from "@/components/data-table/index";
-import DataTableTopHeader from "@/components/data-table/Header";
-import GlobalFilter from "@/components/filter/GlobalFilter";
-import { HomePageBranchesFilters,  HomePageMonth, HomePageWeek, HomePageYear } from "@/constants/filter";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Calendar1Icon, ComputerIcon, FilterIcon, StoreIcon } from "lucide-react";
-import { columnsBranchesUp } from "@/components/data-table/columns/columnsBranchesUp";
-import StatisticsCard from "@/components/cards/StatisticsCard";
-import { IconCash, IconCashPlus, IconSearch, IconTrendingUp } from "@tabler/icons-react";
+import { Calendar1Icon, ComputerIcon, StoreIcon } from "lucide-react";
+import { IconCash, IconSearch } from "@tabler/icons-react";
 import UploadDetailsCard from "@/components/cards/UploadDetailsCard";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AutoComplete } from "@/components/Autocomplete";

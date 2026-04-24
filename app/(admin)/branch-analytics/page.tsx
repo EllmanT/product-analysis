@@ -1,44 +1,39 @@
 "use client"
 // import data from "./data.json";
-import GlobalFilter from "@/components/filter/GlobalFilter";
-import { HomePageBranchesFilters,  HomePageMonth, HomePageWeek, HomePageYear } from "@/constants/filter";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { FilterIcon, RefreshCcw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { ProductMovementLineChart } from "@/components/charts/productMovementLineChart";
-import { AutoComplete } from "@/components/Autocomplete";
 import React, { startTransition, useEffect, useMemo, useState } from "react";
-import { getDetail, getList } from "@/lib/actions/product.action";
-import {QueryClient, QueryClientProvider, useQuery} from "@tanstack/react-query"
 import { BranchSalesLineChart } from "@/components/charts/BranchSalesLineChart";
 import { downloadExportAll, downloadExportBranch } from "@/app/api/products/downloadexcel";
 import BranchFilter from "@/components/filter/BranchFilter";
 import { Calendar22 } from "@/components/Calendat";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+
+type BranchSalesChartRow = {
+  date: string;
+  [storeName: string]: number | string;
+};
 
 export default  function Page() {
-  const queryClient = new QueryClient()
-    const [searchValue, setSearchValue] = useState<string>("");
-  const [selectedValue, setSelectedValue] = useState<string>("");
-
     const [branches, setBranches] = useState<Branch[]>([]);
-    const [chartData, setChartData] = useState<[]>([]);
+    const [chartData, setChartData] = useState<BranchSalesChartRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId]= useState("");
-  const router = useRouter();
   
 
 const [date, setDate] = React.useState<Date | undefined>(undefined);
 const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
-  const handleStartDateChange = (date: Date) => {
-    console.log("Selected Date:", date)
-    setDate(date)
-  }
-    const handleEndDateChange = (enddate: Date) => {
-    console.log("Selected Date:", enddate)
-    setEndDate(enddate)
-  }
+  const handleStartDateChange = (next: Date | undefined) => {
+    if (!next) return;
+    console.log("Selected Date:", next);
+    setDate(next);
+  };
+  const handleEndDateChange = (enddate: Date | undefined) => {
+    if (!enddate) return;
+    console.log("Selected Date:", enddate);
+    setEndDate(enddate);
+  };
   const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
      e.preventDefault()
     const params = new URLSearchParams(window.location.search);
@@ -124,17 +119,18 @@ const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
 
   const branchName = selectedBranch.location
 
-  return chartData.map(entry => {
-    const filteredEntry: { [key: string]: any } = { date: entry.date }
+  return chartData.map((entry) => {
+    const filteredEntry: BranchSalesChartRow = { date: entry.date };
 
     if (branchName in entry) {
-      filteredEntry[branchName] = entry[branchName]
+      const v = entry[branchName];
+      filteredEntry[branchName] = typeof v === "number" || typeof v === "string" ? v : 0;
     } else {
-      filteredEntry[branchName] = 0 // or null if you prefer
+      filteredEntry[branchName] = 0;
     }
 
-    return filteredEntry
-  })
+    return filteredEntry;
+  });
 }, [chartData, selectedBranch])
 
 console.log("filteredData",filteredData)

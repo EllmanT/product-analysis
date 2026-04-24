@@ -1,8 +1,12 @@
 import type { Session } from "next-auth";
+import type { Types } from "mongoose";
 
-import Store from "@/database/store.model";
-import User from "@/database/user.model";
+import Store, { type IStore } from "@/database/store.model";
+import User, { type IUser } from "@/database/user.model";
 import dbConnect from "@/lib/mongoose";
+
+type UserLean = IUser & { _id: Types.ObjectId };
+type StoreLean = Pick<IStore, "name"> & { _id: Types.ObjectId };
 
 export type InvoiceSeller = {
   legalName: string;
@@ -41,13 +45,15 @@ export async function getSellerForAdminSession(
   if (!userId) return env;
 
   await dbConnect();
-  const user = await User.findById(userId).lean();
+  const user = await User.findById(userId).lean<UserLean | null>();
   if (!user) return env;
 
   const person = `${user.name} ${user.surname}`.trim();
   let storeName = "";
   if (user.storeId) {
-    const store = await Store.findById(user.storeId).select("name").lean();
+    const store = await Store.findById(user.storeId)
+      .select("name")
+      .lean<StoreLean | null>();
     storeName = store?.name?.trim() ?? "";
   }
 
@@ -78,11 +84,13 @@ export async function getSellerForPublicInvoice(): Promise<InvoiceSeller> {
     storeId: { $exists: true, $ne: null },
   })
     .select("storeId email name surname")
-    .lean();
+    .lean<UserLean | null>();
 
   if (!admin?.storeId) return env;
 
-  const store = await Store.findById(admin.storeId).select("name").lean();
+  const store = await Store.findById(admin.storeId)
+    .select("name")
+    .lean<StoreLean | null>();
   const storeName = store?.name?.trim() ?? "";
   const person = `${admin.name} ${admin.surname}`.trim();
   const tradeName = (env.tradeName?.trim() || "") || storeName || person;

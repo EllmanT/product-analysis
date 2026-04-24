@@ -211,7 +211,7 @@ const formattedUploads = uploads.map(upload => ({
 
 
   } catch (error) {
-    return handleError(error) as ErrorResponse;
+    return handleError(error, "api") as NextResponse;
   }
 
 //   res.status(200).json(chartData)

@@ -29,6 +29,9 @@ export interface IFiscalSettings {
 
   lastAutoCloseDate?: string;
   lastAutoOpenDate?: string;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface IFiscalSettingsDoc extends IFiscalSettings, Document {}

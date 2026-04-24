@@ -1,5 +1,11 @@
 import type { IFiscalData } from "@/database/invoice.model";
 
+/** Subset of fiscal payload used for QR / verification display (avoids requiring e.g. `rawResponse` on client DTOs). */
+export type ZimraQrFiscalFields = Pick<
+  IFiscalData,
+  "verificationCode" | "verificationLink" | "qrCodeUrl" | "receiptHash"
+>;
+
 /** True only after a successful ZIMRA submit (guards stale flags / accidental SUBMITTED). */
 export function isInvoiceZimraVerifiedForDisplay(inv: {
   isFiscalized?: boolean;
@@ -31,7 +37,9 @@ export function isBareZimraPortalUrl(url: string): boolean {
 /**
  * String to encode in the QR code: prefer a full verification URL over a generic portal root.
  */
-export function getZimraQrEmbedString(fiscalData: IFiscalData | null | undefined): string {
+export function getZimraQrEmbedString(
+  fiscalData: Partial<ZimraQrFiscalFields> | null | undefined
+): string {
   if (!fiscalData) return "";
   const link = (fiscalData.verificationLink || "").trim();
   const qrUrl = (fiscalData.qrCodeUrl || "").trim();

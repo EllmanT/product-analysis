@@ -1,19 +1,17 @@
-import React, { startTransition } from 'react'
+import React from 'react'
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from '../ui/card'
-import { IconTrendingUp } from '@tabler/icons-react'
 import { Badge } from '../ui/badge'
 import { cn } from '@/lib/utils'
 import { Button } from '../ui/button'
 import { DownloadIcon } from 'lucide-react'
-import { api } from '@/lib/api'
-import { downloadExport, downloadExportAll } from '@/app/api/products/downloadexcel'
+import { downloadExportAll } from '@/app/api/products/downloadexcel'
 
 const DownloadCenterCard = ({label, trend,description,icon:Icon,period, bgColor}: StatisticsCard) => {
   
 
 const handleDownloadAll = async() => {
   try {
-   const result= await downloadExportAll("june", "2025","4")
+   const result= await downloadExportAll(new Date(), new Date(), "4")
 
    if(result)console.log("upload successful baba")
   } catch (error) {

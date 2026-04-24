@@ -1,6 +1,5 @@
 "use client"
 // import data from "./data.json";
-import { projects} from "@/app/data";
 import { DataTable } from "@/components/data-table/index";
 import { Button } from "@/components/ui/button";
 import { FilterIcon, RefreshCcw } from "lucide-react";
@@ -9,24 +8,29 @@ import { Calendar22 } from "@/components/Calendat";
 import BranchFilter from "@/components/filter/BranchFilter";
 import React, { startTransition, useEffect, useState } from "react";
 import { downloadExportAll, downloadExportBranch } from "@/app/api/products/downloadexcel";
-import { columnAllUploads } from "@/components/data-table/columns/columnAllUploads";
+import {
+  columnAllUploads,
+  type AllUploadRow,
+} from "@/components/data-table/columns/columnAllUploads";
 
 export default function Page() {
       const [branches, setBranches] = useState<Branch[]>([]);
       const [loading, setLoading] = useState(true);
       const [storeId, setStoreId]= useState("");
-        const [reportData, setReportData] = useState<[]>([]);
+        const [reportData, setReportData] = useState<AllUploadRow[]>([]);
     
     const [date, setDate] = React.useState<Date | undefined>(undefined);
     const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
-      const handleStartDateChange = (date: Date) => {
-        console.log("Selected Date:", date)
-        setDate(date)
-      }
-        const handleEndDateChange = (enddate: Date) => {
-        console.log("Selected Date:", enddate)
-        setEndDate(enddate)
-      }
+      const handleStartDateChange = (next: Date | undefined) => {
+        if (!next) return;
+        console.log("Selected Date:", next);
+        setDate(next);
+      };
+        const handleEndDateChange = (enddate: Date | undefined) => {
+        if (!enddate) return;
+        console.log("Selected Date:", enddate);
+        setEndDate(enddate);
+      };
     const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
        e.preventDefault()
       const params = new URLSearchParams(window.location.search);
@@ -87,7 +91,7 @@ export default function Page() {
             const {data:datas} = await response.json();
   
          
-            setReportData(datas)
+            setReportData(datas as AllUploadRow[])
           } catch (err) {
             console.error(err);
           } finally {

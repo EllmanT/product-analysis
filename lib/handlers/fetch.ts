@@ -2,8 +2,19 @@ import logger from "../logger";
 import handleError from "./error";
 import { RequestError } from "../http-errors";
 
-interface FetchOptions extends RequestInit {
+/** Plain values are JSON-stringified; FormData and native BodyInit pass through unchanged. */
+type FetchBody =
+  | RequestInit["body"]
+  | Record<string, unknown>
+  | unknown[]
+  | string
+  | number
+  | boolean
+  | null;
+
+interface FetchOptions extends Omit<RequestInit, "body"> {
   timeOut?: number;
+  body?: FetchBody;
 }
 
 function isError(error: unknown): error is Error {

@@ -20,7 +20,10 @@ console.log("her now 23")
   }
 console.log("her now 24")
 
-  const { data: newData } = await getUsers({ userId:data.user._id,storeId: data.user.storeId });
+  const { data: newData } = await getUsers({
+    userId,
+    storeId: String(data.user.storeId),
+  });
 console.log("her now 25")
 console.log("data", data)
 console.log("new Data", newData)

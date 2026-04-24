@@ -20,7 +20,7 @@ export async function GET() {
 
   if (role === "admin") {
     const { data: newData } = await getBranchesByStore({
-      storeId: data.user.storeId,
+      storeId: String(data.user.storeId),
     });
     return NextResponse.json({ success: true, data: newData }, { status: 200 });
   }

@@ -1,5 +1,8 @@
-import { Worker } from 'bullmq';
-import {connection} from "../redis"
-import { processUploadJob } from './processors/upload.processor';
+import { Worker } from "bullmq";
+import { processUploadJob } from "./processors/upload.processor";
+import { getBullmqConnection } from "./redis-connection";
 
-new Worker('upload-processing', processUploadJob, { connection});
+const connection = getBullmqConnection();
+if (connection) {
+  new Worker("upload-processing", processUploadJob, { connection });
+}

@@ -23,9 +23,9 @@ import { Button } from "../ui/button"
 import { Download,  Printer,} from "lucide-react"
 import Link from "next/link"
 
-type ChartConfig = Record<string, { label: string; color: string }>
+type SeriesChartConfigMap = Record<string, { label: string; color: string }>
 
-function generateChartConfig(chartData: any[]): ChartConfig {
+function generateChartConfig(chartData: any[]): SeriesChartConfigMap {
   const uniqueStores = new Set<string>()
 
   chartData.forEach(entry => {
@@ -42,7 +42,7 @@ function generateChartConfig(chartData: any[]): ChartConfig {
   return `#${randomInt.toString(16).padStart(6, '0')}`
 }
 
-  const chartConfig: ChartConfig = {}
+  const chartConfig: SeriesChartConfigMap = {}
   Array.from(uniqueStores).forEach((store) => {
     chartConfig[store] = {
       label: store,

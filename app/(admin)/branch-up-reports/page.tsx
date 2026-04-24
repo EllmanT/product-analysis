@@ -1,33 +1,41 @@
 "use client"
 // import data from "./data.json";
-import { projects} from "@/app/data";
 import { DataTable } from "@/components/data-table/index";
 import { Button } from "@/components/ui/button";
 import { FilterIcon, RefreshCcw } from "lucide-react";
-import { columnAllUploadReports } from "@/components/data-table/columns/columnsBranchesUp";
+import {
+  columnAllUploadReports,
+  type BranchUploadReportRow,
+} from "@/components/data-table/columns/columnsBranchesUp";
 import { Separator } from "@/components/ui/separator";
 import { Calendar22 } from "@/components/Calendat";
 import BranchFilter from "@/components/filter/BranchFilter";
 import { downloadExportAll, downloadExportBranch } from "@/app/api/products/downloadexcel";
 import React, { startTransition, useEffect, useState } from "react";
 
+type BranchAnalyticsEntry = {
+  date: string;
+  [key: string]: string | number;
+};
+
 export default function Page() {
-    const params = new URLSearchParams()
     const [branches, setBranches] = useState<Branch[]>([]);
     const [loading, setLoading] = useState(true);
     const [storeId, setStoreId]= useState("");
-      const [reportData, setReportData] = useState<[]>([]);
+      const [reportData, setReportData] = useState<BranchUploadReportRow[]>([]);
   
   const [date, setDate] = React.useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
-    const handleStartDateChange = (date: Date) => {
-      console.log("Selected Date:", date)
-      setDate(date)
-    }
-      const handleEndDateChange = (enddate: Date) => {
-      console.log("Selected Date:", enddate)
-      setEndDate(enddate)
-    }
+    const handleStartDateChange = (next: Date | undefined) => {
+      if (!next) return;
+      console.log("Selected Date:", next);
+      setDate(next);
+    };
+      const handleEndDateChange = (enddate: Date | undefined) => {
+      if (!enddate) return;
+      console.log("Selected Date:", enddate);
+      setEndDate(enddate);
+    };
   const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
      e.preventDefault()
     const params = new URLSearchParams(window.location.search);
@@ -87,13 +95,13 @@ export default function Page() {
   
           const {data:datas} = await response.json();
 
-          const formattedData = datas.flatMap(entry =>
+          const formattedData = (datas as BranchAnalyticsEntry[]).flatMap((entry) =>
   Object.entries(entry)
-    .filter(([key]) => key !== 'date')
+    .filter(([key]) => key !== "date")
     .map(([branch, revenue]) => ({
       date: entry.date,
       branch,
-      revenue
+      revenue: typeof revenue === "string" || typeof revenue === "number" ? revenue : 0,
     }))
 );
           setReportData(formattedData)

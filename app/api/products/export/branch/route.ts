@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { Branch, Store, WeeklyProductSummaries } from "@/database";
 import dbConnect from "@/lib/mongoose";
-import { getStartAndEndOfWeek } from "../route";
+import { getStartAndEndOfWeek } from "@/lib/getStartAndEndOfWeek";
 
 export async function GET(req: NextRequest) {
   console.log("📥 Incoming export request...");

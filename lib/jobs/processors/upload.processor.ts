@@ -1,8 +1,15 @@
 import { UploadProduct, WeeklyProductSummaries } from '@/database';
-// import { Job } from 'bullmq';
+import type { Job } from 'bullmq';
+import type { Types } from 'mongoose';
 
-export const processUploadJob = async (upload:Upload) => {
-  const { _id:uploadId, week, year } = upload;
+export type UploadJobData = {
+  _id: Types.ObjectId | string;
+  week: number;
+  year: number;
+};
+
+export const processUploadJob = async (job: Job<UploadJobData>) => {
+  const { _id: uploadId, week, year } = job.data;
 
   console.log("uploadId",uploadId)
 

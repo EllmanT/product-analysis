@@ -14,6 +14,7 @@ import {
 import { formatCompactNumber } from "@/lib/utils/formatCompactNumber";
 import type { ShopHomepageBrowseTile } from "@/types/shop-homepage";
 
+import { useDocumentMatchUpload } from "./document-match/DocumentMatchContext";
 import { useShopHomepageData } from "./homepage-data-provider";
 import { HeroVisibilityContext } from "./shop-search-context";
 
@@ -32,11 +33,27 @@ const PLACEHOLDERS = [
 
 const VISIT_SESSION_KEY = "shop_visit_recorded";
 
-function getSpeechRecognitionCtor(): (new () => SpeechRecognition) | null {
+/** Minimal typing for browser speech APIs (DOM `SpeechRecognition` is not always in TS lib). */
+type ShopSpeechRecognition = {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult:
+    | ((
+        event: {
+          results: ArrayLike<{ 0?: { transcript?: string } }>;
+        }
+      ) => void)
+    | null;
+  onerror: (() => void) | null;
+  start(): void;
+};
+
+function getSpeechRecognitionCtor(): (new () => ShopSpeechRecognition) | null {
   if (typeof window === "undefined") return null;
   const w = window as unknown as {
-    SpeechRecognition?: new () => SpeechRecognition;
-    webkitSpeechRecognition?: new () => SpeechRecognition;
+    SpeechRecognition?: new () => ShopSpeechRecognition;
+    webkitSpeechRecognition?: new () => ShopSpeechRecognition;
   };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
@@ -45,6 +62,7 @@ export function HeroSection() {
   const router = useRouter();
   const { setHeroVisible } = useContext(HeroVisibilityContext);
   const { data, isLoading, isError } = useShopHomepageData();
+  const { submitFile, isLoading: documentLoading } = useDocumentMatchUpload();
 
   const [value, setValue] = useState("");
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -115,7 +133,7 @@ export function HeroSection() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    toast.message("Photo and PDF matching is coming soon.");
+    void submitFile(file);
   }
 
   const browseTiles = data?.browseTiles ?? [];
@@ -203,14 +221,15 @@ export function HeroSection() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+                    disabled={documentLoading}
+                    className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50"
                     aria-label="Upload product photo or PDF"
                   >
                     <Plus className="h-5 w-5" strokeWidth={2} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={6}>
-                  Upload a product photo or PDF.
+                  Upload a list or quote — we&apos;ll match lines to products.
                 </TooltipContent>
               </Tooltip>
             </div>

@@ -148,7 +148,7 @@ export const mainSidebarLinks = [
     },
     {
       title: "Account",
-      // url: "/account",
+      url: "/account",
       icon: IconUser,
     },
   ]

@@ -5,10 +5,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SortableHeader } from "@/components/data-table/SortableHeader";
 import Name from "@/components/data-table/Name";
 
+export type AllUploadRow = {
+  uploadId: string;
+  branchId: string;
+  branchLocation: string;
+  uploadDate: string;
+  estValue: number;
+  totalProducts: number;
+};
 
-
-
-export const columnAllUploads: ColumnDef<[]>[] = [
+export const columnAllUploads: ColumnDef<AllUploadRow>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -56,7 +62,7 @@ export const columnAllUploads: ColumnDef<[]>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} title="Est Value" />
     ),
-    cell: ({ row }) => <Name name={row.getValue("estValue")} />,
+    cell: ({ row }) => <Name name={String(row.getValue("estValue"))} />,
     enableSorting: true,
   },
 
@@ -65,7 +71,7 @@ export const columnAllUploads: ColumnDef<[]>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} title="Total Products" />
     ),
-    cell: ({ row }) => <Name name={row.getValue("totalProducts")} />,
+    cell: ({ row }) => <Name name={String(row.getValue("totalProducts"))} />,
     enableSorting: true,
   },
 

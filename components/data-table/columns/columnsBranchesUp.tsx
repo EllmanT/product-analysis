@@ -3,13 +3,17 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SortableHeader } from "@/components/data-table/SortableHeader";
-import { ProjectActions } from "@/components/data-table/ProjectActions";
 import Name from "@/components/data-table/Name";
 
+export type BranchUploadReportRow = {
+  date: string;
+  branch: string;
+  revenue: string | number;
+  units?: string | number;
+  sales?: string | number;
+};
 
-
-
-export const columnAllUploadReports: ColumnDef<[]>[] = [
+export const columnAllUploadReports: ColumnDef<BranchUploadReportRow>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -57,7 +61,7 @@ export const columnAllUploadReports: ColumnDef<[]>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} title="est Revenue" />
     ),
-    cell: ({ row }) => <Name name={row.getValue("revenue")} />,
+    cell: ({ row }) => <Name name={String(row.getValue("revenue"))} />,
     enableSorting: true,
   },
 
@@ -66,7 +70,7 @@ export const columnAllUploadReports: ColumnDef<[]>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} title="Total Units" />
     ),
-    cell: ({ row }) => <Name name={row.getValue("units")} />,
+    cell: ({ row }) => <Name name={String(row.getValue("units") ?? "")} />,
     enableSorting: true,
   },
 
@@ -75,7 +79,7 @@ export const columnAllUploadReports: ColumnDef<[]>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} title="est Sales" />
     ),
-    cell: ({ row }) => <Name name={row.getValue("sales")} />,
+    cell: ({ row }) => <Name name={String(row.getValue("sales") ?? "")} />,
     enableSorting: true,
   },
 

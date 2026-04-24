@@ -17,6 +17,7 @@ import {
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { useCart } from "@/app/(shop)/context/CartContext";
+import { ShopDocumentUploadTrigger } from "./document-match/ShopDocumentUploadTrigger";
 import { useCartDrawer } from "./CartDrawerContext";
 import { useShopSearch, HeroVisibilityContext } from "./shop-search-context";
 import {
@@ -214,10 +215,14 @@ export function ShopHeader({
           }`}
           aria-hidden={!showNavSearch}
         >
-          <SearchField
-            onFocus={() => setNavSearchFocused(true)}
-            onBlur={() => setNavSearchFocused(false)}
-          />
+          <div className="flex w-full items-center gap-2">
+            <SearchField
+              className="min-w-0 flex-1"
+              onFocus={() => setNavSearchFocused(true)}
+              onBlur={() => setNavSearchFocused(false)}
+            />
+            <ShopDocumentUploadTrigger />
+          </div>
         </div>
 
         {/* Desktop right side */}
@@ -317,7 +322,10 @@ export function ShopHeader({
           </button>
         </div>
         <div className="flex flex-col gap-3 p-4">
-          <SearchField />
+          <div className="flex items-center gap-2">
+            <SearchField className="min-w-0 flex-1" />
+            <ShopDocumentUploadTrigger />
+          </div>
 
           {customer ? (
             <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">

@@ -1,6 +1,12 @@
 import { ProductMaster } from "@/database";
 import handleError from "@/lib/handlers/error";
 import dbConnect from "@/lib/mongoose";
+import { escapeRegex } from "@/lib/shop/catalogHelpers";
+import {
+  projectShopProductCardStage,
+  shopCatalogBaseStages,
+  stockLookupWithPositiveQtyStages,
+} from "@/lib/shop/shopProductPipeline";
 import { NextRequest, NextResponse } from "next/server";
 import type { PipelineStage } from "mongoose";
 
@@ -14,10 +20,6 @@ const SORT_MAP: Record<string, Record<string, 1 | -1>> = {
   price_desc: { "latest.price": -1 },
   qty_desc: { "latest.qty": -1 },
 };
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,12 +42,6 @@ export async function GET(request: NextRequest) {
     const sortKey = searchParams.get("sort") || "name_asc";
     const sortObj = SORT_MAP[sortKey] ?? SORT_MAP.name_asc;
 
-    const activeMatch: PipelineStage = {
-      $match: {
-        $or: [{ isActive: true }, { isActive: { $exists: false } }],
-      },
-    };
-
     const searchStages: PipelineStage[] =
       q.length > 0
         ? [
@@ -65,36 +61,7 @@ export async function GET(request: NextRequest) {
           ]
         : [];
 
-    const lookupAndStock: PipelineStage[] = [
-      {
-        $lookup: {
-          from: "uploadproducts",
-          let: { pid: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$productId", "$$pid"] },
-                    { $gt: ["$qty", 0] },
-                  ],
-                },
-              },
-            },
-            { $sort: { upload_date: -1, createdAt: -1 } },
-            { $limit: 1 },
-            { $project: { qty: 1, price: 1 } },
-          ],
-          as: "latest",
-        },
-      },
-      {
-        $unwind: {
-          path: "$latest",
-          preserveNullAndEmptyArrays: false,
-        },
-      },
-    ];
+    const lookupAndStock = stockLookupWithPositiveQtyStages();
 
     // Optional post-lookup filters
     const postFilters: Record<string, unknown> = {};
@@ -112,32 +79,23 @@ export async function GET(request: NextRequest) {
         : [];
 
     const preFacet: PipelineStage[] = [
-      activeMatch,
+      ...shopCatalogBaseStages(),
       ...searchStages,
       ...lookupAndStock,
       ...postFilterStages,
     ];
 
-    const facetStage: PipelineStage = {
+    const facetStage = {
       $facet: {
         metadata: [{ $count: "total" }],
         data: [
           { $sort: sortObj },
           { $skip: (page - 1) * pageSize },
           { $limit: pageSize },
-          {
-            $project: {
-              _id: 1,
-              name: 1,
-              standardCode: 1,
-              imageUrl: 1,
-              quantityAvailable: "$latest.qty",
-              price: { $toString: "$latest.price" },
-            },
-          },
+          projectShopProductCardStage(),
         ],
       },
-    };
+    } as unknown as PipelineStage;
 
     const [row] = await ProductMaster.aggregate([
       ...preFacet,

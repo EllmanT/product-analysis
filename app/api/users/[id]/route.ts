@@ -21,7 +21,7 @@ async function targetUserInStore(
 ): Promise<boolean> {
   await dbConnect();
   const target = await User.findById(targetId).select("storeId").lean();
-  if (!target?.storeId) return false;
+  if (!target || Array.isArray(target) || !target.storeId) return false;
   return String(target.storeId) === storeId;
 }
 

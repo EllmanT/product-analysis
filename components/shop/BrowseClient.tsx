@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 
+import { ShopDocumentUploadTrigger } from "./document-match/ShopDocumentUploadTrigger";
 import { ProductCard, ProductSkeletonCard, type ShopProductRow } from "./ProductCard";
 
 type BrowseParams = {
@@ -270,22 +271,25 @@ export function BrowseClient({
               showSortBar ? "sm:justify-between" : ""
             }`}
           >
-            <div className="relative min-w-0 w-full max-w-xl sm:flex-1">
-              <label htmlFor="browse-product-search" className="sr-only">
-                Search by name or code
-              </label>
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-                aria-hidden
-              />
-              <input
-                id="browse-product-search"
-                type="search"
-                value={filters.q}
-                onChange={(e) => handleFilterChange("q", e.target.value)}
-                placeholder="Search by name or code..."
-                className="w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 shadow-sm outline-none ring-blue-500/30 placeholder:text-slate-400 transition focus:bg-white focus:ring-2"
-              />
+            <div className="flex min-w-0 w-full max-w-xl items-center gap-2 sm:flex-1">
+              <div className="relative min-w-0 flex-1">
+                <label htmlFor="browse-product-search" className="sr-only">
+                  Search by name or code
+                </label>
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  aria-hidden
+                />
+                <input
+                  id="browse-product-search"
+                  type="search"
+                  value={filters.q}
+                  onChange={(e) => handleFilterChange("q", e.target.value)}
+                  placeholder="Search by name or code..."
+                  className="w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 shadow-sm outline-none ring-blue-500/30 placeholder:text-slate-400 transition focus:bg-white focus:ring-2"
+                />
+              </div>
+              <ShopDocumentUploadTrigger />
             </div>
             {showSortBar && (
               <div className="flex shrink-0 sm:justify-end">

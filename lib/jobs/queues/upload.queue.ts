@@ -1,5 +1,8 @@
-import { Queue } from 'bullmq';
-import {connection} from '@/lib/redis';
-export const uploadProcessingQueue = new Queue('upload-processing', {
-  connection,
-});
+import { Queue } from "bullmq";
+import { getBullmqConnection } from "@/lib/jobs/redis-connection";
+
+const connection = getBullmqConnection();
+
+export const uploadProcessingQueue = connection
+  ? new Queue("upload-processing", { connection })
+  : null;

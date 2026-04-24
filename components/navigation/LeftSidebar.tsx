@@ -4,7 +4,6 @@ import * as React from "react"
 
 import { NavMain } from "@/components/navigation/navbar/NavMain"
 import { NavSecondary } from "@/components/navigation/navbar/NavSecondary"
-import { NavUser } from "@/components/navigation/navbar/NavUser"
 import {
   Sidebar,
   SidebarContent,

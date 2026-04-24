@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-/** Same resolution as middleware.ts — Auth.js prefers AUTH_SECRET. */
+/** Same resolution as proxy.ts — Auth.js prefers AUTH_SECRET. */
 function authSecret(): string | undefined {
   return process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
 }

@@ -38,7 +38,7 @@ Other notable libraries: **Radix UI** primitives, **Tabler** / **Lucide** icons,
 - **`database/`** — Mongoose models (`*.model.ts`).
 - **`lib/`** — DB connection (`mongoose.ts`), **validations**, **server actions**, **API fetch helpers**, **job queue** definitions, error helpers.
 - **`components/`** — Shared UI (shadcn-style), forms, charts, tables, navigation.
-- **`middleware.ts`** — Re-exports NextAuth’s `auth` as middleware (see Section 5).
+- **`proxy.ts`** (Next.js 16+) — Request proxy: reads the JWT and redirects **`branch_user`** away from **`/users`** and **`/branches`** to **`/dashboard`** (see Section 5).
 
 Environment: MongoDB URI and NextAuth secrets are expected via standard Next.js / NextAuth environment variables (see `auth.ts` and `lib/mongoose.ts` usage in the codebase).
 
@@ -482,7 +482,7 @@ URLs are relative to the site root. The **`(admin)`** and **`(auth)`** groups do
 3. **Session callback** copies `token.sub` to **`session.user.id`** for use in server components and API routes.
 4. **Credentials `authorize`:** Validates with `SignInSchema`, loads **Account** (via API) and **User**, compares password with **bcrypt.compare**.
 5. **OAuth `signIn` callback:** Calls **`POST /api/auth/signin-with-oauth`** to upsert **User** + **Account** in a transaction.
-6. **Middleware:** `middleware.ts` exports `auth` from `@/auth` as the middleware function (NextAuth v5 pattern). Fine-grained route protection is inconsistent (admin layout redirect disabled).
+6. **Proxy (formerly middleware):** Root `proxy.ts` uses `next-auth/jwt` `getToken` and redirects **`branch_user`** from **`/users`** and **`/branches`** to **`/dashboard`**. Other route protection is inconsistent (admin layout redirect disabled). API routes under `/api` are excluded by the proxy matcher; enforce roles in handlers where needed.
 
 **Server actions** (`lib/actions/auth.action.ts`): `signUpWithCredentials` creates User + Account (+ Store for owners), then `signIn("credentials", { redirect: false })`. `signInWithCredentials` validates password and calls `signIn`.
 

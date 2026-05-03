@@ -161,15 +161,20 @@ export async function PATCH(
       doc.paymentMethodChosenAt = new Date();
       if (m === "cod") {
         doc.fulfillmentStatus = "pending";
+      } else {
+        doc.set("fulfillmentStatus", undefined);
       }
       await doc.save();
+      if (m !== "cod") {
+        await Quotation.updateOne({ _id: doc._id }, { $unset: { fulfillmentStatus: 1 } });
+      }
       return NextResponse.json(
         {
           success: true,
           data: {
             _id: doc._id.toString(),
             checkoutPaymentMethod: doc.checkoutPaymentMethod,
-            fulfillmentStatus: doc.fulfillmentStatus ?? null,
+            fulfillmentStatus: m === "cod" ? (doc.fulfillmentStatus ?? null) : null,
           },
         },
         { status: 200 }

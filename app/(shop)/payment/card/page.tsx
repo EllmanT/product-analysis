@@ -5,7 +5,21 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { CreditCard, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CreditCard, ShieldCheck } from "lucide-react";
+
+function BackToQuotationLink({ quotationId }: { quotationId: string }) {
+  return (
+    <div className="mb-4">
+      <Link
+        href={`/account/quotations/${quotationId}`}
+        className="inline-flex items-center gap-2 text-sm font-medium text-[#2563EB] hover:text-blue-700"
+      >
+        <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+        Back to quotation
+      </Link>
+    </div>
+  );
+}
 
 type PaymentOption = "visa_master_usd" | "zimswitch_usd" | "zimswitch_zig";
 
@@ -108,6 +122,7 @@ function CardPaymentContent() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-10">
+      <BackToQuotationLink quotationId={quotationId} />
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col items-center text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-700">

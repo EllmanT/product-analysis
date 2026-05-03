@@ -1485,3 +1485,149 @@
 {"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812491124}
 {"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812491325}
 {"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812491404}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812491609}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812491706}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812491858}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812491968}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812493850}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812493860}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812493918}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812494161}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812494638}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812494682}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812494718}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812494774}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812495125}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812495263}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812495267}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812495293}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812495431}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812495742}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812495746}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812495771}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812495822}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812496039}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812496043}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812496062}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812495875}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812495883}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812495914}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812496170}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812496332}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812496220}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812496224}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812496244}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812496405}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812496479}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812496536}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812496689}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812496693}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812496710}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812496798}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812496911}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812497018}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812497073}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812497142}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812497235}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812497694}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812497733}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812497770}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812497793}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812498078}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812498435}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812498600}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812498817}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812498866}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812498944}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812499006}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812499162}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812499573}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812499598}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812499633}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812499807}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812500007}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812500552}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812560314}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812560328}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812560354}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812560453}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812560528}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812560727}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812563467}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812563486}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812563506}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812563605}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812563676}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812563805}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812584574}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812584587}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812584600}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812584684}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812584735}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812584846}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812632136}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812632175}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812632226}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812632980}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812633756}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812636368}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812636388}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812636417}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812636958}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812637414}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812637829}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812638023}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812638027}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812638248}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812638042}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812638087}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812638092}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812638107}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812638148}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812638154}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812638172}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812638252}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812638276}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812638454}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812638466}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812638479}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812638560}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812638701}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812638799}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812638849}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812638902}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812638963}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812639303}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812639321}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812639343}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812639505}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812646463}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812646482}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812646513}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812646606}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812646673}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812646821}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812674222}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777812674235}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777812674251}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777812674340}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777812674402}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777812674513}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777813542675}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777813542724}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777813542749}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777813542865}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777813542913}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777813543029}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777813555969}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777813556191}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777813556480}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777813557172}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777813557241}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777813557358}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777813665887}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777813665917}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:afterDbConnect","message":"shop layout after dbConnect ok","data":{},"timestamp":1777813665931}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777813666004}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777813666065}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":true},"timestamp":1777813666175}

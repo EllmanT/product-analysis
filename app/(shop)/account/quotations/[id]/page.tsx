@@ -166,10 +166,15 @@ function ActionCard({
     quotation.checkoutPaymentMethod
   );
   const [saving, setSaving] = useState(false);
+  const [changingMethod, setChangingMethod] = useState(false);
 
   useEffect(() => {
     setSelected(quotation.checkoutPaymentMethod);
   }, [quotation.checkoutPaymentMethod, quotation._id]);
+
+  useEffect(() => {
+    setChangingMethod(false);
+  }, [quotation._id]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/account/quotations/${quotation._id}`;
@@ -196,6 +201,7 @@ function ActionCard({
         return;
       }
       onRefresh();
+      setChangingMethod(false);
       if (method === "card") {
         router.push(
           `/payment/card?quotationId=${quotation._id}&amount=${encodeURIComponent(quotation.subtotal)}`
@@ -280,6 +286,65 @@ function ActionCard({
   ) {
     const method = quotation.checkoutPaymentMethod;
 
+    if (changingMethod && method !== null) {
+      return (
+        <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Amount Due</p>
+          <p className="text-3xl font-semibold tabular-nums tracking-tight text-[#1E40AF]">
+            {fmtMoney(quotation.subtotal)}
+          </p>
+          <p className="mt-3 text-sm font-medium text-slate-800">How would you like to pay?</p>
+          <div className="mt-3 space-y-2">
+            {methodOptions.map((opt) => {
+              const active = selected === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setSelected(opt.key)}
+                  className={`flex w-full gap-3 rounded-lg border p-3 text-left transition ${
+                    active
+                      ? "border-[#1E40AF] bg-blue-50/80 ring-1 ring-[#1E40AF]"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <span className="mt-0.5 shrink-0 text-[#1E40AF]">{opt.icon}</span>
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-900">{opt.title}</span>
+                    <span className="mt-0.5 block text-xs text-slate-600">{opt.description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            disabled={!selected || saving}
+            onClick={() => selected && void saveMethodAndContinue(selected)}
+            className="mt-4 w-full rounded-[8px] bg-[#1E40AF] py-3 text-center text-sm font-semibold text-white transition hover:bg-[#1E3A8A] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? "Please wait…" : "Continue"}
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => setChangingMethod(false)}
+            className="mt-2 w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <a
+            href={pdfUrl}
+            download
+            className="mt-2 block w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Download Quotation PDF
+          </a>
+          <p className="mt-3 text-center text-xs text-slate-500">Secure checkout</p>
+        </div>
+      );
+    }
+
     if (method === "cod") {
       return (
         <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
@@ -310,6 +375,16 @@ function ActionCard({
           >
             Share Link
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelected(quotation.checkoutPaymentMethod);
+              setChangingMethod(true);
+            }}
+            className="mt-3 w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-[#1E40AF] transition hover:bg-slate-50"
+          >
+            Change payment method
+          </button>
         </div>
       );
     }
@@ -335,6 +410,16 @@ function ActionCard({
           >
             Download Quotation PDF
           </a>
+          <button
+            type="button"
+            onClick={() => {
+              setSelected(quotation.checkoutPaymentMethod);
+              setChangingMethod(true);
+            }}
+            className="mt-3 w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-[#1E40AF] transition hover:bg-slate-50"
+          >
+            Change payment method
+          </button>
         </div>
       );
     }
@@ -360,6 +445,16 @@ function ActionCard({
           >
             Download Quotation PDF
           </a>
+          <button
+            type="button"
+            onClick={() => {
+              setSelected(quotation.checkoutPaymentMethod);
+              setChangingMethod(true);
+            }}
+            className="mt-3 w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-[#1E40AF] transition hover:bg-slate-50"
+          >
+            Change payment method
+          </button>
         </div>
       );
     }

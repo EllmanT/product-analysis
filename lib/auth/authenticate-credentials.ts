@@ -6,6 +6,7 @@ import dbConnect from "@/lib/mongoose";
 
 import { DetailedCredentialsSignin } from "./credentials-signin-error";
 import { normalizeRole } from "./role";
+import { isStaffEmailAllowed } from "./staff-allowlist";
 
 export function escapeForEmailRegex(value: string): string {
   return value.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -56,6 +57,13 @@ export async function authorizeCredentialsOrThrow(
     throw new DetailedCredentialsSignin(
       "Incorrect email or password.",
       "invalid_password"
+    );
+  }
+
+  if (!isStaffEmailAllowed(existingUser.email)) {
+    throw new DetailedCredentialsSignin(
+      "This account is not authorized to access the staff application.",
+      "not_staff"
     );
   }
 

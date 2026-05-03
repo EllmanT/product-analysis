@@ -14,6 +14,7 @@ import {
   LogOut,
   Settings,
 } from "lucide-react";
+import { useClerk, useUser } from "@clerk/nextjs";
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { useCart } from "@/app/(shop)/context/CartContext";
@@ -71,10 +72,16 @@ function CustomerAvatar({
   customer: ShopHeaderCustomer;
 }) {
   const router = useRouter();
+  const { signOut: clerkSignOut, loaded: clerkLoaded } = useClerk();
+  const { isSignedIn } = useUser();
   const initials = customer.firstName.charAt(0).toUpperCase();
 
   async function handleSignOut() {
+    if (clerkLoaded && isSignedIn) {
+      await clerkSignOut();
+    }
     await fetch("/api/shop/auth/logout", { method: "POST" });
+    router.push("/");
     router.refresh();
   }
 

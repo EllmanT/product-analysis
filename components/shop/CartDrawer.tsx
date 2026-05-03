@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { ShoppingCart, Trash2, X } from "lucide-react";
 import { Drawer } from "vaul";
 
 import { useCart } from "@/app/(shop)/context/CartContext";
+import { CartQuantityControl } from "@/components/shop/CartQuantityControl";
 import { useCartDrawer } from "./CartDrawerContext";
 import { PLACEHOLDER_IMAGE } from "./ProductCard";
 
@@ -135,37 +136,12 @@ export function CartDrawer() {
 
                         <div className="mt-2 flex items-center justify-between">
                           {/* Qty controls */}
-                          <div className="flex items-center gap-1 rounded-lg border border-slate-200">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateQuantity(
-                                  item.productId,
-                                  item.quantity - 1
-                                )
-                              }
-                              className="flex h-7 w-7 items-center justify-center text-slate-500 transition hover:bg-slate-100"
-                              aria-label="Decrease quantity"
-                            >
-                              <Minus className="h-3 w-3" />
-                            </button>
-                            <span className="min-w-[1.5rem] text-center text-sm font-semibold text-slate-900">
-                              {item.quantity}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                updateQuantity(
-                                  item.productId,
-                                  item.quantity + 1
-                                )
-                              }
-                              className="flex h-7 w-7 items-center justify-center text-slate-500 transition hover:bg-slate-100"
-                              aria-label="Increase quantity"
-                            >
-                              <Plus className="h-3 w-3" />
-                            </button>
-                          </div>
+                          <CartQuantityControl
+                            productId={item.productId}
+                            quantity={item.quantity}
+                            updateQuantity={updateQuantity}
+                            size="sm"
+                          />
 
                           {/* Line total + remove */}
                           <div className="flex items-center gap-2">

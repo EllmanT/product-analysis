@@ -51,12 +51,7 @@ const AuthForm = <T extends FieldValues>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues as DefaultValues<T>,
   });
-    console.log("here now 1")
-    console.log(defaultValues)
-  console.log(menuItems)
-  const handleSubmit: SubmitHandler<T> = async (data) => {
-  console.log("here now !!!!!!")
-    console.log("data", data)
+    const handleSubmit: SubmitHandler<T> = async (data) => {
     const result = (await onSubmit(data)) as ActionResponse;
 
     if (result?.success) {
@@ -163,14 +158,9 @@ const AuthForm = <T extends FieldValues>({
         )}
 
         {formType === "SIGN_IN" ? (
-          <p>
-            Dont have an account?{" "}
-            <Link
-              href={ROUTES.SIGN_UP}
-              className="paragraph-semibold primary-text-gradient"
-            >
-              Sign Up
-            </Link>
+          <p className="paragraph-regular text-dark500_light400">
+            Need a staff account? Contact your administrator — new accounts are
+            added by invitation only.
           </p>
         ) : (
           <p>

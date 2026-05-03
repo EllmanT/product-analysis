@@ -89,7 +89,7 @@ export function quotationEmailTemplate(data: {
     </div>
 
     <div style="text-align:center;margin:24px 0;">
-      <a href="${data.siteUrl}/dashboard/quotations/${data.quotationId}" style="display:inline-block;background:#2563EB;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-size:15px;font-weight:600;">View &amp; Manage Your Quotation</a>
+      <a href="${data.siteUrl}/account/quotations/${data.quotationId}" style="display:inline-block;background:#2563EB;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-size:15px;font-weight:600;">View &amp; Manage Your Quotation</a>
     </div>
 
     <p style="margin:0;font-size:13px;color:#6B7280;text-align:center;">You can log in to your StockFlow account to track this order and pay once confirmed.</p>

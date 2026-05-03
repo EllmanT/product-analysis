@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import { z } from "zod";
 
-import Customer from "@/database/customer.model";
+import Customer, { type ICustomerDoc } from "@/database/customer.model";
 import Quotation from "@/database/quotation.model";
 import handleError from "@/lib/handlers/error";
 import {
@@ -11,7 +11,7 @@ import {
   ValidationError,
 } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
-import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
+import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 import { sendEmail } from "@/lib/utils/sendEmail";
 import {
   quotationEmailTemplate,
@@ -29,12 +29,16 @@ const CartItemSchema = z.object({
 
 const CreateQuotationSchema = z.object({
   items: z.array(CartItemSchema).min(1),
-  tradeName: z.string().min(1),
-  tinNumber: z.string().min(1),
-  vatNumber: z.string().min(1),
-  phone: z.string().min(1),
-  address: z.string().min(1),
+  phone: z.string().min(1).max(40),
+  address: z.string().min(1).max(2000),
+  tradeName: z.string().max(200).optional().default(""),
+  tinNumber: z.string().max(80).optional().default(""),
+  vatNumber: z.string().max(80).optional().default(""),
 });
+
+function isBusinessCustomer(c: ICustomerDoc): boolean {
+  return c.buyerType === "business";
+}
 
 function lineTotal(unitPrice: string, quantity: number): string {
   const u = parseFloat(unitPrice);
@@ -54,7 +58,7 @@ function sumTotals(lines: { lineTotal: string }[]): string {
 export async function GET() {
   try {
     await dbConnect();
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) {
       throw new UnauthorisedError("Please sign in");
     }
@@ -81,7 +85,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     await dbConnect();
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) {
       throw new UnauthorisedError("Please sign in");
     }
@@ -98,9 +102,24 @@ export async function POST(request: Request) {
       throw new NotFoundError("Customer");
     }
 
-    customer.tradeName = body.tradeName;
-    customer.tinNumber = body.tinNumber;
-    customer.vatNumber = body.vatNumber;
+    if (isBusinessCustomer(customer)) {
+      const t = body.tradeName.trim();
+      const tin = body.tinNumber.trim();
+      const vat = body.vatNumber.trim();
+      if (!t || !tin || !vat) {
+        throw new RequestError(
+          400,
+          "For a business account, company name, TIN, and VAT number are required on this order."
+        );
+      }
+    }
+
+    const tn = body.tradeName.trim();
+    const tinn = body.tinNumber.trim();
+    const vat = body.vatNumber.trim();
+    customer.tradeName = isBusinessCustomer(customer) ? tn : "";
+    customer.tinNumber = isBusinessCustomer(customer) ? tinn : "";
+    customer.vatNumber = isBusinessCustomer(customer) ? vat : "";
     customer.phone = body.phone;
     customer.address = body.address;
     await customer.save();
@@ -166,7 +185,10 @@ export async function POST(request: Request) {
       if (adminEmail) {
         const adminHtml = adminQuotationNotificationTemplate({
           customerName: `${customer.firstName} ${customer.lastName}`,
-          tradeName: customer.tradeName ?? "N/A",
+          tradeName:
+            isBusinessCustomer(customer) && (customer.tradeName ?? "").trim()
+              ? (customer.tradeName ?? "N/A").trim()
+              : "Personal (individual) order",
           customerEmail: customer.email,
           quotationId: created._id.toString(),
           referenceId: refId,

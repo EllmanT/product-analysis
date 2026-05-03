@@ -21,7 +21,49 @@ export const metadata: Metadata = {
 };
 
 const RootLayout = async ({ children }: { children: ReactNode }) => {
+  // #region agent log
+  fetch("http://127.0.0.1:7467/ingest/2de68ee5-e25c-499c-9697-defc2dfd27b9", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "61e806",
+    },
+    body: JSON.stringify({
+      sessionId: "61e806",
+      runId: "pre-fix",
+      hypothesisId: "H4",
+      location: "app/layout.tsx:beforeAuth",
+      message: "root layout before auth()",
+      data: {},
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
   const session = await auth();
+  let sessionJsonOk = true;
+  try {
+    JSON.stringify(session);
+  } catch {
+    sessionJsonOk = false;
+  }
+  // #region agent log
+  fetch("http://127.0.0.1:7467/ingest/2de68ee5-e25c-499c-9697-defc2dfd27b9", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "61e806",
+    },
+    body: JSON.stringify({
+      sessionId: "61e806",
+      runId: "pre-fix",
+      hypothesisId: "H4",
+      location: "app/layout.tsx:afterAuth",
+      message: "root layout after auth()",
+      data: { sessionJsonOk, hasSession: Boolean(session) },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
 
   return (
     <html lang="en">

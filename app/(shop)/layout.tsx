@@ -1,3 +1,4 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
@@ -10,6 +11,9 @@ import { DocumentMatchProvider } from "@/components/shop/document-match/Document
 import { ShopFooter } from "@/components/shop/ShopFooter";
 import { ShopHeader } from "@/components/shop/ShopHeader";
 import { ShopProviders } from "@/components/shop/ShopProviders";
+import Customer from "@/database/customer.model";
+import dbConnect from "@/lib/mongoose";
+import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 import { verifyShopJwt } from "@/lib/shop/jwt";
 
 const dmSans = DM_Sans({
@@ -31,29 +35,121 @@ export const metadata: Metadata = {
 };
 
 export default async function ShopLayout({ children }: { children: ReactNode }) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("shop_token")?.value ?? null;
-  const payload = token ? verifyShopJwt(token) : null;
-  const customer = payload
-    ? { firstName: payload.firstName || "User", id: payload.sub }
-    : null;
+  // #region agent log
+  fetch(
+    "http://127.0.0.1:7467/ingest/2de68ee5-e25c-499c-9697-defc2dfd27b9",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Debug-Session-Id": "61e806",
+      },
+      body: JSON.stringify({
+        sessionId: "61e806",
+        runId: "pre-fix",
+        hypothesisId: "H3",
+        location: "app/(shop)/layout.tsx:beforeDbConnect",
+        message: "shop layout before dbConnect",
+        data: {},
+        timestamp: Date.now(),
+      }),
+    }
+  ).catch(() => {});
+  // #endregion
+
+  let customer: { firstName: string; id: string } | null = null;
+
+  try {
+    await dbConnect();
+    // #region agent log
+    fetch(
+      "http://127.0.0.1:7467/ingest/2de68ee5-e25c-499c-9697-defc2dfd27b9",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "61e806",
+        },
+        body: JSON.stringify({
+          sessionId: "61e806",
+          runId: "pre-fix",
+          hypothesisId: "H3",
+          location: "app/(shop)/layout.tsx:afterDbConnect",
+          message: "shop layout after dbConnect ok",
+          data: {},
+          timestamp: Date.now(),
+        }),
+      }
+    ).catch(() => {});
+    // #endregion
+    const resolvedId = await getShopCustomerIdForRequest();
+    const cookieStore = await cookies();
+    const token = cookieStore.get("shop_token")?.value ?? null;
+    const payload = token ? verifyShopJwt(token) : null;
+
+    if (resolvedId) {
+      const row = await Customer.findById(resolvedId)
+        .select("firstName")
+        .lean();
+      if (row) {
+        customer = {
+          firstName: (row as { firstName: string }).firstName || "User",
+          id: resolvedId,
+        };
+      }
+    } else if (payload) {
+      customer = { firstName: payload.firstName || "User", id: payload.sub };
+    }
+  } catch {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("shop_token")?.value ?? null;
+    const payload = token ? verifyShopJwt(token) : null;
+    if (payload?.sub) {
+      customer = { firstName: payload.firstName || "User", id: payload.sub };
+    }
+    // #region agent log
+    fetch(
+      "http://127.0.0.1:7467/ingest/2de68ee5-e25c-499c-9697-defc2dfd27b9",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "61e806",
+        },
+        body: JSON.stringify({
+          sessionId: "61e806",
+          runId: "post-fix",
+          hypothesisId: "H3",
+          location: "app/(shop)/layout.tsx:mongoDegraded",
+          message: "shop layout continuing without mongo (jwt-only)",
+          data: {
+            jwtCustomerFallback: Boolean(payload?.sub),
+          },
+          timestamp: Date.now(),
+        }),
+      }
+    ).catch(() => {});
+    // #endregion
+  }
 
   return (
-    <ShopProviders>
-      <CartProvider>
-        <DocumentMatchProvider>
-          <CartDrawerProvider>
-            <div
-              className={`${dmSans.variable} ${cormorant.variable} flex min-h-screen flex-col bg-neutral-50 font-shop-body text-slate-900 antialiased`}
-            >
-              <ShopHeader customer={customer} />
-              <main className="flex-1">{children}</main>
-              <ShopFooter />
-              <CartDrawer />
-            </div>
-          </CartDrawerProvider>
-        </DocumentMatchProvider>
-      </CartProvider>
-    </ShopProviders>
+    <ClerkProvider>
+      <ShopProviders>
+        <CartProvider>
+          <DocumentMatchProvider>
+            <CartDrawerProvider>
+              <div
+                className={`${dmSans.variable} ${cormorant.variable} flex min-h-screen flex-col bg-neutral-50 font-shop-body text-slate-900 antialiased`}
+              >
+                <ShopHeader customer={customer} />
+                <main className="flex-1">{children}</main>
+                <ShopFooter />
+                <CartDrawer />
+              </div>
+            </CartDrawerProvider>
+          </DocumentMatchProvider>
+        </CartProvider>
+      </ShopProviders>
+    </ClerkProvider>
   );
 }

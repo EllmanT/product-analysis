@@ -1,0 +1,4 @@
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:beforeAuth","message":"root layout before auth()","data":{},"timestamp":1777809092377}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:beforeDbConnect","message":"shop layout before dbConnect","data":{},"timestamp":1777809092382}
+{"sessionId":"61e806","runId":"post-fix","hypothesisId":"H3","location":"app/(shop)/layout.tsx:mongoDegraded","message":"shop layout continuing without mongo (jwt-only)","data":{"jwtCustomerFallback":false},"timestamp":1777809092426}
+{"sessionId":"61e806","runId":"pre-fix","hypothesisId":"H4","location":"app/layout.tsx:afterAuth","message":"root layout after auth()","data":{"sessionJsonOk":true,"hasSession":false},"timestamp":1777809092441}

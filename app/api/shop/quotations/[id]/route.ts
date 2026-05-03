@@ -11,7 +11,7 @@ import {
   ValidationError,
 } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
-import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
+import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 import { NextResponse } from "next/server";
 
 const PatchSchema = z.union([
@@ -28,7 +28,7 @@ export async function GET(
 ) {
   try {
     await dbConnect();
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) {
       throw new UnauthorisedError("Please sign in");
     }
@@ -101,7 +101,7 @@ export async function PATCH(
 ) {
   try {
     await dbConnect();
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) {
       throw new UnauthorisedError("Please sign in");
     }

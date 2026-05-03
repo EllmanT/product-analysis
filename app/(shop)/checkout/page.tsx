@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ShoppingBag } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -12,6 +13,7 @@ type MeData = {
   vatNumber: string;
   phone: string;
   address: string;
+  buyerType: "individual" | "business";
 };
 
 function formatMoney(s: string): string {
@@ -37,6 +39,8 @@ export default function CheckoutPage() {
   const formRef = useRef<HTMLFormElement>(null);
   const { items, clearCart } = useCart();
   const [loadingMe, setLoadingMe] = useState(true);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [newQuotationId, setNewQuotationId] = useState<string | null>(null);
@@ -47,6 +51,7 @@ export default function CheckoutPage() {
     vatNumber: "",
     phone: "",
     address: "",
+    buyerType: "individual",
   });
 
   useEffect(() => {
@@ -55,18 +60,21 @@ export default function CheckoutPage() {
     }
   }, [items.length, router, showOverlay]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
+  async function loadMe() {
+    setLoadError(false);
+    setLoadingMe(true);
+    setError(null);
+    setNeedsSignIn(false);
+    try {
       const res = await fetch("/api/shop/customer/me", { credentials: "include" });
-      if (cancelled) return;
       if (res.status === 401) {
-        router.replace("/login?redirect=/checkout");
+        setNeedsSignIn(true);
+        setLoadingMe(false);
         return;
       }
       if (!res.ok) {
+        setLoadError(true);
         setLoadingMe(false);
-        setError("Could not load your profile.");
         return;
       }
       const json = (await res.json()) as { success: boolean; data: MeData };
@@ -77,22 +85,46 @@ export default function CheckoutPage() {
           vatNumber: json.data.vatNumber ?? "",
           phone: json.data.phone ?? "",
           address: json.data.address ?? "",
+          buyerType: json.data.buyerType === "business" ? "business" : "individual",
         });
       }
+    } catch {
+      setLoadError(true);
+    } finally {
       setLoadingMe(false);
-    })();
-    return () => { cancelled = true; };
-  }, [router]);
+    }
+  }
+
+  useEffect(() => {
+    if (items.length === 0) {
+      if (showOverlay) {
+        setLoadingMe(false);
+      }
+      return;
+    }
+    void loadMe();
+  }, [items.length, showOverlay]);
 
   const subtotal = items.reduce((sum, row) => {
     const n = parseFloat(lineAmount(row.price, row.quantity));
     return sum + (Number.isNaN(n) ? 0 : n);
   }, 0);
 
+  const isBusiness = form.buyerType === "business";
+
   async function handleSubmit() {
     setError(null);
     const el = formRef.current;
-    if (el && !el.checkValidity()) { el.reportValidity(); return; }
+    if (el && !el.checkValidity()) {
+      el.reportValidity();
+      return;
+    }
+    if (isBusiness) {
+      if (!form.tradeName.trim() || !form.tinNumber.trim() || !form.vatNumber.trim()) {
+        setError("For a business account, company name, TIN, and VAT are required.");
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const res = await fetch("/api/shop/quotations", {
@@ -115,9 +147,15 @@ export default function CheckoutPage() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) { setError(json?.error?.message ?? "Request failed"); return; }
+      if (!res.ok) {
+        setError(json?.error?.message ?? "Request failed");
+        return;
+      }
       const id = json?.data?._id as string | undefined;
-      if (!id) { setError("Invalid response from server"); return; }
+      if (!id) {
+        setError("Invalid response from server");
+        return;
+      }
       clearCart();
       setNewQuotationId(id);
       setShowOverlay(true);
@@ -128,14 +166,22 @@ export default function CheckoutPage() {
     }
   }
 
-  function field(id: keyof MeData, label: string, multiline?: boolean) {
+  function field(
+    id: keyof Omit<MeData, "buyerType">,
+    label: string,
+    opts?: { multiline?: boolean; required?: boolean }
+  ) {
+    const multiline = opts?.multiline;
+    const required = opts?.required ?? true;
     return (
       <div>
-        <label htmlFor={id} className={sectionLabelClass}>{label}</label>
+        <label htmlFor={id} className={sectionLabelClass}>
+          {label}
+        </label>
         {multiline ? (
           <textarea
             id={id}
-            required
+            required={required}
             rows={3}
             className={inputClass}
             value={form[id]}
@@ -144,7 +190,7 @@ export default function CheckoutPage() {
         ) : (
           <input
             id={id}
-            required
+            required={required}
             className={inputClass}
             value={form[id]}
             onChange={(e) => setForm((f) => ({ ...f, [id]: e.target.value }))}
@@ -168,15 +214,97 @@ export default function CheckoutPage() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <p className="text-slate-700">
+          We couldn&apos;t load your account details. This is usually a temporary network issue
+          on our side.
+        </p>
+        <button
+          type="button"
+          onClick={() => void loadMe()}
+          className="mt-4 rounded-md bg-[#1E40AF] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1E3A8A]"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (needsSignIn) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-12 lg:px-6">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Checkout</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Sign in to confirm your order and get a quotation.
+        </p>
+        <div className="mt-10 grid gap-8 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
+            <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              Order summary
+            </h2>
+            <ul className="mt-4 divide-y divide-slate-100">
+              {items.map((row) => (
+                <li
+                  key={row.productId}
+                  className="flex justify-between gap-3 py-3 first:pt-0 text-sm"
+                >
+                  <span className="min-w-0 text-slate-700">
+                    <span className="font-medium text-slate-900">{row.name}</span>
+                    <span className="mt-0.5 block text-xs text-slate-500">
+                      {row.standardCode} × {row.quantity}
+                    </span>
+                  </span>
+                  <span className="shrink-0 tabular-nums font-medium text-slate-900">
+                    {formatMoney(lineAmount(row.price, row.quantity))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 flex justify-between border-t border-slate-200 pt-4 text-base font-semibold text-slate-900">
+              <span>Total</span>
+              <span className="tabular-nums">{formatMoney(subtotal.toFixed(2))}</span>
+            </div>
+          </div>
+          <div className="flex flex-col justify-center rounded-2xl border border-slate-200/80 bg-white p-8 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">Sign in required</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              To request a quotation and save your details, sign in to your customer account. If
+              you don&apos;t have one yet, you can create one in a minute.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/login?redirect=/checkout"
+                className="inline-flex items-center justify-center rounded-md bg-[#1E40AF] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#1E3A8A]"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/register?redirect=/checkout"
+                className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+              >
+                Create account
+              </Link>
+            </div>
+            <p className="mt-4 text-xs text-slate-500">
+              Business tax details (TIN, VAT) are only needed if your account is set to business in
+              settings or you choose that when you order.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="mx-auto max-w-6xl px-4 py-12 lg:px-6">
         <header className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-            Checkout
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Checkout</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Review your order and business details.
+            Review your order and the details we will use for your quotation
+            {isBusiness ? " and tax invoice" : ""}.
           </p>
         </header>
 
@@ -188,7 +316,6 @@ export default function CheckoutPage() {
           }}
         >
           <div className="grid gap-8 lg:grid-cols-[minmax(260px,22rem)_1fr] lg:items-start">
-            {/* Narrow left: order summary (less content) */}
             <div className="order-2 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-7 lg:order-1">
               <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
                 Order summary
@@ -245,20 +372,36 @@ export default function CheckoutPage() {
               </button>
             </div>
 
-            {/* Wider right: your details */}
             <div className="order-1 rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm sm:p-8 lg:order-2">
               <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
                 Your details
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Used for this quotation and saved to your profile.
+                {isBusiness
+                  ? "Company name, TIN, and VAT are used on formal quotations. Contact and address are required."
+                  : "We use your name, phone, and address on this order. You can add a business profile in account settings if you need company details on documents."}
               </p>
+              <div className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                Account type:{" "}
+                <span className="font-medium text-slate-800">
+                  {isBusiness ? "Business" : "Individual"}
+                </span>
+                . Change it in{" "}
+                <Link href="/account/settings" className="text-[#1E40AF] underline">
+                  account settings
+                </Link>{" "}
+                if you need a different type.
+              </div>
               <div className="mt-6 space-y-5">
-                {field("tradeName", "Trade name")}
-                {field("tinNumber", "TIN number")}
-                {field("vatNumber", "VAT number")}
+                {isBusiness ? (
+                  <>
+                    {field("tradeName", "Company / trade name")}
+                    {field("tinNumber", "TIN number")}
+                    {field("vatNumber", "VAT number")}
+                  </>
+                ) : null}
                 {field("phone", "Phone")}
-                {field("address", "Address", true)}
+                {field("address", "Address", { multiline: true })}
               </div>
             </div>
           </div>
@@ -297,8 +440,8 @@ export default function CheckoutPage() {
               Quotation submitted
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-500">
-              We&apos;ve received your order and will confirm it shortly. You&apos;ll be
-              notified by email.
+              We&apos;ve received your order and will confirm it shortly. You&apos;ll be notified by
+              email.
             </p>
 
             <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:justify-center">

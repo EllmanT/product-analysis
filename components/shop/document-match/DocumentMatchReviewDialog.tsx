@@ -229,7 +229,9 @@ export function DocumentMatchReviewDialog({
                               <p className="text-sm text-slate-600">
                                 {product.standardCode} ·{" "}
                                 {priceLabel(product.price)} ·{" "}
-                                {product.quantityAvailable} in stock
+                                {product.quantityAvailable > 0
+                                  ? "In stock"
+                                  : "Out of stock"}
                               </p>
                             </div>
                             {opts.length > 1 ? (

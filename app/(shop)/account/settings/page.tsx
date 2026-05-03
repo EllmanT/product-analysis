@@ -1,9 +1,7 @@
 "use client";
 
-import ShopForgotPasswordModal from "@/components/auth/ShopForgotPasswordModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { KeyRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -19,6 +17,7 @@ type CustomerProfile = {
   tinNumber: string;
   vatNumber: string;
   address: string;
+  buyerType: "individual" | "business";
 };
 
 export default function AccountSettingsPage() {
@@ -34,8 +33,8 @@ export default function AccountSettingsPage() {
     tinNumber: "",
     vatNumber: "",
     address: "",
+    buyerType: "individual" as "individual" | "business",
   });
-  const [resetOpen, setResetOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -56,6 +55,7 @@ export default function AccountSettingsPage() {
           tinNumber: json.data.tinNumber,
           vatNumber: json.data.vatNumber,
           address: json.data.address,
+          buyerType: json.data.buyerType === "business" ? "business" : "individual",
         });
       }
     }
@@ -105,6 +105,8 @@ export default function AccountSettingsPage() {
     );
   }
 
+  const isBusiness = form.buyerType === "business";
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
@@ -120,14 +122,57 @@ export default function AccountSettingsPage() {
           Account settings
         </h1>
         <p className="mt-2 text-slate-600">
-          Update the details we use for quotations and invoices. Your email is tied to your login and cannot be
-          changed here.
+          Choose whether you buy as an individual or on behalf of a business. We only need company
+          name, TIN, and VAT for <strong>business</strong> accounts when you want those on
+          quotations and invoices. Your email comes from your sign-in and cannot be changed here.
         </p>
 
         <form
           onSubmit={handleSave}
           className="mt-8 space-y-6 rounded-xl border border-slate-200/80 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] sm:p-8"
         >
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-slate-700">How you buy</p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 p-3 has-[:checked]:border-[#1E40AF] has-[:checked]:bg-blue-50/50">
+                <input
+                  type="radio"
+                  name="buyerType"
+                  checked={form.buyerType === "individual"}
+                  onChange={() =>
+                    setForm((f) => ({ ...f, buyerType: "individual" }))
+                  }
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-slate-900">Personal</span>
+                  <span className="text-xs text-slate-500">
+                    Purchases for yourself. No company tax details on documents unless you add them
+                    later.
+                  </span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 p-3 has-[:checked]:border-[#1E40AF] has-[:checked]:bg-blue-50/50">
+                <input
+                  type="radio"
+                  name="buyerType"
+                  checked={form.buyerType === "business"}
+                  onChange={() =>
+                    setForm((f) => ({ ...f, buyerType: "business" }))
+                  }
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-slate-900">Business</span>
+                  <span className="text-xs text-slate-500">
+                    Buying for a company. Quotations and invoices can show company name, TIN, and
+                    VAT.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
+
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="space-y-2">
               <label htmlFor="firstName" className="text-sm font-medium text-slate-700">
@@ -179,46 +224,50 @@ export default function AccountSettingsPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="tradeName" className="text-sm font-medium text-slate-700">
-              Trade / company name
-            </label>
-            <Input
-              id="tradeName"
-              value={form.tradeName}
-              onChange={(e) => setForm((f) => ({ ...f, tradeName: e.target.value }))}
-              required
-              autoComplete="organization"
-              className="h-11"
-            />
-          </div>
+          {isBusiness ? (
+            <>
+              <div className="space-y-2">
+                <label htmlFor="tradeName" className="text-sm font-medium text-slate-700">
+                  Company / trade name
+                </label>
+                <Input
+                  id="tradeName"
+                  value={form.tradeName}
+                  onChange={(e) => setForm((f) => ({ ...f, tradeName: e.target.value }))}
+                  required
+                  autoComplete="organization"
+                  className="h-11"
+                />
+              </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label htmlFor="tinNumber" className="text-sm font-medium text-slate-700">
-                TIN
-              </label>
-              <Input
-                id="tinNumber"
-                value={form.tinNumber}
-                onChange={(e) => setForm((f) => ({ ...f, tinNumber: e.target.value }))}
-                required
-                className="h-11"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="vatNumber" className="text-sm font-medium text-slate-700">
-                VAT number
-              </label>
-              <Input
-                id="vatNumber"
-                value={form.vatNumber}
-                onChange={(e) => setForm((f) => ({ ...f, vatNumber: e.target.value }))}
-                required
-                className="h-11"
-              />
-            </div>
-          </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label htmlFor="tinNumber" className="text-sm font-medium text-slate-700">
+                    TIN
+                  </label>
+                  <Input
+                    id="tinNumber"
+                    value={form.tinNumber}
+                    onChange={(e) => setForm((f) => ({ ...f, tinNumber: e.target.value }))}
+                    required
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="vatNumber" className="text-sm font-medium text-slate-700">
+                    VAT number
+                  </label>
+                  <Input
+                    id="vatNumber"
+                    value={form.vatNumber}
+                    onChange={(e) => setForm((f) => ({ ...f, vatNumber: e.target.value }))}
+                    required
+                    className="h-11"
+                  />
+                </div>
+              </div>
+            </>
+          ) : null}
 
           <div className="space-y-2">
             <label htmlFor="address" className="text-sm font-medium text-slate-700">
@@ -242,35 +291,20 @@ export default function AccountSettingsPage() {
         </form>
 
         <div className="mt-8 rounded-xl border border-slate-200/80 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] sm:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="font-shop-display text-lg font-semibold tracking-tight text-slate-900">
-                Password
-              </h2>
-              <p className="mt-1 max-w-md text-sm text-slate-600">
-                We&apos;ll email you a verification code, then you can choose a new password. You stay signed in
-                after the reset completes.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="shrink-0 gap-2"
-              onClick={() => setResetOpen(true)}
-            >
-              <KeyRound className="h-4 w-4" />
-              Reset password
-            </Button>
-          </div>
+          <h2 className="font-shop-display text-lg font-semibold tracking-tight text-slate-900">
+            Sign-in &amp; security
+          </h2>
+          <p className="mt-2 max-w-xl text-sm text-slate-600">
+            You sign in to the shop with email, password, and/or Google through our sign-in
+            provider. To change your password, reset it from the{" "}
+            <Link href="/login" className="text-[#1E40AF] underline">
+              sign-in page
+            </Link>{" "}
+            (Forgot password). To manage social accounts, use the same sign-in options as when you
+            registered.
+          </p>
         </div>
       </div>
-
-      <ShopForgotPasswordModal
-        open={resetOpen}
-        onClose={() => setResetOpen(false)}
-        email={profile.email}
-        redirectAfterReset="/account/settings"
-      />
     </div>
   );
 }

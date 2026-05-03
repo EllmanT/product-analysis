@@ -9,7 +9,7 @@ import { NotFoundError, RequestError, UnauthorisedError } from "@/lib/http-error
 import dbConnect from "@/lib/mongoose";
 import { isValidPaymentOption, ZIMSWITCH_PAYMENT_OPTIONS } from "@/lib/config/zimswitchOptions";
 import { createCheckout } from "@/lib/services/zimswitch.service";
-import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
+import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 
 const CheckoutSchema = z.object({
   quotationId: z.string().min(1),
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   try {
     await dbConnect();
 
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) throw new UnauthorisedError("Please sign in");
 
     const json = await request.json();

@@ -34,6 +34,12 @@ export async function POST(request: Request) {
       throw new UnauthorisedError("Invalid email or password");
     }
 
+    if (!customer.password) {
+      throw new UnauthorisedError(
+        "This account signs in with Google or email on the shop. Use the Sign in page."
+      );
+    }
+
     const ok = await bcrypt.compare(password, customer.password);
     if (!ok) {
       throw new UnauthorisedError("Invalid email or password");

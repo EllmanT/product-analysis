@@ -5,12 +5,12 @@ import Quotation from "@/database/quotation.model";
 import handleError from "@/lib/handlers/error";
 import { UnauthorisedError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
-import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
+import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 
 export async function shopQuotationsListGET(request: Request) {
   try {
     await dbConnect();
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) throw new UnauthorisedError("Please sign in");
 
     const { searchParams } = new URL(request.url);

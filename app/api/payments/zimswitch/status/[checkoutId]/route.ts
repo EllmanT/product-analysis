@@ -6,7 +6,7 @@ import { NotFoundError, UnauthorisedError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
 import { fetchPaymentStatus } from "@/lib/services/zimswitch.service";
 import { recordPayment } from "@/lib/utils/recordPayment";
-import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
+import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 
 export async function GET(
   _request: Request,
@@ -15,7 +15,7 @@ export async function GET(
   try {
     await dbConnect();
 
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) throw new UnauthorisedError("Please sign in");
 
     const { checkoutId } = await context.params;

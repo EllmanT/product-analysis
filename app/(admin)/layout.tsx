@@ -4,11 +4,17 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import React, { ReactNode } from 'react'
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
+import { isStaffEmailAllowed } from '@/lib/auth/staff-allowlist';
 
 const layout =async ({ children }: { children: ReactNode}) => {
   const session = await auth();
 
   if (!session) redirect("/sign-in");
+
+  const email = session.user?.email;
+  if (!isStaffEmailAllowed(email)) {
+    redirect("/unauthorized");
+  }
 
     return (
         <>

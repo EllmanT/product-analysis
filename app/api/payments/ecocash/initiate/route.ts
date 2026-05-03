@@ -6,7 +6,7 @@ import handleError from "@/lib/handlers/error";
 import { NotFoundError, RequestError, UnauthorisedError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
 import { initiatePayment } from "@/lib/services/ecocash.service";
-import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
+import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 import { NextResponse } from "next/server";
 
 const InitiateSchema = z.object({
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   try {
     await dbConnect();
 
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) throw new UnauthorisedError("Please sign in");
 
     const json = await request.json();

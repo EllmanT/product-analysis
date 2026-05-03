@@ -14,7 +14,8 @@ import { AuthCredentials } from "@/types/action";
 import action from "../handlers/action";
 import handleError from "../handlers/error";
 import { SignInSchema, SignUpSchema } from "../validations";
-import { UnauthorisedError } from "../http-errors";
+import { RequestError, UnauthorisedError } from "../http-errors";
+import { isStaffEmailAllowed } from "../auth/staff-allowlist";
 
 function mapAuthSignInFailure(error: unknown): ErrorResponse {
   if (error instanceof CredentialsSignin || error instanceof AuthError) {
@@ -30,17 +31,21 @@ export async function signUpWithCredentials(
   params: AuthCredentials
 ): Promise<ActionResponse> {
   const validationResult = await action({ params, schema: SignUpSchema });
-console.log("now in here")
   if (validationResult instanceof Error) {
     return handleError(validationResult) as ErrorResponse;
   }
-  console.log("params",params)
-console.log("now in here 2")
 
   const { name, surname, store, email, password, branchId, storeId } = validationResult.params!;
 
-  console.log("branchId", branchId)
-  console.log("branchId", storeId)
+  if (!isStaffEmailAllowed(email)) {
+    return handleError(
+      new RequestError(
+        403,
+        "Staff registration is by invitation only. If you need access, contact your administrator."
+      )
+    ) as ErrorResponse;
+  }
+
   const session = await mongoose.startSession();
   session.startTransaction();
 

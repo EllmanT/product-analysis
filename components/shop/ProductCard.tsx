@@ -30,22 +30,15 @@ export function ProductSkeletonCard() {
 }
 
 function StockBadge({ qty }: { qty: number }) {
-  if (qty > 10) {
-    return (
-      <span className="absolute right-2 top-2 rounded-md bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700 shadow-sm">
-        {qty} in stock
-      </span>
-    );
-  }
   if (qty > 0) {
     return (
-      <span className="absolute right-2 top-2 rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700 shadow-sm">
-        Only {qty} left
+      <span className="absolute right-2 top-2 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 shadow-sm">
+        In stock
       </span>
     );
   }
   return (
-    <span className="absolute right-2 top-2 rounded-md bg-slate-100 border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600 shadow-sm">
+    <span className="absolute right-2 top-2 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 shadow-sm">
       Out of stock
     </span>
   );

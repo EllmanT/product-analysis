@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** Resolves the folder that contains this config (not a parent with another lockfile). */
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: projectRoot,
+  },
   // Temporary: unblocks Vercel deploys; remove when TS is clean. Run `npx tsc --noEmit` locally.
   typescript: {
     ignoreBuildErrors: true,

@@ -7,7 +7,7 @@ import Invoice from "@/database/invoice.model";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError, UnauthorisedError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
-import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
+import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 
 type InvoiceLean = {
   _id: Types.ObjectId;
@@ -51,7 +51,7 @@ export async function GET(
 ) {
   try {
     await dbConnect();
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) throw new UnauthorisedError("Please sign in");
 
     const { id } = await context.params;

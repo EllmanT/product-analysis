@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { ShoppingCart, Trash2 } from "lucide-react";
 
 import { useCart } from "@/app/(shop)/context/CartContext";
+import { CartQuantityControl } from "@/components/shop/CartQuantityControl";
 
 function formatMoney(s: string): string {
   const n = parseFloat(s);
@@ -84,40 +85,12 @@ export default function CartPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-4 sm:justify-end">
-                  <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50">
-                    <button
-                      type="button"
-                      aria-label="Decrease quantity"
-                      className="px-3 py-2 text-slate-700 hover:bg-slate-100"
-                      onClick={() =>
-                        updateQuantity(row.productId, row.quantity - 1)
-                      }
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <input
-                      type="number"
-                      min={1}
-                      className="w-14 border-x border-slate-200 bg-white py-2 text-center text-sm font-medium outline-none"
-                      value={row.quantity}
-                      onChange={(e) =>
-                        updateQuantity(
-                          row.productId,
-                          parseInt(e.target.value, 10) || 1
-                        )
-                      }
-                    />
-                    <button
-                      type="button"
-                      aria-label="Increase quantity"
-                      className="px-3 py-2 text-slate-700 hover:bg-slate-100"
-                      onClick={() =>
-                        updateQuantity(row.productId, row.quantity + 1)
-                      }
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
+                  <CartQuantityControl
+                    productId={row.productId}
+                    quantity={row.quantity}
+                    updateQuantity={updateQuantity}
+                    size="md"
+                  />
                   <p className="min-w-[5rem] text-right font-semibold text-slate-900">
                     {formatMoney(line)}
                   </p>

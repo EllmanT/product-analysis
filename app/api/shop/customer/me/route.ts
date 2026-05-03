@@ -2,7 +2,7 @@ import Customer from "@/database/customer.model";
 import handleError from "@/lib/handlers/error";
 import { UnauthorisedError, ValidationError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
-import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
+import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 import { signShopJwt } from "@/lib/shop/jwt";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -10,26 +10,81 @@ import { z } from "zod";
 const SHOP_COOKIE = "shop_token";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
-const PatchCustomerSchema = z.object({
-  firstName: z.string().min(1).max(120),
-  lastName: z.string().min(1).max(120),
-  phone: z.string().min(1).max(40),
-  tradeName: z.string().min(1).max(200),
-  tinNumber: z.string().min(1).max(80),
-  vatNumber: z.string().min(1).max(80),
-  address: z.string().min(1).max(2000),
-});
+const PatchCustomerSchema = z
+  .object({
+    firstName: z.string().min(1).max(120),
+    lastName: z.string().min(1).max(120),
+    phone: z.string().min(1).max(40),
+    address: z.string().min(1).max(2000),
+    buyerType: z.enum(["individual", "business"]),
+    tradeName: z.string().max(200).optional().default(""),
+    tinNumber: z.string().max(80).optional().default(""),
+    vatNumber: z.string().max(80).optional().default(""),
+  })
+  .superRefine((data, ctx) => {
+    if (data.buyerType === "business") {
+      if (!data.tradeName?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["tradeName"],
+          message: "Company / trade name is required for a business account.",
+        });
+      }
+      if (!data.tinNumber?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["tinNumber"],
+          message: "TIN is required for a business account.",
+        });
+      }
+      if (!data.vatNumber?.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["vatNumber"],
+          message: "VAT number is required for a business account.",
+        });
+      }
+    }
+  });
+
+function dataShape(
+  c: { id: string } & {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    tradeName: string;
+    tinNumber: string;
+    vatNumber: string;
+    address: string;
+    buyerType?: string;
+  }
+) {
+  const buyerType = c.buyerType === "business" ? "business" : "individual";
+  return {
+    id: c.id,
+    firstName: c.firstName,
+    lastName: c.lastName,
+    email: c.email,
+    phone: c.phone,
+    tradeName: c.tradeName,
+    tinNumber: c.tinNumber,
+    vatNumber: c.vatNumber,
+    address: c.address,
+    buyerType,
+  };
+}
 
 export async function GET() {
   try {
     await dbConnect();
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) {
       throw new UnauthorisedError("Please sign in");
     }
 
     const customer = await Customer.findById(customerId).select(
-      "firstName lastName email phone tradeName tinNumber vatNumber address"
+      "firstName lastName email phone tradeName tinNumber vatNumber address buyerType"
     );
 
     if (!customer) {
@@ -41,17 +96,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: true,
-        data: {
-          id: idStr,
-          firstName: customer.firstName,
-          lastName: customer.lastName,
-          email: customer.email,
-          phone: customer.phone,
-          tradeName: customer.tradeName,
-          tinNumber: customer.tinNumber,
-          vatNumber: customer.vatNumber,
-          address: customer.address,
-        },
+        data: dataShape({ ...customer.toObject(), id: idStr }),
       },
       { status: 200 }
     );
@@ -63,7 +108,7 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     await dbConnect();
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) {
       throw new UnauthorisedError("Please sign in");
     }
@@ -75,19 +120,26 @@ export async function PATCH(request: Request) {
     }
 
     const body = parsed.data;
-    const customer = await Customer.findByIdAndUpdate(
-      customerId,
-      {
-        firstName: body.firstName.trim(),
-        lastName: body.lastName.trim(),
-        phone: body.phone.trim(),
-        tradeName: body.tradeName.trim(),
-        tinNumber: body.tinNumber.trim(),
-        vatNumber: body.vatNumber.trim(),
-        address: body.address.trim(),
-      },
-      { new: true }
-    ).select("firstName lastName email phone tradeName tinNumber vatNumber address");
+    const trade = body.tradeName.trim();
+    const tin = body.tinNumber.trim();
+    const vat = body.vatNumber.trim();
+
+    const update = {
+      firstName: body.firstName.trim(),
+      lastName: body.lastName.trim(),
+      phone: body.phone.trim(),
+      address: body.address.trim(),
+      buyerType: body.buyerType,
+      tradeName: body.buyerType === "business" ? trade : "",
+      tinNumber: body.buyerType === "business" ? tin : "",
+      vatNumber: body.buyerType === "business" ? vat : "",
+    };
+
+    const customer = await Customer.findByIdAndUpdate(customerId, update, {
+      new: true,
+    }).select(
+      "firstName lastName email phone tradeName tinNumber vatNumber address buyerType"
+    );
 
     if (!customer) {
       throw new UnauthorisedError("Please sign in");
@@ -105,17 +157,7 @@ export async function PATCH(request: Request) {
     const res = NextResponse.json(
       {
         success: true,
-        data: {
-          id: customer.id,
-          firstName: customer.firstName,
-          lastName: customer.lastName,
-          email: customer.email,
-          phone: customer.phone,
-          tradeName: customer.tradeName,
-          tinNumber: customer.tinNumber,
-          vatNumber: customer.vatNumber,
-          address: customer.address,
-        },
+        data: dataShape({ ...customer.toObject(), id: customer.id }),
       },
       { status: 200 }
     );

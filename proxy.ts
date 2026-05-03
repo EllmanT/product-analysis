@@ -1,31 +1,37 @@
+import { clerkMiddleware } from "@clerk/nextjs/server";
 import { getToken } from "next-auth/jwt";
-import type { NextRequest } from "next/server";
+import type { NextFetchEvent, NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-export async function proxy(request: NextRequest) {
-  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
-  if (!secret) {
+const runClerk = clerkMiddleware();
+
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const path = request.nextUrl.pathname;
+
+  if (path.startsWith("/api/auth")) {
     return NextResponse.next();
   }
 
-  const token = await getToken({
-    req: request,
-    secret,
-  });
-
-  const path = request.nextUrl.pathname;
-  if (
-    token?.role === "branch_user" &&
-    (path.startsWith("/users") || path.startsWith("/branches"))
-  ) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+  if (secret) {
+    const token = await getToken({
+      req: request,
+      secret,
+    });
+    if (
+      token?.role === "branch_user" &&
+      (path.startsWith("/users") || path.startsWith("/branches"))
+    ) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
   }
 
-  return NextResponse.next();
+  return runClerk(request, event);
 }
 
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/(api(?!/auth)|trpc)(.*)",
   ],
 };

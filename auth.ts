@@ -6,7 +6,7 @@ import Google from "next-auth/providers/google";
 import Account from "./database/account.model";
 import User from "./database/user.model";
 import { authorizeCredentialsOrThrow } from "./lib/auth/authenticate-credentials";
-import { getBootstrapAdminEmailSet } from "./lib/auth/bootstrap-admin";
+import { getStaffAllowedEmailSet } from "./lib/auth/staff-allowlist";
 import { normalizeRole } from "./lib/auth/role";
 import { api } from "./lib/api";
 import dbConnect from "./lib/mongoose";
@@ -82,8 +82,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           doc && "email" in doc && doc.email
             ? String(doc.email).toLowerCase()
             : "";
-        const bootstrap = getBootstrapAdminEmailSet();
-        if (email && bootstrap.has(email)) {
+        const staffAllow = getStaffAllowedEmailSet();
+        if (email && staffAllow.has(email)) {
           if (role !== "admin") {
             await User.updateOne(
               { _id: token.sub },
@@ -112,6 +112,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             ? (profile?.login as string)
             : (user.name?.toLowerCase() as string),
       };
+
+      const normalizedEmail = userInfo.email?.trim().toLowerCase() ?? "";
+      if (!getStaffAllowedEmailSet().has(normalizedEmail)) {
+        return false;
+      }
 
       const { success } = (await api.auth.oAuthSignIn({
         user: userInfo,

@@ -7,7 +7,7 @@ import Quotation from "@/database/quotation.model";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError, UnauthorisedError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
-import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
+import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 
 type QuotationLean = {
   _id: Types.ObjectId;
@@ -30,6 +30,9 @@ type CustomerLean = {
   email: string;
   tradeName: string;
   address: string;
+  buyerType?: string;
+  tinNumber?: string;
+  vatNumber?: string;
 };
 
 function fmt(s: string): string {
@@ -47,7 +50,7 @@ export async function shopQuotationPdfGET(
 ) {
   try {
     await dbConnect();
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) throw new UnauthorisedError("Please sign in");
 
     const { id } = await context.params;
@@ -59,7 +62,9 @@ export async function shopQuotationPdfGET(
         customerId: new Types.ObjectId(customerId),
       }).lean<QuotationLean | null>(),
       Customer.findById(customerId)
-        .select("firstName lastName email tradeName address")
+        .select(
+          "firstName lastName email tradeName address buyerType tinNumber vatNumber"
+        )
         .lean<CustomerLean | null>(),
     ]);
 
@@ -101,23 +106,68 @@ export async function shopQuotationPdfGET(
 
     const infoY = height - headerH - 30;
     page.drawText("Bill To:", { x: 40, y: infoY, font: bold, size: 10, color: grayText });
+    let lineY = infoY - 16;
     page.drawText(`${customer.firstName} ${customer.lastName}`, {
       x: 40,
-      y: infoY - 16,
+      y: lineY,
       font: bold,
       size: 11,
       color: darkText,
     });
-    page.drawText(customer.tradeName, { x: 40, y: infoY - 30, font: regular, size: 10, color: darkText });
-    page.drawText(customer.email, { x: 40, y: infoY - 44, font: regular, size: 10, color: darkText });
-    if (customer.address) {
-      page.drawText(customer.address.slice(0, 60), {
+    lineY -= 16;
+    const isBusiness = customer.buyerType === "business" && (customer.tradeName ?? "").trim() !== "";
+    if (isBusiness) {
+      page.drawText((customer.tradeName ?? "").trim(), {
         x: 40,
-        y: infoY - 58,
+        y: lineY,
         font: regular,
         size: 10,
         color: darkText,
       });
+      lineY -= 14;
+      const tin = (customer.tinNumber ?? "").trim();
+      const vat = (customer.vatNumber ?? "").trim();
+      if (tin) {
+        page.drawText(`TIN: ${tin.slice(0, 40)}`, {
+          x: 40,
+          y: lineY,
+          font: regular,
+          size: 9,
+          color: darkText,
+        });
+        lineY -= 13;
+      }
+      if (vat) {
+        page.drawText(`VAT: ${vat.slice(0, 40)}`, {
+          x: 40,
+          y: lineY,
+          font: regular,
+          size: 9,
+          color: darkText,
+        });
+        lineY -= 13;
+      }
+    } else {
+      page.drawText("Personal order", {
+        x: 40,
+        y: lineY,
+        font: regular,
+        size: 10,
+        color: grayText,
+      });
+      lineY -= 16;
+    }
+    page.drawText(customer.email, { x: 40, y: lineY, font: regular, size: 10, color: darkText });
+    lineY -= 16;
+    if (customer.address) {
+      page.drawText(customer.address.slice(0, 60), {
+        x: 40,
+        y: lineY,
+        font: regular,
+        size: 10,
+        color: darkText,
+      });
+      lineY -= 16;
     }
 
     const rightX = width - 200;
@@ -132,7 +182,7 @@ export async function shopQuotationPdfGET(
       page.drawText(value, { x: rightX + 95, y: ry, font: bold, size: 10, color: darkText });
     });
 
-    const dividerY = infoY - 80;
+    const dividerY = lineY - 24;
     page.drawLine({
       start: { x: 40, y: dividerY },
       end: { x: width - 40, y: dividerY },

@@ -6,7 +6,7 @@ import handleError from "@/lib/handlers/error";
 import { NotFoundError, UnauthorisedError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
 import { getSellerForPublicInvoice } from "@/lib/services/invoiceSeller.service";
-import { getShopCustomerIdFromCookies } from "@/lib/shop/customer-auth";
+import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 
 type InvoiceLean = IInvoice & { _id: Types.ObjectId; createdAt: Date; updatedAt: Date };
 
@@ -16,7 +16,7 @@ export async function GET(
 ) {
   try {
     await dbConnect();
-    const customerId = await getShopCustomerIdFromCookies();
+    const customerId = await getShopCustomerIdForRequest();
     if (!customerId) throw new UnauthorisedError("Please sign in");
 
     const { id } = await context.params;

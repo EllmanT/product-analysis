@@ -8,8 +8,14 @@ import handleError from "@/lib/handlers/error";
 import { NotFoundError, RequestError, ValidationError } from "@/lib/http-errors";
 import { requireAdmin } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
+import {
+  getEmailSettingsDoc,
+  resolvePublicSiteUrl,
+  sanitizeNotificationEmails,
+} from "@/lib/services/emailSettings.service";
+import { getSellerForPublicInvoice } from "@/lib/services/invoiceSeller.service";
 import { sendEmail } from "@/lib/utils/sendEmail";
-import { invoiceEmailTemplate } from "@/lib/utils/emailTemplates";
+import { invoiceEmailTemplate, adminInvoiceSentNotificationTemplate } from "@/lib/utils/emailTemplates";
 import { generateInvoice } from "@/lib/services/invoice.service";
 import type { IQuotationItem } from "@/database/quotation.model";
 
@@ -103,34 +109,90 @@ export async function POST(request: Request) {
       throw new RequestError(400, msg);
     }
 
-    // Send invoice email to customer (non-blocking)
+    // Send transactional emails (non-blocking)
     try {
+      const emailDoc = await getEmailSettingsDoc();
+      const siteUrl = resolvePublicSiteUrl(emailDoc);
+      const seller = await getSellerForPublicInvoice();
       await dbConnect();
-      const freshCustomer = await Customer.findById(inv.customerId).select("firstName email");
-      if (freshCustomer?.email) {
-        const itemsForEmail = inv.items.map((row: IQuotationItem) => ({
-          name: row.name,
-          quantity: row.quantity,
-          unitPrice: parseFloat(row.unitPrice) || 0,
-          lineTotal: parseFloat(row.lineTotal) || 0,
-        }));
-        const html = invoiceEmailTemplate({
-          customerFirstName: freshCustomer.firstName,
-          invoiceId: String(inv._id),
-          invoiceNumber: inv.invoiceNumber,
-          items: itemsForEmail,
-          subtotal: parseFloat(inv.subtotal) || 0,
-          total: inv.totalAmount || parseFloat(inv.subtotal) || 0,
-          siteUrl: process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "",
-        });
-        await sendEmail({
-          to: freshCustomer.email,
-          subject: `Invoice ${inv.invoiceNumber} from StockFlow`,
-          html,
-        });
+      const freshCustomer = await Customer.findById(inv.customerId).select(
+        "firstName lastName email tradeName"
+      );
+
+      const itemsForEmail = inv.items.map((row: IQuotationItem) => ({
+        name: row.name,
+        quantity: row.quantity,
+        unitPrice: parseFloat(row.unitPrice) || 0,
+        lineTotal: parseFloat(row.lineTotal) || 0,
+      }));
+
+      const snap = inv.buyerSnapshot as {
+        registerName?: string;
+        tradeName?: string;
+        email?: string;
+      } | null | undefined;
+      const adminCustomerName: string =
+        (freshCustomer
+          ? `${freshCustomer.firstName ?? ""} ${freshCustomer.lastName ?? ""}`.trim() ||
+            (snap?.registerName?.trim() ?? "")
+          : (snap?.registerName?.trim() ?? "")) || "-";
+      const adminTradeShow =
+        (typeof freshCustomer?.tradeName === "string" && freshCustomer.tradeName.trim()) ||
+        (typeof snap?.tradeName === "string" && snap.tradeName.trim()) ||
+        "-";
+      const adminEmailAddr =
+        (typeof freshCustomer?.email === "string" && freshCustomer.email.trim()) ||
+        snap?.email?.trim() ||
+        "";
+
+      if (emailDoc.sendCustomerInvoiceEmail !== false && freshCustomer?.email?.trim()) {
+        try {
+          const html = invoiceEmailTemplate({
+            customerFirstName: freshCustomer.firstName?.trim() || "Customer",
+            invoiceId: String(inv._id),
+            invoiceNumber: inv.invoiceNumber,
+            items: itemsForEmail,
+            subtotal: parseFloat(inv.subtotal) || 0,
+            total:
+              inv.totalAmount != null ? inv.totalAmount : parseFloat(inv.subtotal || "0") || 0,
+            siteUrl,
+            seller,
+            buyerSnapshot: inv.buyerSnapshot,
+          });
+          await sendEmail({
+            to: freshCustomer.email,
+            subject: `Invoice ${inv.invoiceNumber} from StockFlow`,
+            html,
+          });
+        } catch (emailError) {
+          console.error("[Invoice Email] Failed to send customer invoice email:", emailError);
+        }
       }
-    } catch (emailError) {
-      console.error("[Invoice Email] Failed to send customer invoice email:", emailError);
+
+      const adminRecipients = sanitizeNotificationEmails(emailDoc.adminInvoiceRecipients);
+      if (emailDoc.notifyAdminsInvoiceSent !== false && adminRecipients.length > 0) {
+        try {
+          const adminHtml = adminInvoiceSentNotificationTemplate({
+            customerName: adminCustomerName,
+            tradeName: adminTradeShow,
+            customerEmail: adminEmailAddr,
+            invoiceNumber: inv.invoiceNumber,
+            invoiceId: String(inv._id),
+            total:
+              inv.totalAmount != null ? inv.totalAmount : parseFloat(inv.subtotal || "0") || 0,
+            siteUrl,
+          });
+          await sendEmail({
+            to: adminRecipients,
+            subject: `Invoice sent: ${inv.invoiceNumber} — ${adminCustomerName}`,
+            html: adminHtml,
+          });
+        } catch (adminErr) {
+          console.error("[Invoice Email] Failed to send admin notification:", adminErr);
+        }
+      }
+    } catch (emailOuter) {
+      console.error("[Invoice Email] Failed to load notification settings:", emailOuter);
     }
 
     return NextResponse.json(

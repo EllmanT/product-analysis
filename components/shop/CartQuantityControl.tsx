@@ -1,7 +1,9 @@
 "use client";
 
-import { Minus, Plus } from "lucide-react";
+import { Minus } from "lucide-react";
 import { useCallback, useState } from "react";
+
+import { CartIncrementTickButton } from "@/components/shop/CartIncrementTickButton";
 
 type Props = {
   productId: string;
@@ -115,14 +117,12 @@ export function CartQuantityControl({
         onBlur={onBlur}
         aria-label="Quantity"
       />
-      <button
-        type="button"
+      <CartIncrementTickButton
+        size={isSm ? "sm" : "md"}
         aria-label="Increase quantity"
         className={btn}
         onClick={() => adjust(1)}
-      >
-        <Plus className={isSm ? "h-3 w-3" : "h-4 w-4"} />
-      </button>
+      />
     </div>
   );
 }

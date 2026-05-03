@@ -91,9 +91,10 @@ export default async function ShopLayout({ children }: { children: ReactNode }) 
       const row = await Customer.findById(resolvedId)
         .select("firstName")
         .lean();
-      if (row) {
+      if (row && !Array.isArray(row)) {
+        const r = row as unknown as { firstName?: string };
         customer = {
-          firstName: (row as { firstName: string }).firstName || "User",
+          firstName: (typeof r.firstName === "string" && r.firstName.trim()) || "User",
           id: resolvedId,
         };
       }

@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo } from "react";
 
 import { useCart } from "@/app/(shop)/context/CartContext";
+import { CartIncrementTickButton } from "@/components/shop/CartIncrementTickButton";
 
 export const PLACEHOLDER_IMAGE = "https://placehold.co/400x300?text=Product";
 
@@ -52,18 +53,10 @@ export const ProductCard = memo(function ProductCard({
   priority?: boolean;
 }) {
   const { addToCart } = useCart();
-  const [added, setAdded] = useState(false);
-  const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const priceLabel =
     product.price != null ? `$${product.price}` : "Price on request";
   const unitPrice = product.price ?? "0";
   const imgSrc = product.imageUrl?.trim() || PLACEHOLDER_IMAGE;
-
-  useEffect(() => {
-    return () => {
-      if (addedTimer.current) clearTimeout(addedTimer.current);
-    };
-  }, []);
 
   function handleAdd() {
     addToCart({
@@ -74,9 +67,6 @@ export const ProductCard = memo(function ProductCard({
       quantity: 1,
       imageUrl: product.imageUrl ?? null,
     });
-    setAdded(true);
-    if (addedTimer.current) clearTimeout(addedTimer.current);
-    addedTimer.current = setTimeout(() => setAdded(false), 1000);
   }
 
   return (
@@ -101,35 +91,13 @@ export const ProductCard = memo(function ProductCard({
         <p className="mt-1 text-xs text-slate-500">{product.standardCode}</p>
         <div className="mt-3 flex items-center justify-between gap-2">
           <p className="text-lg font-semibold text-[#2563EB]">{priceLabel}</p>
-          <button
-            type="button"
+          <CartIncrementTickButton
+            size="md"
             onClick={handleAdd}
             disabled={product.quantityAvailable === 0}
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition ${
-              added
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-            }`}
             aria-label="Add to cart"
-          >
-            {added ? (
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 5h2l1.2 7.2a2 2 0 0 0 2 1.8h7.8a2 2 0 0 0 2-1.6L19.5 7H7.1"
-                />
-                <circle cx="9" cy="18.5" r="1.5" />
-                <circle cx="17" cy="18.5" r="1.5" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 3v4m2-2h-4" />
-              </svg>
-            )}
-          </button>
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed disabled:hover:bg-slate-100"
+          />
         </div>
       </div>
     </article>

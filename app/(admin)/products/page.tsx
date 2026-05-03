@@ -164,9 +164,12 @@ export default function ProductsPage() {
   const [search, setSearch] = useState(""); // debounced
   const [loading, setLoading] = useState(true);
   const [assignImagesLoading, setAssignImagesLoading] = useState(false);
+  const [reassignAllImagesLoading, setReassignAllImagesLoading] =
+    useState(false);
   const [assignImagesMessage, setAssignImagesMessage] = useState<string | null>(
     null
   );
+  const assignImagesBusy = assignImagesLoading || reassignAllImagesLoading;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounce search input → search state
@@ -270,10 +273,46 @@ export default function ProductsPage() {
           ? "All products already have images assigned."
           : `Assigned images to ${fmtCount.format(n)} product${n === 1 ? "" : "s"}.`
       );
+      await fetchProducts({ silent: true });
     } catch {
       setAssignImagesMessage("Could not assign images. Try again.");
     } finally {
       setAssignImagesLoading(false);
+    }
+  }
+
+  async function handleReassignAllImages() {
+    if (
+      !window.confirm(
+        "Replace catalog image URLs for every product? Existing image links will be overwritten using the new varied image pools."
+      )
+    ) {
+      return;
+    }
+    setAssignImagesMessage(null);
+    setReassignAllImagesLoading(true);
+    try {
+      const res = await fetch("/api/admin/products/assign-images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ replaceAll: true }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setAssignImagesMessage("Could not reassign images. Try again.");
+        return;
+      }
+      const n = json.data?.updated ?? 0;
+      setAssignImagesMessage(
+        n === 0
+          ? "No products to update."
+          : `Reassigned images for ${fmtCount.format(n)} product${n === 1 ? "" : "s"}.`
+      );
+      await fetchProducts({ silent: true });
+    } catch {
+      setAssignImagesMessage("Could not reassign images. Try again.");
+    } finally {
+      setReassignAllImagesLoading(false);
     }
   }
 
@@ -322,20 +361,36 @@ export default function ProductsPage() {
                 className="pl-9"
               />
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={assignImagesLoading}
-              onClick={() => void handleAssignImages()}
-              className="shrink-0 gap-2"
-            >
-              {assignImagesLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ImageIcon className="h-4 w-4" />
-              )}
-              Assign Product Images
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={assignImagesBusy}
+                onClick={() => void handleAssignImages()}
+                className="shrink-0 gap-2"
+              >
+                {assignImagesLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ImageIcon className="h-4 w-4" />
+                )}
+                Assign missing images
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={assignImagesBusy}
+                onClick={() => void handleReassignAllImages()}
+                className="shrink-0 gap-2"
+              >
+                {reassignAllImagesLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ImageIcon className="h-4 w-4" />
+                )}
+                Reassign all images
+              </Button>
+            </div>
           </div>
           {assignImagesMessage ? (
             <p className="text-sm text-slate-600">{assignImagesMessage}</p>

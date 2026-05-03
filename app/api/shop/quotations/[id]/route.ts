@@ -11,6 +11,7 @@ import {
   ValidationError,
 } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
+import { getSellerForPublicInvoice } from "@/lib/services/invoiceSeller.service";
 import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 import { NextResponse } from "next/server";
 
@@ -48,8 +49,10 @@ export async function GET(
     }
 
     const customer = await Customer.findById(customerId).select(
-      "tradeName tinNumber vatNumber phone address email firstName lastName"
+      "tradeName tinNumber vatNumber phone address email firstName lastName buyerType"
     );
+
+    const seller = await getSellerForPublicInvoice();
 
     const itemsPlain = q.items.map((row: (typeof q.items)[number]) => ({
       productId: String(row.productId),
@@ -84,8 +87,10 @@ export async function GET(
                 email: customer.email,
                 firstName: customer.firstName,
                 lastName: customer.lastName,
+                buyerType: customer.buyerType ?? "individual",
               }
             : null,
+          seller,
         },
       },
       { status: 200 }

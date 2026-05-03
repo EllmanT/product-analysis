@@ -26,11 +26,28 @@ type QuotationData = {
   fulfillmentStatus: "pending" | "delivered" | null;
 };
 
+type SellerData = {
+  legalName: string;
+  tradeName: string;
+  tin: string;
+  vatNumber: string;
+  address: string;
+  phone: string;
+  email: string;
+  region: string;
+  city: string;
+};
+
 type CustomerData = {
   firstName: string;
   lastName: string;
   tradeName: string;
+  tinNumber?: string;
+  vatNumber?: string;
+  phone?: string;
+  address?: string;
   email: string;
+  buyerType?: string;
 };
 
 function fmtDate(s: string): string {
@@ -66,7 +83,15 @@ function StatusBadge({ status }: { status: string }) {
 
 type StepState = "done" | "active" | "upcoming";
 
-function Timeline({ status, paymentStatus }: { status: string; paymentStatus: string }) {
+function Timeline({
+  status,
+  paymentStatus,
+  className = "",
+}: {
+  status: string;
+  paymentStatus: string;
+  className?: string;
+}) {
   function getStepState(stepIndex: number): StepState {
     if (status === "cancelled") {
       if (stepIndex === 0) return "done";
@@ -92,7 +117,7 @@ function Timeline({ status, paymentStatus }: { status: string; paymentStatus: st
   ];
 
   return (
-    <div className="mt-6 rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+    <div className={`mt-6 rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] ${className}`.trim()}>
       <h3 className="mb-4 text-sm font-semibold text-slate-700">Order Progress</h3>
       <div className="relative flex justify-between">
         {/* Connector line */}
@@ -415,6 +440,7 @@ export default function QuotationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [quotation, setQuotation] = useState<QuotationData | null>(null);
   const [customer, setCustomer] = useState<CustomerData | null>(null);
+  const [seller, setSeller] = useState<SellerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -427,10 +453,18 @@ export default function QuotationDetailPage() {
       if (res.status === 401) { router.replace(`/login?redirect=/account/quotations/${id}`); return; }
       if (res.status === 404) { router.replace("/account/quotations"); return; }
       if (res.ok) {
-        const json = await res.json() as { success: boolean; data: { quotation: QuotationData; customer: CustomerData | null } };
+        const json = await res.json() as {
+          success: boolean;
+          data: {
+            quotation: QuotationData;
+            customer: CustomerData | null;
+            seller: SellerData | null;
+          };
+        };
         if (json.success && !cancelled) {
           setQuotation(json.data.quotation);
           setCustomer(json.data.customer);
+          setSeller(json.data.seller);
         }
       }
       if (!cancelled) setLoading(false);
@@ -459,23 +493,36 @@ export default function QuotationDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white; }
+          @page { margin: 12mm; size: A4; }
+        }
+      `}</style>
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
 
-        {/* Breadcrumb */}
-        <nav className="mb-2 text-sm text-[#6B7280]">
-          <Link href="/account" className="hover:text-[#1E40AF]">Dashboard</Link>
-          <span className="mx-2">/</span>
-          <Link href="/account/quotations" className="hover:text-[#1E40AF]">Quotations</Link>
-          <span className="mx-2">/</span>
-          <span className="font-medium text-slate-900">#{refId}</span>
+        <nav className="no-print mb-2 flex flex-wrap items-center justify-between gap-3 text-sm text-[#6B7280]">
+          <div>
+            <Link href="/account" className="hover:text-[#1E40AF]">Dashboard</Link>
+            <span className="mx-2">/</span>
+            <Link href="/account/quotations" className="hover:text-[#1E40AF]">Quotations</Link>
+            <span className="mx-2">/</span>
+            <span className="font-medium text-slate-900">#{refId}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+          >
+            Print quotation
+          </button>
         </nav>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-3">
 
-          {/* Left column */}
           <div className="space-y-6 lg:col-span-2">
 
-            {/* Items card */}
             <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]">
               <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
                 <div>
@@ -486,6 +533,75 @@ export default function QuotationDetailPage() {
                 </div>
                 <StatusBadge status={quotation.status} />
               </div>
+
+              {(seller || customer) && (
+                <div className="border-b border-slate-100 px-6 py-6">
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Seller</h3>
+                      {seller ? (
+                        <dl className="mt-2 space-y-1 text-sm text-slate-800">
+                          {seller.legalName && <div className="font-medium">{seller.legalName}</div>}
+                          {seller.tradeName && seller.tradeName !== seller.legalName && (
+                            <div>{seller.tradeName}</div>
+                          )}
+                          {seller.tin && (
+                            <div>
+                              <span className="text-slate-500">TIN: </span>
+                              <span className="font-mono">{seller.tin}</span>
+                            </div>
+                          )}
+                          {seller.vatNumber && (
+                            <div>
+                              <span className="text-slate-500">VAT: </span>
+                              <span className="font-mono">{seller.vatNumber}</span>
+                            </div>
+                          )}
+                          {seller.email && <div>{seller.email}</div>}
+                          {seller.phone && <div>Tel: {seller.phone}</div>}
+                          {seller.address && <div>{seller.address}</div>}
+                          {(seller.city || seller.region) && (
+                            <div>
+                              {seller.city}
+                              {seller.region ? `, ${seller.region}` : ""}
+                            </div>
+                          )}
+                        </dl>
+                      ) : (
+                        <p className="mt-2 text-sm text-slate-500">—</p>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bill to</h3>
+                      {customer ? (
+                        <dl className="mt-2 space-y-1 text-sm text-slate-800">
+                          <div className="font-medium">
+                            {customer.firstName} {customer.lastName}
+                          </div>
+                          {customer.tradeName?.trim() ? <div>{customer.tradeName}</div> : null}
+                          {customer.buyerType === "business" && customer.tinNumber?.trim() ? (
+                            <div>
+                              <span className="text-slate-500">TIN: </span>
+                              <span className="font-mono">{customer.tinNumber}</span>
+                            </div>
+                          ) : null}
+                          {customer.buyerType === "business" && customer.vatNumber?.trim() ? (
+                            <div>
+                              <span className="text-slate-500">VAT: </span>
+                              <span className="font-mono">{customer.vatNumber}</span>
+                            </div>
+                          ) : null}
+                          {customer.email && <div>{customer.email}</div>}
+                          {customer.phone?.trim() ? <div>Tel: {customer.phone}</div> : null}
+                          {customer.address?.trim() ? <div>{customer.address}</div> : null}
+                        </dl>
+                      ) : (
+                        <p className="mt-2 text-sm text-slate-500">—</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -526,12 +642,10 @@ export default function QuotationDetailPage() {
               </div>
             </div>
 
-            {/* Timeline */}
-            <Timeline status={quotation.status} paymentStatus={quotation.paymentStatus} />
+            <Timeline className="no-print" status={quotation.status} paymentStatus={quotation.paymentStatus} />
           </div>
 
-          {/* Right column — sticky action card */}
-          <div className="lg:col-span-1">
+          <div className="no-print lg:col-span-1">
             <div className="sticky top-6">
               <ActionCard
                 quotation={quotation}
@@ -552,9 +666,8 @@ export default function QuotationDetailPage() {
         </div>
       </div>
 
-      {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
+        <div className="no-print fixed bottom-6 right-6 z-50 rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
           {toast}
         </div>
       )}

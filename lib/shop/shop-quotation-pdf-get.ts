@@ -7,6 +7,7 @@ import Quotation from "@/database/quotation.model";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError, UnauthorisedError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
+import { getSellerForPublicInvoice } from "@/lib/services/invoiceSeller.service";
 import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 
 type QuotationLean = {
@@ -71,6 +72,8 @@ export async function shopQuotationPdfGET(
     if (!quotation) throw new NotFoundError("Quotation");
     if (!customer) throw new UnauthorisedError("Please sign in");
 
+    const seller = await getSellerForPublicInvoice();
+
     const refId = String(quotation._id).slice(-8).toUpperCase();
     const createdAt = quotation.createdAt ? new Date(quotation.createdAt) : new Date();
 
@@ -104,70 +107,97 @@ export async function shopQuotationPdfGET(
       color: rgb(0.576, 0.765, 0.988),
     });
 
-    const infoY = height - headerH - 30;
-    page.drawText("Bill To:", { x: 40, y: infoY, font: bold, size: 10, color: grayText });
-    let lineY = infoY - 16;
+    const infoY = height - headerH - 28;
+
+    const pushSellerLines = (): string[] => {
+      const L: string[] = [];
+      if (seller.legalName?.trim()) L.push(seller.legalName.trim());
+      if (seller.tradeName?.trim() && seller.tradeName.trim() !== seller.legalName?.trim()) {
+        L.push(seller.tradeName.trim());
+      }
+      if (seller.tin?.trim()) L.push(`TIN: ${seller.tin.trim().slice(0, 42)}`);
+      if (seller.vatNumber?.trim()) L.push(`VAT: ${seller.vatNumber.trim().slice(0, 42)}`);
+      if (seller.email?.trim()) L.push(seller.email.trim().slice(0, 54));
+      if (seller.phone?.trim()) L.push(`Tel: ${seller.phone.trim().slice(0, 40)}`);
+      const cityLine = [seller.address?.trim(), seller.city?.trim(), seller.region?.trim()]
+        .filter(Boolean)
+        .join(", ");
+      if (cityLine) L.push(cityLine.slice(0, 72));
+      if (L.length === 0) L.push("StockFlow");
+      return L;
+    };
+
+    page.drawText("From:", { x: 40, y: infoY, font: bold, size: 10, color: grayText });
+    let leftY = infoY - 14;
+    for (const line of pushSellerLines()) {
+      page.drawText(line, { x: 40, y: leftY, font: regular, size: 10, color: darkText });
+      leftY -= 13;
+    }
+
+    const billX = 300;
+    page.drawText("Bill To:", { x: billX, y: infoY, font: bold, size: 10, color: grayText });
+    let lineY = infoY - 14;
     page.drawText(`${customer.firstName} ${customer.lastName}`, {
-      x: 40,
+      x: billX,
       y: lineY,
       font: bold,
       size: 11,
       color: darkText,
     });
-    lineY -= 16;
+    lineY -= 15;
     const isBusiness = customer.buyerType === "business" && (customer.tradeName ?? "").trim() !== "";
     if (isBusiness) {
       page.drawText((customer.tradeName ?? "").trim(), {
-        x: 40,
+        x: billX,
+        y: lineY,
+        font: regular,
+        size: 10,
+        color: darkText,
+      });
+      lineY -= 13;
+      const tin = (customer.tinNumber ?? "").trim();
+      const vat = (customer.vatNumber ?? "").trim();
+      if (tin) {
+        page.drawText(`TIN: ${tin.slice(0, 40)}`, {
+          x: billX,
+          y: lineY,
+          font: regular,
+          size: 9,
+          color: darkText,
+        });
+        lineY -= 12;
+      }
+      if (vat) {
+        page.drawText(`VAT: ${vat.slice(0, 40)}`, {
+          x: billX,
+          y: lineY,
+          font: regular,
+          size: 9,
+          color: darkText,
+        });
+        lineY -= 12;
+      }
+    } else {
+      page.drawText("Personal order", {
+        x: billX,
+        y: lineY,
+        font: regular,
+        size: 10,
+        color: grayText,
+      });
+      lineY -= 14;
+    }
+    page.drawText(customer.email, { x: billX, y: lineY, font: regular, size: 10, color: darkText });
+    lineY -= 14;
+    if (customer.address) {
+      page.drawText(customer.address.slice(0, 60), {
+        x: billX,
         y: lineY,
         font: regular,
         size: 10,
         color: darkText,
       });
       lineY -= 14;
-      const tin = (customer.tinNumber ?? "").trim();
-      const vat = (customer.vatNumber ?? "").trim();
-      if (tin) {
-        page.drawText(`TIN: ${tin.slice(0, 40)}`, {
-          x: 40,
-          y: lineY,
-          font: regular,
-          size: 9,
-          color: darkText,
-        });
-        lineY -= 13;
-      }
-      if (vat) {
-        page.drawText(`VAT: ${vat.slice(0, 40)}`, {
-          x: 40,
-          y: lineY,
-          font: regular,
-          size: 9,
-          color: darkText,
-        });
-        lineY -= 13;
-      }
-    } else {
-      page.drawText("Personal order", {
-        x: 40,
-        y: lineY,
-        font: regular,
-        size: 10,
-        color: grayText,
-      });
-      lineY -= 16;
-    }
-    page.drawText(customer.email, { x: 40, y: lineY, font: regular, size: 10, color: darkText });
-    lineY -= 16;
-    if (customer.address) {
-      page.drawText(customer.address.slice(0, 60), {
-        x: 40,
-        y: lineY,
-        font: regular,
-        size: 10,
-        color: darkText,
-      });
-      lineY -= 16;
     }
 
     const rightX = width - 200;
@@ -182,7 +212,7 @@ export async function shopQuotationPdfGET(
       page.drawText(value, { x: rightX + 95, y: ry, font: bold, size: 10, color: darkText });
     });
 
-    const dividerY = lineY - 24;
+    const dividerY = Math.min(leftY, lineY) - 20;
     page.drawLine({
       start: { x: 40, y: dividerY },
       end: { x: width - 40, y: dividerY },

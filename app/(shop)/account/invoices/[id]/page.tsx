@@ -192,17 +192,13 @@ export default function InvoiceDetailPage() {
                 <p className="text-sm text-slate-600">Payment: {invoice.paymentMethod}</p>
               )}
             </div>
-            <div>
-              {isZimraVerified ? (
-                <span className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
-                  ZIMRA verified
-                </span>
-              ) : (
+            {!isZimraVerified && (
+              <div>
                 <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
                   Not fiscalized yet
                 </span>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {!isZimraVerified && (
@@ -278,46 +274,95 @@ export default function InvoiceDetailPage() {
             </div>
           </div>
 
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-6">
             {useLines ? (
-              <table className="w-full min-w-[800px] text-left text-sm">
-                <thead className="border-b border-slate-200 text-xs font-semibold text-slate-600">
-                  <tr>
-                    <th className="py-2 pr-2">#</th>
-                    <th className="py-2 pr-2">Type</th>
-                    <th className="py-2 pr-2">Description</th>
-                    <th className="py-2 pr-2">HS</th>
-                    <th className="py-2 pr-2 text-right">Qty</th>
-                    <th className="py-2 pr-2 text-right">Unit</th>
-                    <th className="py-2 pr-2 text-center">Tax</th>
-                    <th className="py-2 pr-2 text-right">Excl</th>
-                    <th className="py-2 pr-2 text-right">VAT</th>
-                    <th className="py-2 pr-2 text-right">Incl</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
+              <>
+                <div className="space-y-3 md:hidden print:hidden">
                   {invoice.lines!.map((line) => (
-                    <tr key={line.lineNo}>
-                      <td className="py-2 pr-2 text-slate-500">{line.lineNo}</td>
-                      <td className="py-2 pr-2 text-xs text-slate-600">{line.lineType || "—"}</td>
-                      <td className="py-2 pr-2 font-medium text-slate-900">{line.description}</td>
-                      <td className="py-2 pr-2 font-mono text-xs text-slate-500">{line.hsCode || "—"}</td>
-                      <td className="py-2 pr-2 text-right">{line.quantity}</td>
-                      <td className="py-2 pr-2 text-right">{fmtMoney(line.unitPrice, currency)}</td>
-                      <td className="py-2 pr-2 text-center text-xs">
-                        {line.taxCode} ({line.taxPercent}%)
-                      </td>
-                      <td className="py-2 pr-2 text-right">
-                        {fmtMoney(line.lineTotalExcl ?? 0, currency)}
-                      </td>
-                      <td className="py-2 pr-2 text-right">{fmtMoney(line.vatAmount, currency)}</td>
-                      <td className="py-2 pr-2 text-right font-semibold">
-                        {fmtMoney(line.lineTotalIncl, currency)}
-                      </td>
-                    </tr>
+                    <div
+                      key={line.lineNo}
+                      className="rounded-lg border border-slate-200 bg-slate-50/60 p-3 text-sm shadow-sm"
+                    >
+                      <p className="text-xs font-semibold text-slate-900">
+                        <span className="font-mono text-slate-500">#{line.lineNo}</span>
+                        <span className="mx-1.5 text-slate-300">·</span>
+                        <span className="wrap-break-word font-medium">{line.description}</span>
+                      </p>
+                      <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-xs leading-snug">
+                        <dt className="text-slate-500">Type</dt>
+                        <dd className="min-w-0 wrap-break-word text-slate-800">{line.lineType || "—"}</dd>
+                        <dt className="text-slate-500">HS code</dt>
+                        <dd className="font-mono text-slate-700">{line.hsCode || "—"}</dd>
+                        <dt className="text-slate-500">Qty</dt>
+                        <dd className="tabular-nums text-slate-800">{line.quantity}</dd>
+                        <dt className="text-slate-500">Unit</dt>
+                        <dd className="tabular-nums text-slate-800">{fmtMoney(line.unitPrice, currency)}</dd>
+                        <dt className="text-slate-500">Tax</dt>
+                        <dd className="tabular-nums text-slate-800">{line.taxPercent}%</dd>
+                        <dt className="text-slate-500">Excl.</dt>
+                        <dd className="tabular-nums text-slate-800">{fmtMoney(line.lineTotalExcl ?? 0, currency)}</dd>
+                        <dt className="text-slate-500">VAT</dt>
+                        <dd className="tabular-nums text-slate-800">{fmtMoney(line.vatAmount, currency)}</dd>
+                        <dt className="text-slate-500">Incl.</dt>
+                        <dd className="font-semibold tabular-nums text-slate-900">
+                          {fmtMoney(line.lineTotalIncl, currency)}
+                        </dd>
+                      </dl>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+
+                <table className="hidden w-full table-fixed border-collapse text-left text-xs md:table print:table">
+                  <colgroup>
+                    <col className="w-[4%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[24%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[6%]" />
+                    <col className="w-[11%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[9%]" />
+                  </colgroup>
+                  <thead className="border-b border-slate-200 font-semibold text-slate-600">
+                    <tr>
+                      <th className="py-2 pr-1 align-bottom">#</th>
+                      <th className="py-2 pr-1 align-bottom">Type</th>
+                      <th className="py-2 pr-1 align-bottom">Description</th>
+                      <th className="py-2 pr-1 align-bottom">HS</th>
+                      <th className="py-2 pr-1 text-right align-bottom">Qty</th>
+                      <th className="py-2 pr-1 text-right align-bottom">Unit</th>
+                      <th className="py-2 pr-1 text-center align-bottom">Tax</th>
+                      <th className="py-2 pr-1 text-right align-bottom">Excl</th>
+                      <th className="py-2 pr-1 text-right align-bottom">VAT</th>
+                      <th className="py-2 pl-1 text-right align-bottom">Incl</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {invoice.lines!.map((line) => (
+                      <tr key={line.lineNo} className="align-top">
+                        <td className="py-2 pr-1 font-mono text-slate-500">{line.lineNo}</td>
+                        <td className="min-w-0 py-2 pr-1 wrap-break-word text-slate-600">{line.lineType || "—"}</td>
+                        <td className="min-w-0 py-2 pr-1 wrap-break-word font-medium text-slate-900">
+                          {line.description}
+                        </td>
+                        <td className="min-w-0 py-2 pr-1 wrap-break-word font-mono text-slate-500">{line.hsCode || "—"}</td>
+                        <td className="py-2 pr-1 text-right tabular-nums">{line.quantity}</td>
+                        <td className="py-2 pr-1 text-right tabular-nums">{fmtMoney(line.unitPrice, currency)}</td>
+                        <td className="py-2 pr-1 text-center tabular-nums">{line.taxPercent}%</td>
+                        <td className="py-2 pr-1 text-right tabular-nums">
+                          {fmtMoney(line.lineTotalExcl ?? 0, currency)}
+                        </td>
+                        <td className="py-2 pr-1 text-right tabular-nums">{fmtMoney(line.vatAmount, currency)}</td>
+                        <td className="py-2 pl-1 text-right font-semibold tabular-nums">
+                          {fmtMoney(line.lineTotalIncl, currency)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             ) : (
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-200 text-xs font-semibold text-slate-600">
@@ -332,7 +377,7 @@ export default function InvoiceDetailPage() {
                 <tbody className="divide-y divide-slate-100">
                   {invoice.items.map((item, i) => (
                     <tr key={i}>
-                      <td className="py-2 pr-2 font-medium text-slate-900">{item.name}</td>
+                      <td className="min-w-0 py-2 pr-2 wrap-break-word font-medium text-slate-900">{item.name}</td>
                       <td className="py-2 pr-2 font-mono text-xs text-slate-500">{item.standardCode}</td>
                       <td className="py-2 pr-2 text-center">{item.quantity}</td>
                       <td className="py-2 pr-2 text-right">{fmtMoney(item.unitPrice, currency)}</td>

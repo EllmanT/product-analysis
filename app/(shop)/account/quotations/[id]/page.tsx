@@ -26,11 +26,28 @@ type QuotationData = {
   fulfillmentStatus: "pending" | "delivered" | null;
 };
 
+type SellerData = {
+  legalName: string;
+  tradeName: string;
+  tin: string;
+  vatNumber: string;
+  address: string;
+  phone: string;
+  email: string;
+  region: string;
+  city: string;
+};
+
 type CustomerData = {
   firstName: string;
   lastName: string;
   tradeName: string;
+  tinNumber?: string;
+  vatNumber?: string;
+  phone?: string;
+  address?: string;
   email: string;
+  buyerType?: string;
 };
 
 function fmtDate(s: string): string {
@@ -66,7 +83,15 @@ function StatusBadge({ status }: { status: string }) {
 
 type StepState = "done" | "active" | "upcoming";
 
-function Timeline({ status, paymentStatus }: { status: string; paymentStatus: string }) {
+function Timeline({
+  status,
+  paymentStatus,
+  className = "",
+}: {
+  status: string;
+  paymentStatus: string;
+  className?: string;
+}) {
   function getStepState(stepIndex: number): StepState {
     if (status === "cancelled") {
       if (stepIndex === 0) return "done";
@@ -92,7 +117,7 @@ function Timeline({ status, paymentStatus }: { status: string; paymentStatus: st
   ];
 
   return (
-    <div className="mt-6 rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+    <div className={`mt-6 rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] ${className}`.trim()}>
       <h3 className="mb-4 text-sm font-semibold text-slate-700">Order Progress</h3>
       <div className="relative flex justify-between">
         {/* Connector line */}
@@ -141,10 +166,15 @@ function ActionCard({
     quotation.checkoutPaymentMethod
   );
   const [saving, setSaving] = useState(false);
+  const [changingMethod, setChangingMethod] = useState(false);
 
   useEffect(() => {
     setSelected(quotation.checkoutPaymentMethod);
   }, [quotation.checkoutPaymentMethod, quotation._id]);
+
+  useEffect(() => {
+    setChangingMethod(false);
+  }, [quotation._id]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/account/quotations/${quotation._id}`;
@@ -171,6 +201,7 @@ function ActionCard({
         return;
       }
       onRefresh();
+      setChangingMethod(false);
       if (method === "card") {
         router.push(
           `/payment/card?quotationId=${quotation._id}&amount=${encodeURIComponent(quotation.subtotal)}`
@@ -255,6 +286,65 @@ function ActionCard({
   ) {
     const method = quotation.checkoutPaymentMethod;
 
+    if (changingMethod && method !== null) {
+      return (
+        <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Amount Due</p>
+          <p className="text-3xl font-semibold tabular-nums tracking-tight text-[#1E40AF]">
+            {fmtMoney(quotation.subtotal)}
+          </p>
+          <p className="mt-3 text-sm font-medium text-slate-800">How would you like to pay?</p>
+          <div className="mt-3 space-y-2">
+            {methodOptions.map((opt) => {
+              const active = selected === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setSelected(opt.key)}
+                  className={`flex w-full gap-3 rounded-lg border p-3 text-left transition ${
+                    active
+                      ? "border-[#1E40AF] bg-blue-50/80 ring-1 ring-[#1E40AF]"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <span className="mt-0.5 shrink-0 text-[#1E40AF]">{opt.icon}</span>
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-900">{opt.title}</span>
+                    <span className="mt-0.5 block text-xs text-slate-600">{opt.description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            disabled={!selected || saving}
+            onClick={() => selected && void saveMethodAndContinue(selected)}
+            className="mt-4 w-full rounded-[8px] bg-[#1E40AF] py-3 text-center text-sm font-semibold text-white transition hover:bg-[#1E3A8A] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? "Please wait…" : "Continue"}
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => setChangingMethod(false)}
+            className="mt-2 w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <a
+            href={pdfUrl}
+            download
+            className="mt-2 block w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Download Quotation PDF
+          </a>
+          <p className="mt-3 text-center text-xs text-slate-500">Secure checkout</p>
+        </div>
+      );
+    }
+
     if (method === "cod") {
       return (
         <div className="rounded-xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
@@ -285,6 +375,16 @@ function ActionCard({
           >
             Share Link
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelected(quotation.checkoutPaymentMethod);
+              setChangingMethod(true);
+            }}
+            className="mt-3 w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-[#1E40AF] transition hover:bg-slate-50"
+          >
+            Change payment method
+          </button>
         </div>
       );
     }
@@ -310,6 +410,16 @@ function ActionCard({
           >
             Download Quotation PDF
           </a>
+          <button
+            type="button"
+            onClick={() => {
+              setSelected(quotation.checkoutPaymentMethod);
+              setChangingMethod(true);
+            }}
+            className="mt-3 w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-[#1E40AF] transition hover:bg-slate-50"
+          >
+            Change payment method
+          </button>
         </div>
       );
     }
@@ -335,6 +445,16 @@ function ActionCard({
           >
             Download Quotation PDF
           </a>
+          <button
+            type="button"
+            onClick={() => {
+              setSelected(quotation.checkoutPaymentMethod);
+              setChangingMethod(true);
+            }}
+            className="mt-3 w-full rounded-[8px] border border-slate-200 py-3 text-center text-sm font-semibold text-[#1E40AF] transition hover:bg-slate-50"
+          >
+            Change payment method
+          </button>
         </div>
       );
     }
@@ -415,6 +535,7 @@ export default function QuotationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [quotation, setQuotation] = useState<QuotationData | null>(null);
   const [customer, setCustomer] = useState<CustomerData | null>(null);
+  const [seller, setSeller] = useState<SellerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -427,10 +548,18 @@ export default function QuotationDetailPage() {
       if (res.status === 401) { router.replace(`/login?redirect=/account/quotations/${id}`); return; }
       if (res.status === 404) { router.replace("/account/quotations"); return; }
       if (res.ok) {
-        const json = await res.json() as { success: boolean; data: { quotation: QuotationData; customer: CustomerData | null } };
+        const json = await res.json() as {
+          success: boolean;
+          data: {
+            quotation: QuotationData;
+            customer: CustomerData | null;
+            seller: SellerData | null;
+          };
+        };
         if (json.success && !cancelled) {
           setQuotation(json.data.quotation);
           setCustomer(json.data.customer);
+          setSeller(json.data.seller);
         }
       }
       if (!cancelled) setLoading(false);
@@ -459,23 +588,36 @@ export default function QuotationDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white; }
+          @page { margin: 12mm; size: A4; }
+        }
+      `}</style>
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
 
-        {/* Breadcrumb */}
-        <nav className="mb-2 text-sm text-[#6B7280]">
-          <Link href="/account" className="hover:text-[#1E40AF]">Dashboard</Link>
-          <span className="mx-2">/</span>
-          <Link href="/account/quotations" className="hover:text-[#1E40AF]">Quotations</Link>
-          <span className="mx-2">/</span>
-          <span className="font-medium text-slate-900">#{refId}</span>
+        <nav className="no-print mb-2 flex flex-wrap items-center justify-between gap-3 text-sm text-[#6B7280]">
+          <div>
+            <Link href="/account" className="hover:text-[#1E40AF]">Dashboard</Link>
+            <span className="mx-2">/</span>
+            <Link href="/account/quotations" className="hover:text-[#1E40AF]">Quotations</Link>
+            <span className="mx-2">/</span>
+            <span className="font-medium text-slate-900">#{refId}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+          >
+            Print quotation
+          </button>
         </nav>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-3">
 
-          {/* Left column */}
           <div className="space-y-6 lg:col-span-2">
 
-            {/* Items card */}
             <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)]">
               <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
                 <div>
@@ -486,6 +628,75 @@ export default function QuotationDetailPage() {
                 </div>
                 <StatusBadge status={quotation.status} />
               </div>
+
+              {(seller || customer) && (
+                <div className="border-b border-slate-100 px-6 py-6">
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Seller</h3>
+                      {seller ? (
+                        <dl className="mt-2 space-y-1 text-sm text-slate-800">
+                          {seller.legalName && <div className="font-medium">{seller.legalName}</div>}
+                          {seller.tradeName && seller.tradeName !== seller.legalName && (
+                            <div>{seller.tradeName}</div>
+                          )}
+                          {seller.tin && (
+                            <div>
+                              <span className="text-slate-500">TIN: </span>
+                              <span className="font-mono">{seller.tin}</span>
+                            </div>
+                          )}
+                          {seller.vatNumber && (
+                            <div>
+                              <span className="text-slate-500">VAT: </span>
+                              <span className="font-mono">{seller.vatNumber}</span>
+                            </div>
+                          )}
+                          {seller.email && <div>{seller.email}</div>}
+                          {seller.phone && <div>Tel: {seller.phone}</div>}
+                          {seller.address && <div>{seller.address}</div>}
+                          {(seller.city || seller.region) && (
+                            <div>
+                              {seller.city}
+                              {seller.region ? `, ${seller.region}` : ""}
+                            </div>
+                          )}
+                        </dl>
+                      ) : (
+                        <p className="mt-2 text-sm text-slate-500">—</p>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bill to</h3>
+                      {customer ? (
+                        <dl className="mt-2 space-y-1 text-sm text-slate-800">
+                          <div className="font-medium">
+                            {customer.firstName} {customer.lastName}
+                          </div>
+                          {customer.tradeName?.trim() ? <div>{customer.tradeName}</div> : null}
+                          {customer.buyerType === "business" && customer.tinNumber?.trim() ? (
+                            <div>
+                              <span className="text-slate-500">TIN: </span>
+                              <span className="font-mono">{customer.tinNumber}</span>
+                            </div>
+                          ) : null}
+                          {customer.buyerType === "business" && customer.vatNumber?.trim() ? (
+                            <div>
+                              <span className="text-slate-500">VAT: </span>
+                              <span className="font-mono">{customer.vatNumber}</span>
+                            </div>
+                          ) : null}
+                          {customer.email && <div>{customer.email}</div>}
+                          {customer.phone?.trim() ? <div>Tel: {customer.phone}</div> : null}
+                          {customer.address?.trim() ? <div>{customer.address}</div> : null}
+                        </dl>
+                      ) : (
+                        <p className="mt-2 text-sm text-slate-500">—</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
@@ -526,12 +737,10 @@ export default function QuotationDetailPage() {
               </div>
             </div>
 
-            {/* Timeline */}
-            <Timeline status={quotation.status} paymentStatus={quotation.paymentStatus} />
+            <Timeline className="no-print" status={quotation.status} paymentStatus={quotation.paymentStatus} />
           </div>
 
-          {/* Right column — sticky action card */}
-          <div className="lg:col-span-1">
+          <div className="no-print lg:col-span-1">
             <div className="sticky top-6">
               <ActionCard
                 quotation={quotation}
@@ -552,9 +761,8 @@ export default function QuotationDetailPage() {
         </div>
       </div>
 
-      {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
+        <div className="no-print fixed bottom-6 right-6 z-50 rounded-lg bg-slate-900 px-5 py-3 text-sm font-medium text-white shadow-lg">
           {toast}
         </div>
       )}

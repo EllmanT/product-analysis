@@ -77,7 +77,7 @@ export async function fetchHandler<T>(
     if (err.name === "AbortError") {
       logger.warn(`Request to ${url} timed out after ${timeOut}ms`);
     } else {
-      logger.error(`Error fetching ${url}`, err.message);
+      logger.error({ err }, `Error fetching ${url}`);
     }
 
     return handleError(err) as ActionResponse<T>;

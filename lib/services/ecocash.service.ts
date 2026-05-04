@@ -22,6 +22,25 @@ interface InitiatePaymentResult {
   status: string;
 }
 
+/**
+ * Resolve the EcoCash notify URL to a fully-qualified HTTPS URL.
+ * If ECOCASH_NOTIFY_URL is already absolute (starts with http), use it as-is.
+ * If it is a root-relative path (starts with /), prepend SITE_URL / NEXT_PUBLIC_SITE_URL.
+ * EcoCash's servers must be able to reach this URL — localhost will not work without a tunnel.
+ */
+function resolveNotifyUrl(): string {
+  const raw = (process.env.ECOCASH_NOTIFY_URL ?? "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  if (raw.startsWith("/")) {
+    const base = (
+      process.env.SITE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? ""
+    ).trim().replace(/\/$/, "");
+    return base ? `${base}${raw}` : raw;
+  }
+  return raw;
+}
+
 function buildPayload(
   phoneNumber: string,
   amount: number,
@@ -29,7 +48,7 @@ function buildPayload(
   clientCorrelator: string,
   referenceCode: string
 ): Record<string, unknown> {
-  const notifyUrl = process.env.ECOCASH_NOTIFY_URL ?? "";
+  const notifyUrl = resolveNotifyUrl();
 
   return {
     clientCorrelator,
@@ -100,15 +119,25 @@ export async function initiatePayment(
   });
 
   const apiUrl = process.env.ECOCASH_API_URL;
+  const merchantCode = process.env.ECOCASH_MERCHANT_CODE?.trim();
+  const merchantPin = process.env.ECOCASH_MERCHANT_PIN?.trim();
   /** Matches Laravel `config/ecocash.php` default when env is unset. */
-  const username =
-    process.env.ECOCASH_USERNAME?.trim() || "AXIS";
-  const password = process.env.ECOCASH_PASSWORD?.trim();
+  const username = process.env.ECOCASH_USERNAME?.trim() || "AXIS";
+  const explicitPassword = process.env.ECOCASH_PASSWORD?.trim();
 
   if (!apiUrl) throw new Error("ECOCASH_API_URL is not configured");
+  if (!merchantCode) throw new Error("ECOCASH_MERCHANT_CODE is not configured");
+  if (!merchantPin) throw new Error("ECOCASH_MERCHANT_PIN is not configured");
+
+  // Basic Auth password: use ECOCASH_PASSWORD when set; fall back to ECOCASH_MERCHANT_PIN.
+  // Some EcoCash merchant accounts use the PIN as both body credential and HTTP Basic password.
+  // Log once when the fallback is active so it is visible in server logs.
+  let password = explicitPassword;
   if (!password) {
-    throw new Error(
-      "ECOCASH_PASSWORD is not configured. Set ECOCASH_PASSWORD (and ECOCASH_USERNAME if not using the default AXIS) in .env.local."
+    password = merchantPin;
+    console.warn(
+      "[EcoCash] ECOCASH_PASSWORD not set — falling back to ECOCASH_MERCHANT_PIN for HTTP Basic Auth. " +
+        "If the gateway returns 401 set ECOCASH_PASSWORD explicitly in .env.local."
     );
   }
 

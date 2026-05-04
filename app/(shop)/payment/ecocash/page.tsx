@@ -6,7 +6,21 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
-import { CheckCircle, Smartphone, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Smartphone, XCircle } from "lucide-react";
+
+function BackToQuotationLink({ quotationId }: { quotationId: string }) {
+  return (
+    <div className="mb-4">
+      <Link
+        href={`/account/quotations/${quotationId}`}
+        className="inline-flex items-center gap-2 text-sm font-medium text-[#2563EB] hover:text-blue-700"
+      >
+        <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+        Back to quotation
+      </Link>
+    </div>
+  );
+}
 
 function formatZwMobile(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 10);
@@ -139,6 +153,7 @@ function EcoCashPaymentContent() {
   if (phase === "success") {
     return (
       <div className="mx-auto max-w-lg px-4 py-10">
+        <BackToQuotationLink quotationId={quotationId} />
         <div className="rounded-2xl border border-emerald-200 bg-white p-8 shadow-sm text-center">
           <CheckCircle className="mx-auto h-14 w-14 text-emerald-500" />
           <h1 className="mt-4 text-xl font-bold text-slate-900">Payment confirmed!</h1>
@@ -152,6 +167,7 @@ function EcoCashPaymentContent() {
   if (phase === "failed") {
     return (
       <div className="mx-auto max-w-lg px-4 py-10">
+        <BackToQuotationLink quotationId={quotationId} />
         <div className="rounded-2xl border border-red-200 bg-white p-8 shadow-sm text-center">
           <XCircle className="mx-auto h-14 w-14 text-red-500" />
           <h1 className="mt-4 text-xl font-bold text-slate-900">Payment failed</h1>
@@ -178,6 +194,7 @@ function EcoCashPaymentContent() {
     const timedOut = !pollRef.current && referenceCode !== "";
     return (
       <div className="mx-auto max-w-lg px-4 py-10">
+        <BackToQuotationLink quotationId={quotationId} />
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="flex flex-col items-center text-center">
             <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-blue-50">
@@ -223,6 +240,7 @@ function EcoCashPaymentContent() {
   // ── Form state ─────────────────────────────────────────────────
   return (
     <div className="mx-auto max-w-lg px-4 py-10">
+      <BackToQuotationLink quotationId={quotationId} />
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex flex-col items-center text-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-700">

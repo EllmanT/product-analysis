@@ -115,15 +115,14 @@ export function UploadResultsCard({
     <div className="flex min-h-[320px] flex-1 flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-lg">
       <div className="mb-4 flex items-center gap-2 border-b border-gray-100 pb-3">
         <FileSpreadsheet className="size-5 text-blue-600" />
-        <h2 className="text-lg font-semibold text-gray-900">Upload results</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Upload Summary</h2>
       </div>
 
       {phase === "idle" && (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-muted-foreground">
           <Package className="size-12 opacity-40" />
           <p className="max-w-sm text-sm">
-            Choose a branch (if required), select a .txt file, and upload to
-            see a live summary here.
+            Select your stock file and click <strong>Upload Stock File</strong> — your results will appear here.
           </p>
         </div>
       )}
@@ -171,7 +170,11 @@ export function UploadResultsCard({
       )}
 
       {phase === "success" && summary && (
-        <div className="flex flex-1 flex-col gap-4">
+        <div data-testid="upload-success" className="flex flex-1 flex-col gap-4">
+          <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-emerald-800">
+            <span className="text-xl">✓</span>
+            <p className="font-semibold">Stock file uploaded successfully!</p>
+          </div>
           <div className="grid gap-2 rounded-lg bg-gray-50 p-4 text-sm">
             <div className="flex items-center gap-2 text-gray-600">
               <FileText className="size-4 shrink-0" />
@@ -203,20 +206,21 @@ export function UploadResultsCard({
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <StatPill label="Product lines" value={summary.productLineCount} />
-            <StatPill label="Total units" value={summary.totalQuantity} />
+            <StatPill label="Stock Entries" value={summary.productLineCount} testId="stat-product-line-count" />
+            <StatPill label="Total Units" value={summary.totalQuantity} />
             <StatPill
-              label="Total value"
+              label="Stock Value"
               value={formatCurrency(summary.totalValue)}
               className="sm:col-span-1"
             />
             <StatPill
-              label="Dead stock (SKUs)"
+              label="Out of Stock"
               value={summary.deadStockSkus}
               variant="muted"
+              testId="stat-dead-stock"
             />
             <StatPill
-              label="Active stock (SKUs)"
+              label="Active Stock"
               value={summary.activeStockSkus}
               variant="accent"
             />
@@ -225,7 +229,7 @@ export function UploadResultsCard({
       )}
 
       {phase === "duplicate" && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+        <div data-testid="upload-duplicate" className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
           <Activity className="size-10 text-amber-500" />
           <p className="font-medium text-amber-900">Duplicate upload</p>
           <p className="max-w-md text-sm text-muted-foreground">
@@ -236,7 +240,7 @@ export function UploadResultsCard({
       )}
 
       {phase === "error" && (
-        <div className="flex flex-1 flex-col gap-3 rounded-lg border border-red-100 bg-red-50/80 p-4 text-sm text-red-900">
+        <div data-testid="upload-error" className="flex flex-1 flex-col gap-3 rounded-lg border border-red-100 bg-red-50/80 p-4 text-sm text-red-900">
           <p className="font-medium">Upload failed</p>
           <p>{errorMessage ?? "Something went wrong."}</p>
           {errorDetails && Object.keys(errorDetails).length > 0 && (
@@ -259,11 +263,13 @@ function StatPill({
   value,
   className = "",
   variant = "default",
+  testId,
 }: {
   label: string;
   value: string | number;
   className?: string;
   variant?: "default" | "muted" | "accent";
+  testId?: string;
 }) {
   const bg =
     variant === "muted"
@@ -276,7 +282,7 @@ function StatPill({
       className={`rounded-lg border px-3 py-2 ${bg} ${className}`}
     >
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="text-lg font-semibold tabular-nums text-gray-900">{value}</p>
+      <p data-testid={testId} className="text-lg font-semibold tabular-nums text-gray-900">{value}</p>
     </div>
   );
 }

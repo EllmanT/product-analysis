@@ -14,12 +14,13 @@ const StatisticsCard = ({
   icon: Icon,
   period,
   bgColor,
+  testId,
 }: StatisticsCard) => {
   return (
     <Card className="@container/card">
     <CardHeader>
       <CardDescription>{label}</CardDescription>
-      <CardTitle className="text-xl font-semibold tabular-nums @[250px]/card:text-3xl">
+      <CardTitle data-testid={testId} className="text-xl font-semibold tabular-nums @[250px]/card:text-3xl">
         {value}
       </CardTitle>
       {secondaryLabel != null && secondaryValue != null && (

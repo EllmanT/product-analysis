@@ -1,11 +1,8 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
 import { getToken } from "next-auth/jwt";
-import type { NextFetchEvent, NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-const runClerk = clerkMiddleware();
-
-export async function proxy(request: NextRequest, event: NextFetchEvent) {
+export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   if (path.startsWith("/api/auth")) {
@@ -26,7 +23,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     }
   }
 
-  return runClerk(request, event);
+  return NextResponse.next();
 }
 
 export const config = {

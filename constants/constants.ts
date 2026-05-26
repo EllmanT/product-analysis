@@ -10,7 +10,7 @@ import {
     IconAlertTriangle,
     IconCurrencyDollar
   } from "@tabler/icons-react"
-import { Calendar, FileText, Package, Receipt } from "lucide-react"
+import { Calendar, FileText, MessageCircle, Package, Receipt } from "lucide-react"
 
 export const mainSidebarLinks = [
     {
@@ -70,56 +70,65 @@ export const mainSidebarLinks = [
       url: "/download-centre",
       icon: IconPackages,
     },
-    // {
-    //     title: "Archived Reports",
-    //     url: "/archived-reports",
-    //     icon: IconBuildingStore,
-    //   },
-  
+
+    {
+      title: "Ask AI",
+      url: "/ai-agent",
+      icon: MessageCircle,
+    },
+
     {
       title: "Sales",
       url: "",
+      hidden: true,
     },
     {
       title: "Quotations",
       url: "/admin/quotations",
       icon: FileText,
       adminOnly: true,
+      hidden: true,
     },
     {
       title: "Invoices",
       url: "/admin/invoices",
       icon: Receipt,
       adminOnly: true,
+      hidden: true,
     },
     {
       title: "Fiscal Day",
       url: "/fiscal-day",
       icon: Calendar,
       adminOnly: true,
+      hidden: true,
     },
     {
       title: "Fiscal settings",
       url: "/fiscal-settings",
       icon: IconSettings,
       adminOnly: true,
+      hidden: true,
     },
     {
       title: "Z-reports",
       url: "/z-reports",
       icon: FileText,
       adminOnly: true,
+      hidden: true,
     },
 
     {
       title: "Payments",
       url: "",
+      hidden: true,
     },
     {
       title: "Exchange Rates",
       url: "/exchange-rates",
       icon: IconCurrencyDollar,
       adminOnly: true,
+      hidden: true,
     },
 
     {

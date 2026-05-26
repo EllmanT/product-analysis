@@ -5,7 +5,7 @@ import { SectionCards } from "@/components/statistics/StatisticsSection";
 import { Separator } from "@/components/ui/separator";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { FileText, Receipt, Upload, Users } from "lucide-react";
+import { BarChart2, Upload, Users, GitBranch } from "lucide-react";
 
 type DashboardAnalytics = {
   productCount?: number;
@@ -104,31 +104,31 @@ fetchOverallStats();
               {(
                 [
                   {
-                    label: "Quotations",
-                    href: "/admin/quotations",
-                    icon: FileText,
-                    desc: "View & manage customer quotes",
-                    color: "bg-blue-100 text-blue-600",
-                    count: dashboardStats?.totalQuotations ?? 0,
-                  },
-                  {
-                    label: "Invoices",
-                    href: "/admin/invoices",
-                    icon: Receipt,
-                    desc: "Track invoices & payments",
-                    color: "bg-indigo-100 text-indigo-600",
-                    count: dashboardStats?.totalInvoices ?? 0,
-                  },
-                  {
-                    label: "Upload",
+                    label: "Upload Stock",
                     href: "/uploads/upload",
                     icon: Upload,
-                    desc: "Upload product data files",
+                    desc: "Upload today's stock file",
                     color: "bg-emerald-100 text-emerald-600",
                     count: dashboardStats?.totalUploadFiles ?? 0,
                   },
                   {
-                    label: "Users",
+                    label: "Branch Analytics",
+                    href: "/branch-analytics",
+                    icon: BarChart2,
+                    desc: "View stock trends by branch",
+                    color: "bg-blue-100 text-blue-600",
+                    count: dashboardStats?.totalBranches ?? 0,
+                  },
+                  {
+                    label: "Branches",
+                    href: "/branches",
+                    icon: GitBranch,
+                    desc: "Manage branch locations",
+                    color: "bg-indigo-100 text-indigo-600",
+                    count: dashboardStats?.totalBranches ?? 0,
+                  },
+                  {
+                    label: "Team",
                     href: "/users",
                     icon: Users,
                     desc: "Manage staff accounts",
@@ -148,7 +148,10 @@ fetchOverallStats();
                     >
                       <Icon className="h-5 w-5" />
                     </div>
-                    <span className="text-right text-2xl font-semibold tabular-nums text-slate-900">
+                    <span
+                      data-testid={label === "Upload Stock" ? "stat-upload-files" : undefined}
+                      className="text-right text-2xl font-semibold tabular-nums text-slate-900"
+                    >
                       {countFormatter.format(count)}
                     </span>
                   </div>

@@ -1,19 +1,5 @@
-"use client";
-import React from "react";
+import { redirect } from "next/navigation";
 
-import AuthForm from "@/components/forms/AuthForm";
-import { signUpWithCredentials } from "@/lib/actions/auth.action";
-import { SignUpSchema } from "@/lib/validations";
-
-const SignUp = () => {
-  return (
-    <AuthForm
-      formType="SIGN_UP"
-      schema={SignUpSchema}
-      defaultValues={{ email: "", password: "", name: "", surname: "", store:"" }}
-      onSubmit={signUpWithCredentials}
-    />
-  );
-};
-
-export default SignUp;
+export default function SignUpPage() {
+  redirect("/sign-in");
+}

@@ -159,8 +159,7 @@ const AuthForm = <T extends FieldValues>({
 
         {formType === "SIGN_IN" ? (
           <p className="paragraph-regular text-dark500_light400">
-            Need a staff account? Contact your administrator — new accounts are
-            added by invitation only.
+            Need a staff account? Contact your administrator
           </p>
         ) : (
           <p>

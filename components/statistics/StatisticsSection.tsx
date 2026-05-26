@@ -28,14 +28,15 @@ const estStockValue = dashboardStats?.dashboardStats?.estStockValue??0;
       secondaryValue={intlCount.format(currentStockQty)}
       bgColor="bg-blue-300"
       icon={IconTrendingUp}
+      testId="stat-product-count"
       />
-     
+
 <StatisticsCard
       label="Estimated Stock Value"
       value={intlMoney.format(estStockValue)}
       trend="-8.5%"
             bgColor="bg-purple-300"
-
+      testId="stat-stock-value"
       icon={IconTrendingDown}
       />
         <StatisticsCard

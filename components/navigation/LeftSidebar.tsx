@@ -24,7 +24,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     () =>
       mainSidebarLinks.filter(
         (item) =>
-          !item.adminOnly || normalizeRole(session?.user?.role) === "admin"
+          !item.hidden &&
+          (!item.adminOnly || normalizeRole(session?.user?.role) === "admin")
       ),
     [session?.user?.role]
   );

@@ -8,6 +8,7 @@ type NavLink = {
       url: string
       icon?: Icon
       adminOnly?: boolean
+      hidden?: boolean
     }
     type StatisticsCard= {
       label: string
@@ -19,6 +20,7 @@ type NavLink = {
       icon?:React.ElementType
       period?:string
       bgColor?:string
+      testId?:string
     }
 
     type ActionResponse<T = null> = {

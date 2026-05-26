@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
@@ -35,6 +36,8 @@ export const metadata: Metadata = {
 };
 
 export default async function ShopLayout({ children }: { children: ReactNode }) {
+  redirect("/sign-in");
+
   // #region agent log
   fetch(
     "http://127.0.0.1:7467/ingest/2de68ee5-e25c-499c-9697-defc2dfd27b9",

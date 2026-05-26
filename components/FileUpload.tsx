@@ -142,8 +142,8 @@ const FileUpload = ({
     if (!effectiveBranchId) {
       setBranchError(
         allowBranchPicker
-          ? "Select a branch before uploading."
-          : "Missing branch assignment."
+          ? "Please select a branch before uploading."
+          : "Your account is not assigned to a branch. Please contact your administrator."
       );
       return;
     }
@@ -182,9 +182,9 @@ const FileUpload = ({
       if (res.duplicate) {
         setResultsPhase("duplicate");
         setDuplicateMessage(
-          res.message ?? "Duplicate upload. No changes made."
+          "This file has already been uploaded. If you meant to upload new stock, please use today's file."
         );
-        toast.message("Duplicate upload — no changes made.");
+        toast.message("This file has already been uploaded.");
         return;
       }
 
@@ -203,105 +203,120 @@ const FileUpload = ({
 
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-8">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 lg:flex-row lg:items-start">
-        <div className="w-full shrink-0 rounded-xl bg-white p-6 text-center shadow-lg lg:max-w-md lg:text-left">
-          <h2 className="mb-4 text-xl font-semibold">Upload TXT file</h2>
-
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(handleUploadProducts)}
-              className="flex flex-col gap-6"
-            >
-              {allowBranchPicker && (
-                <div className="flex flex-col gap-2 text-left">
-                  <label className="text-sm font-medium text-gray-700">
-                    Branch
-                  </label>
-                  {branchesLoading ? (
-                    <p className="text-sm text-muted-foreground">
-                      Loading branches…
-                    </p>
-                  ) : branches.length === 0 ? (
-                    <p className="text-sm text-amber-700">
-                      No branches found for this store. Add a branch first.
-                    </p>
-                  ) : (
-                    <Select
-                      value={selectedBranchId || undefined}
-                      onValueChange={(v) => {
-                        setSelectedBranchId(v);
-                        setBranchError("");
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Choose branch" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {branches.map((b) => (
-                          <SelectItem key={b._id} value={b._id}>
-                            {b.name} — {b.location}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  {branchError ? (
-                    <p className="text-sm text-destructive">{branchError}</p>
-                  ) : null}
-                </div>
-              )}
-              <FormField
-                control={form.control}
-                name="file"
-                render={({ field }) => (
-                  <FormItem className="text-left">
-                    <FormLabel className="text-gray-700">
-                      Select a .txt file
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="file"
-                        accept=".txt"
-                        onChange={(e) => field.onChange(e.target.files?.[0])}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {form.watch("file") && (
-                <p className="text-left text-sm text-gray-600">
-                  Selected: {form.watch("file")?.name}
-                </p>
-              )}
-
-              <Button
-                type="submit"
-                className="bg-blue-600 text-white hover:bg-blue-700"
-                disabled={isPending}
-              >
-                {isPending ? (
-                  <>
-                    <LoaderPinwheelIcon className="mr-2 size-4 animate-spin" />
-                    Uploading…
-                  </>
-                ) : (
-                  "Upload text file"
-                )}
-              </Button>
-            </form>
-          </Form>
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Upload Today's Stock File</h1>
+          <p className="mt-1 text-sm text-gray-500">Follow the steps below to upload your branch stock file.</p>
         </div>
 
-        <UploadResultsCard
-          phase={resultsPhase}
-          pendingMeta={pendingMeta}
-          summary={summary}
-          duplicateMessage={duplicateMessage}
-          errorMessage={errorMessage}
-          errorDetails={errorDetails}
-        />
+        <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
+          <p className="mb-2 text-sm font-semibold text-blue-800">How to upload:</p>
+          <ol className="list-inside list-decimal space-y-1 text-sm text-blue-700">
+            <li>Make sure your stock file is in <strong>.txt</strong> format</li>
+            {allowBranchPicker && <li>Select your branch from the dropdown below</li>}
+            <li>Click <strong>Choose File</strong> and select your stock file</li>
+            <li>Click <strong>Upload Stock File</strong> and wait for confirmation</li>
+          </ol>
+        </div>
+
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="w-full shrink-0 rounded-xl bg-white p-6 shadow-lg lg:max-w-md">
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(handleUploadProducts)}
+                className="flex flex-col gap-6"
+              >
+                {allowBranchPicker && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Which branch is this stock for?
+                    </label>
+                    {branchesLoading ? (
+                      <p className="text-sm text-muted-foreground">
+                        Loading branches…
+                      </p>
+                    ) : branches.length === 0 ? (
+                      <p className="text-sm text-amber-700">
+                        No branches found. Please add a branch first.
+                      </p>
+                    ) : (
+                      <Select
+                        value={selectedBranchId || undefined}
+                        onValueChange={(v) => {
+                          setSelectedBranchId(v);
+                          setBranchError("");
+                        }}
+                      >
+                        <SelectTrigger data-testid="branch-select" className="w-full">
+                          <SelectValue placeholder="Select a branch" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {branches.map((b) => (
+                            <SelectItem key={b._id} value={b._id}>
+                              {b.name} — {b.location}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {branchError ? (
+                      <p className="text-sm text-destructive">{branchError}</p>
+                    ) : null}
+                  </div>
+                )}
+                <FormField
+                  control={form.control}
+                  name="file"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-700">
+                        Stock file <span className="font-normal text-gray-400">(accepts .txt files only)</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="file"
+                          accept=".txt"
+                          onChange={(e) => field.onChange(e.target.files?.[0])}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch("file") && (
+                  <p className="text-sm text-gray-600">
+                    Selected: <span className="font-medium">{form.watch("file")?.name}</span>
+                  </p>
+                )}
+
+                <Button
+                  type="submit"
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  disabled={isPending || !form.watch("file")}
+                >
+                  {isPending ? (
+                    <>
+                      <LoaderPinwheelIcon className="mr-2 size-4 animate-spin" />
+                      Uploading your stock file, please wait…
+                    </>
+                  ) : (
+                    "Upload Stock File"
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </div>
+
+          <UploadResultsCard
+            phase={resultsPhase}
+            pendingMeta={pendingMeta}
+            summary={summary}
+            duplicateMessage={duplicateMessage}
+            errorMessage={errorMessage}
+            errorDetails={errorDetails}
+          />
+        </div>
       </div>
     </div>
   );

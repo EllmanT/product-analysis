@@ -22,9 +22,11 @@ export function NavMain({
       <SidebarGroupContent className="flex flex-col gap-2">
         <SidebarMenu>
           {items.map((item) => {
+            const isUploadsViewAll = item.url === "/uploads";
             const isActive =
               item.url.length > 0 &&
-              (pathname === item.url || pathname.startsWith(`${item.url}/`));
+              (pathname === item.url ||
+                (!isUploadsViewAll && pathname.startsWith(`${item.url}/`)));
             const Icon = item.icon;
 
             if (!item.url) {

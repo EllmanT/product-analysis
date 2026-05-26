@@ -94,9 +94,17 @@ export function AnalyticsFilterBar({
   showBranch = true,
   loading = false,
 }: Props) {
+  const shouldApplyAfterTimeViewChange = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!shouldApplyAfterTimeViewChange.current) return;
+    shouldApplyAfterTimeViewChange.current = false;
+    onApply();
+  }, [filters.granularity, onApply]);
+
   return (
-    <section className="mx-4 mt-4 flex flex-wrap items-end justify-between gap-3 rounded-md border bg-white p-3 lg:mx-6">
-      <div className="flex flex-wrap items-end gap-3">
+    <section className="mx-4 mt-4 flex flex-wrap items-end justify-between gap-4 rounded-md border bg-white p-4 lg:mx-6">
+      <div className="flex flex-wrap items-end gap-4">
         <DatePickerField
           label="From"
           value={filters.startDate}
@@ -109,10 +117,13 @@ export function AnalyticsFilterBar({
         />
 
         <div className="flex flex-col gap-1.5">
-          <Label className="px-1 text-xs">Granularity</Label>
+          <Label className="px-1 text-xs">Time view</Label>
           <Select
             value={filters.granularity}
-            onValueChange={(v) => onGranularityChange(v as Granularity)}
+            onValueChange={(v) => {
+              shouldApplyAfterTimeViewChange.current = true;
+              onGranularityChange(v as Granularity);
+            }}
           >
             <SelectTrigger className="w-32 h-9">
               <SelectValue />
@@ -149,12 +160,12 @@ export function AnalyticsFilterBar({
         )}
       </div>
 
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="flex flex-wrap items-end gap-3">
         {showBranch && branches.length > 0 && (
           <BranchFilter
             label="Branch"
             filters={branches}
-            containerClasses="max-md:flex"
+            containerClasses="w-full min-w-[190px] sm:w-auto"
             queryKey="branch"
           />
         )}

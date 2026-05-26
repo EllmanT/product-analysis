@@ -19,7 +19,11 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import type { Granularity, Metric, TimeSeriesPoint } from "@/lib/analytics/types";
-import { METRIC_LABELS, METRIC_Y_AXIS } from "@/lib/analytics/defaults";
+import {
+  GRANULARITY_LABELS,
+  METRIC_LABELS,
+  METRIC_Y_AXIS,
+} from "@/lib/analytics/defaults";
 
 const SERIES_COLORS = [
   "#2563eb",
@@ -95,7 +99,7 @@ export function AnalyticsLineChart({
     title ?? `${METRIC_LABELS[metric]} by branch`;
   const chartDesc =
     description ??
-    `${METRIC_Y_AXIS[metric]} over time (${granularity} view)`;
+    `${METRIC_Y_AXIS[metric]} over time (${GRANULARITY_LABELS[granularity]} view)`;
 
   return (
     <Card>

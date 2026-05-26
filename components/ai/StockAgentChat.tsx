@@ -89,7 +89,7 @@ export function StockAgentChat({
       className={`flex flex-col ${compact ? "h-full min-h-0" : "flex-1 lg:flex-row gap-4 min-h-0"}`}
     >
       <div
-        className={`flex flex-1 flex-col overflow-hidden bg-white ${
+        className={`flex min-h-0 flex-1 flex-col overflow-hidden bg-white ${
           compact
             ? "h-full"
             : "rounded-xl border border-gray-200 shadow-sm"

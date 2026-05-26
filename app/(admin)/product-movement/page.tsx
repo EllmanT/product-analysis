@@ -92,7 +92,11 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    if (storeId) ensureDefaultProduct();
+    if (!storeId) return;
+    const timer = window.setTimeout(() => {
+      void ensureDefaultProduct();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [storeId, ensureDefaultProduct]);
 
   useEffect(() => {
@@ -131,7 +135,7 @@ export default function Page() {
         <Info className="size-4 mt-0.5 shrink-0" />
         <p>
           Search any product below to see its sales trend across branches. By default
-          we show the fastest-moving product from the last 7 days.
+          we show the fastest-moving product from the last 2 months.
         </p>
       </div>
 

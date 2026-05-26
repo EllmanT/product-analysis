@@ -6,8 +6,6 @@ import { SectionCards } from "@/components/statistics/StatisticsSection";
 import { Separator } from "@/components/ui/separator";
 import { useAnalyticsChartData } from "@/hooks/useAnalyticsChartData";
 import { METRIC_LABELS } from "@/lib/analytics/defaults";
-import Link from "next/link";
-import { BarChart2, Upload, Users, GitBranch } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 type DashboardAnalytics = {
@@ -21,10 +19,6 @@ type DashboardAnalytics = {
   totalUploadFiles?: number;
   totalStoreUsers?: number;
 };
-
-const countFormatter = new Intl.NumberFormat(undefined, {
-  maximumFractionDigits: 0,
-});
 
 export default function Page() {
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -96,73 +90,6 @@ export default function Page() {
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
           <div className="flex-col">
             <SectionCards dashboardStats={dashboardStats} />
-          </div>
-
-          <div className="px-4 lg:px-6">
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {(
-                [
-                  {
-                    label: "Upload Stock",
-                    href: "/uploads/upload",
-                    icon: Upload,
-                    desc: "Upload today's stock file",
-                    color: "bg-emerald-100 text-emerald-600",
-                    count: dashboardStats?.totalUploadFiles ?? 0,
-                  },
-                  {
-                    label: "Branch Analytics",
-                    href: "/branch-analytics",
-                    icon: BarChart2,
-                    desc: "View stock trends by branch",
-                    color: "bg-blue-100 text-blue-600",
-                    count: dashboardStats?.totalBranches ?? 0,
-                  },
-                  {
-                    label: "Branches",
-                    href: "/branches",
-                    icon: GitBranch,
-                    desc: "Manage branch locations",
-                    color: "bg-indigo-100 text-indigo-600",
-                    count: dashboardStats?.totalBranches ?? 0,
-                  },
-                  {
-                    label: "Team",
-                    href: "/users",
-                    icon: Users,
-                    desc: "Manage staff accounts",
-                    color: "bg-slate-100 text-slate-600",
-                    count: dashboardStats?.totalStoreUsers ?? 0,
-                  },
-                ] as const
-              ).map(({ label, href, icon: Icon, desc, color, count }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${color}`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <span
-                      data-testid={
-                        label === "Upload Stock" ? "stat-upload-files" : undefined
-                      }
-                      className="text-right text-2xl font-semibold tabular-nums text-slate-900"
-                    >
-                      {countFormatter.format(count)}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{label}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{desc}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
           </div>
 
           <AnalyticsFilterBar

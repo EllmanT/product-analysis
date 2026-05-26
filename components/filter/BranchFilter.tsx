@@ -1,6 +1,6 @@
 "use client";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useState } from "react";
+import React from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -9,17 +9,11 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
 import { formUrlQuery } from "@/lib/url";
 import { Label } from "../ui/label";
-
-interface Filter {
-  name: string;
-  value: string;
-}
 
 interface Props {
   label:string;
@@ -53,14 +47,15 @@ const BranchFilter = ({
   };
 
   return (
-    <div className={cn("relative max-w-[60px]", containerClasses)}>
-      <Label className="justify-center m-1 ml-10">{label}</Label>
+    <div className={cn("flex min-w-[190px] flex-col gap-1.5", containerClasses)}>
+      <Label className="px-1 text-xs">{label}</Label>
       <Select
         onValueChange={handleUpdateParams}
         defaultValue={selected || undefined}
-      >        <SelectTrigger
+      >
+        <SelectTrigger
           className={cn(
-            "body-regular no-focus light-border background-light800_dark300 text-dark500_light700 border px-1 py-2.5",
+            "body-regular no-focus light-border background-light800_dark300 text-dark500_light700 h-9 border px-2 py-2.5",
             otherClasses
           )}
         >

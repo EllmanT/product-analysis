@@ -25,6 +25,8 @@ type CliArgs = {
   branchId?: string;
   userId?: string;
   email?: string;
+  months?: number;
+  days?: number;
   clear: boolean;
   dryRun: boolean;
 };
@@ -37,6 +39,13 @@ function parseArgs(): CliArgs {
     if (arg === "--dry-run") result.dryRun = true;
     else if (arg === "--no-clear") result.clear = false;
     else if (arg === "--clear") result.clear = true;
+    else if (arg.startsWith("--months=")) {
+      const parsed = Number(arg.split("=")[1]);
+      if (Number.isFinite(parsed) && parsed > 0) result.months = parsed;
+    } else if (arg.startsWith("--days=")) {
+      const parsed = Number(arg.split("=")[1]);
+      if (Number.isFinite(parsed) && parsed > 0) result.days = parsed;
+    }
     else if (arg.startsWith("--storeId=")) result.storeId = arg.split("=")[1];
     else if (arg.startsWith("--branchId=")) result.branchId = arg.split("=")[1];
     else if (arg.startsWith("--userId=")) result.userId = arg.split("=")[1];
@@ -145,15 +154,27 @@ async function main() {
 
   const { storeId, branchId, userId } = await resolveIds(args);
   const testDataDir = path.join(process.cwd(), "test-data");
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
+  const endDate = new Date();
+  endDate.setHours(12, 0, 0, 0);
 
-  const schedule = TEST_FILES.map((file, index) => ({
-    file,
-    uploadDate: addDays(today, index - (TEST_FILES.length - 1)),
+  const requestedDays = args.days ?? (() => {
+    const months = args.months ?? 2;
+    const start = new Date(endDate);
+    start.setMonth(start.getMonth() - months);
+    const diffMs = endDate.getTime() - start.getTime();
+    return Math.max(1, Math.floor(diffMs / 86_400_000) + 1);
+  })();
+
+  const startDate = addDays(endDate, -(requestedDays - 1));
+
+  const schedule = Array.from({ length: requestedDays }, (_, index) => ({
+    file: TEST_FILES[index % TEST_FILES.length],
+    uploadDate: addDays(startDate, index),
   }));
 
-  console.log("Simulation plan (daily interval, ending today):\n");
+  console.log(
+    `Simulation plan (daily interval from ${formatDate(startDate)} to ${formatDate(endDate)}):\n`
+  );
   schedule.forEach((item, i) => {
     console.log(`  ${i + 1}. ${formatDate(item.uploadDate)}  ${item.file}`);
   });
@@ -261,13 +282,12 @@ async function main() {
     );
   }
 
-  console.log("\n--- Expected final state (week10) ---");
-  console.log("Dead stock: RAM001, SMPH066, WCAM041");
-  console.log("Low stock alerts: CPU038, MICR028 (qty 1–5)");
-  console.log("Restock events: W5 (FAN001, MNTR019, MOUS033), W7 (SWTC008), W8 (HDPH005, SPKR018), W9 (CASE001, CASE043, FAN084, SSD027)");
+  console.log("\n--- Expected seeded behavior ---");
+  console.log("Data now spans a continuous daily period using repeating week01..week10 fixtures.");
+  console.log("You should see realistic variation when switching between Day, Week, and Month views.");
   console.log("\nVerify in app:");
-  console.log("  /dashboard          — 10 uploads, estimated sales > 0");
-  console.log("  /uploads            — dates spanning last 10 days");
+  console.log(`  /dashboard          — ${requestedDays} uploads, estimated sales > 0`);
+  console.log(`  /uploads            — dates spanning ${requestedDays} day(s)`);
   console.log("  /branch-analytics   — trend chart with multiple points");
   console.log("  /product-movement   — per-product sales (try FAN001, CASE001)");
   console.log("  /products           — dead/low stock filters");

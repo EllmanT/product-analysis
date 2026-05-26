@@ -7,7 +7,7 @@ export function getDefaultDateRange(): { startDate: Date; endDate: Date } {
   const endDate = new Date();
   endDate.setHours(23, 59, 59, 999);
   const startDate = new Date(endDate);
-  startDate.setDate(startDate.getDate() - 6);
+  startDate.setMonth(startDate.getMonth() - 2);
   startDate.setHours(0, 0, 0, 0);
   return { startDate, endDate };
 }

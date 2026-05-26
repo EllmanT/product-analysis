@@ -44,9 +44,10 @@ const UploadProductSchema = new Schema<IUploadProduct>(
   }
 );
 
+UploadProductSchema.index({ storeId: 1, upload_date: -1 });
+UploadProductSchema.index({ storeId: 1, branchId: 1, upload_date: -1 });
+UploadProductSchema.index({ storeId: 1, productId: 1, upload_date: -1 });
 UploadProductSchema.index({ productId: 1, upload_date: -1 });
-UploadProductSchema.index({ productId: 1, qty: 1 });
-UploadProductSchema.index({ upload_date: -1 });
 
 const UploadProduct = models?.UploadProduct || model<IUploadProduct>("UploadProduct", UploadProductSchema);
 

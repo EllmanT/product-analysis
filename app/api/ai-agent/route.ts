@@ -32,10 +32,9 @@ export async function POST(req: NextRequest) {
 
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 1024,
-    system: `You are a stock analysis assistant for a retail business. You answer questions about inventory, stock levels, and branch performance clearly and concisely using the real-time data provided. Use plain, simple language. Format numbers with commas. Avoid technical jargon. If asked about something not in the data, say you don't have that information rather than guessing.
+    max_tokens: 512,
+    system: `Stock analysis assistant. Answer using the data below only. Plain language, comma-formatted numbers. Say if data is missing.
 
-Current Stock Data:
 ${stockContext}`,
     messages: [{ role: "user", content: question }],
   });

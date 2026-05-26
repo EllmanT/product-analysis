@@ -1,7 +1,7 @@
 import dbConnect from "@/lib/mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  buildTimeSeries,
+  buildBranchReports,
   parseAnalyticsParams,
 } from "@/lib/analytics/buildTimeSeries";
 import { requireStoreAccess } from "@/lib/analytics/requireStoreAccess";
@@ -20,19 +20,17 @@ export async function GET(req: NextRequest) {
   await dbConnect();
 
   try {
-    const data = await buildTimeSeries({
+    const data = await buildBranchReports({
       storeId: parsed.storeId,
       startDate: parsed.startDate,
       endDate: parsed.endDate,
       granularity: parsed.granularity,
-      metric: "sales",
-      scope: "branch",
       branchId: parsed.branchId,
     });
 
     return NextResponse.json({ success: true, data });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to build chart";
+    const message = err instanceof Error ? err.message : "Failed to build reports";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

@@ -5,6 +5,7 @@ import {
   parseAnalyticsParams,
 } from "@/lib/analytics/buildTimeSeries";
 import { requireStoreAccess } from "@/lib/analytics/requireStoreAccess";
+import type { TimeSeriesScope } from "@/lib/analytics/types";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -12,6 +13,14 @@ export async function GET(req: NextRequest) {
 
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  const scope = (searchParams.get("scope") ?? "branch") as TimeSeriesScope;
+  if (scope === "product" && !parsed.productId) {
+    return NextResponse.json(
+      { error: "productId is required when scope=product" },
+      { status: 400 }
+    );
   }
 
   const access = await requireStoreAccess(parsed.storeId);
@@ -25,14 +34,15 @@ export async function GET(req: NextRequest) {
       startDate: parsed.startDate,
       endDate: parsed.endDate,
       granularity: parsed.granularity,
-      metric: "sales",
-      scope: "branch",
+      metric: parsed.metric,
+      scope,
       branchId: parsed.branchId,
+      productId: parsed.productId,
     });
 
     return NextResponse.json({ success: true, data });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to build chart";
+    const message = err instanceof Error ? err.message : "Failed to build time series";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

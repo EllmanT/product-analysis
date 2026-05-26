@@ -62,7 +62,7 @@ export async function buildStockContext(storeId: string): Promise<string> {
       qty: { $gt: 0, $lte: 5 },
     })
       .select("name code qty branchId")
-      .limit(20)
+      .limit(10)
       .lean(),
 
     UploadProduct.countDocuments({
@@ -123,7 +123,7 @@ export async function buildStockContext(storeId: string): Promise<string> {
       },
     },
     { $sort: { totalSales: -1 } },
-    { $limit: 10 },
+    { $limit: 5 },
   ]);
 
   const topMovingLines = topMoving
@@ -145,10 +145,10 @@ ${uploadLines.join("\n") || "  No uploads found."}
 LOW STOCK ITEMS (quantity 1–5)
 ${lowStockLines || "  None."}
 
-TOP 10 FAST-MOVING PRODUCTS (last 4 weeks by estimated sales)
+TOP 5 FAST-MOVING PRODUCTS (last 4 weeks)
 ${topMovingLines || "  No data."}
 `.trim();
 
-  cache.set(storeId, { data: context, expiresAt: Date.now() + 5 * 60 * 1000 });
+  cache.set(storeId, { data: context, expiresAt: Date.now() + 10 * 60 * 1000 });
   return context;
 }

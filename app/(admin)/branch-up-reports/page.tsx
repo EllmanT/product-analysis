@@ -1,192 +1,123 @@
-"use client"
-// import data from "./data.json";
+"use client";
+
 import { DataTable } from "@/components/data-table/index";
-import { Button } from "@/components/ui/button";
-import { FilterIcon, RefreshCcw } from "lucide-react";
+import { AnalyticsFilterBar } from "@/components/analytics/AnalyticsFilterBar";
 import {
   columnAllUploadReports,
   type BranchUploadReportRow,
 } from "@/components/data-table/columns/columnsBranchesUp";
 import { Separator } from "@/components/ui/separator";
-import { Calendar22 } from "@/components/Calendat";
-import BranchFilter from "@/components/filter/BranchFilter";
-import { downloadExportAll, downloadExportBranch } from "@/app/api/products/downloadexcel";
-import React, { startTransition, useEffect, useState } from "react";
-
-type BranchAnalyticsEntry = {
-  date: string;
-  [key: string]: string | number;
-};
+import { useAnalyticsFilters } from "@/hooks/useAnalyticsFilters";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export default function Page() {
-    const [branches, setBranches] = useState<Branch[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [storeId, setStoreId]= useState("");
-      const [reportData, setReportData] = useState<BranchUploadReportRow[]>([]);
-  
-  const [date, setDate] = React.useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
-    const handleStartDateChange = (next: Date | undefined) => {
-      if (!next) return;
-      console.log("Selected Date:", next);
-      setDate(next);
-    };
-      const handleEndDateChange = (enddate: Date | undefined) => {
-      if (!enddate) return;
-      console.log("Selected Date:", enddate);
-      setEndDate(enddate);
-    };
-  const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
-     e.preventDefault()
-    const params = new URLSearchParams(window.location.search);
-    const branch = params.get("branch")
-  
-    console.log(date)
-    if (!date || !endDate) {
-      console.warn("❗ Missing filter values (month/week/year)");
-      return;
-    }
-  
-    startTransition(async () => {
-          if(!branch || branch==="all"){
-         try {
-       
-      await downloadExportAll(date, endDate, storeId);
-      console.log("✅ Export all branches triggered successfully");
-      // Optional: show toast or notification
-    } catch (err) {
-      console.error("❌ Export all branches failed:", err);
-      // Optional: show error toast
-    }
-      }else{
-        try {
-  
-          console.log(date)
-          console.log(endDate)
-      await downloadExportBranch(date, endDate, branch);
-      console.log(`✅ Export ${branch} triggered successfully`);
-      // Optional: show toast or notification
-    } catch (err) {
-      console.error(`❌ Export  ${branch} failed:`, err);
-      // Optional: show error toast
-    }
-      }
-   
-    });
-  };
-  
-  const handleResetFilters=()=>{
-     window.location.reload()
-  } 
-  
-    useEffect(() => {
-      const fetchBranches = async () => {
-        try {
-          console.log("here")
-          const res = await fetch("/api/branches");
-          if (!res.ok) throw new Error("Failed to fetch branches");
-  
-          const {data} = await res.json();
-          setBranches(data.branches);
-          setStoreId(data.branches[0].storeId._id)
-          
-        const response = await fetch(`/api/analytics/branches?storeId=${data.branches[0].storeId._id}`);
-          if (!response.ok) throw new Error("Failed to fetch branches");
-  
-          const {data:datas} = await response.json();
+  const searchParams = useSearchParams();
+  const branchParam = searchParams.get("branch");
 
-          const formattedData = (datas as BranchAnalyticsEntry[]).flatMap((entry) =>
-  Object.entries(entry)
-    .filter(([key]) => key !== "date")
-    .map(([branch, revenue]) => ({
-      date: entry.date,
-      branch,
-      revenue: typeof revenue === "string" || typeof revenue === "number" ? revenue : 0,
-    }))
-);
-          setReportData(formattedData)
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setLoading(false);
-        }
-      };
-  
-      fetchBranches();
-    }, []);
-  
-            console.log("branches",branches)
-            console.log("storeId",storeId)
-  
-            console.log(reportData)
-    if (loading) return <div>Loading branches...</div>;
-  
-  
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [storeId, setStoreId] = useState("");
+  const [reportData, setReportData] = useState<BranchUploadReportRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
+
+  const {
+    filters,
+    setStartDate,
+    setEndDate,
+    setGranularity,
+    setMetric,
+    reset,
+    toQueryParams,
+  } = useAnalyticsFilters();
+
+  const loadReports = useCallback(async () => {
+    if (!storeId) return;
+    setTableLoading(true);
+    try {
+      const params = new URLSearchParams(
+        toQueryParams(storeId, {
+          ...(branchParam && branchParam !== "all"
+            ? { branchId: branchParam }
+            : {}),
+        })
+      );
+      const res = await fetch(`/api/analytics/branch-reports?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch reports");
+      const json = await res.json();
+      setReportData(json.data ?? []);
+    } catch (err) {
+      console.error(err);
+      setReportData([]);
+    } finally {
+      setTableLoading(false);
+    }
+  }, [storeId, branchParam, toQueryParams]);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const res = await fetch("/api/branches");
+        if (!res.ok) throw new Error("Failed to fetch branches");
+        const { data } = await res.json();
+        setBranches(data.branches);
+        setStoreId(data.branches[0]?.storeId?._id ?? "");
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (storeId) loadReports();
+  }, [storeId, loadReports]);
+
+  const filteredReports = useMemo(() => {
+    if (!branchParam || branchParam === "all") return reportData;
+    const branch = branches.find((b) => b._id === branchParam);
+    if (!branch) return reportData;
+    return reportData.filter((r) => r.branch === branch.location);
+  }, [reportData, branchParam, branches]);
+
+  if (loading) return <div className="p-6">Loading reports…</div>;
+
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6 justify-between">
-  <div className="flex items-center gap-2 mt-2">
-    <Separator
-      orientation="vertical"
-      className="mx-2 data-[orientation=vertical]:h-4"
-    />
-    <h1 className="text-base font-medium">Branch Upload Reports</h1>
-  </div>
-  </div>
-          <section className="ml-6 mr-4 mt-5 flex justify-between gap-1 max-sm:flex-col sm:items-center bg-white items-center rounded-md p-2">
-    <div className="flex space-x-1">
-        <Calendar22 label={"From"}  onDateChange={handleStartDateChange}/>
-        <Calendar22 label={"To"}  onDateChange={handleEndDateChange}/>
-
-    </div>
-        <BranchFilter
-                 label="Branch"
-
-          filters={branches}
-          // otherClasses="min-h-[56px] sm:min-w-[170px]"
-          containerClasses="  max-md:flex"
-          queryKey="branch"
+      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+        <Separator
+          orientation="vertical"
+          className="mx-2 data-[orientation=vertical]:h-4"
         />
+        <h1 className="text-base font-medium">Branch Upload Reports</h1>
+      </div>
 
-         <div className="space-x-1">
-           <Button
-          className="mt-5 primary-gradient h-9 px-4 py-1 !text-light-900 bg-blue-500"
-          // asChild
-          onClick={handleApplyFilter}
-        >
-          <FilterIcon/>
-       Filter
-        </Button>
-                          
- <Button
-          className="mt-5 primary-gradient h-9 py-1 !text-light-900 bg-orange-500"
-          // asChild
-          onClick={handleResetFilters}
-        >
-          <RefreshCcw/>
-       Filter
-        </Button>
-          </div>        
+      <AnalyticsFilterBar
+        branches={branches}
+        filters={filters}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onGranularityChange={setGranularity}
+        onMetricChange={setMetric}
+        onApply={loadReports}
+        onReset={() => {
+          reset();
+          window.location.href = window.location.pathname;
+        }}
+        loading={tableLoading}
+        showMetric={false}
+      />
 
-      </section>
-       
-   
-          
-      <div className="@container/main flex flex-1 flex-col gap-2">
-        <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-          {/* Statistics cards section */}
-          <div className="flex-col">
-
+      <div className="px-4 lg:px-6 py-4">
+        {tableLoading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            Loading report data…
           </div>
-         
-           <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <div className="lg:col-span-12">
-      <DataTable data={reportData} columns={columnAllUploadReports} isVisible={false} />
-
-              </div>
-            </div>
-       
-        </div>
+        ) : (
+          <DataTable data={filteredReports} columns={columnAllUploadReports} />
+        )}
       </div>
     </div>
   );

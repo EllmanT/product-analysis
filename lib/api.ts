@@ -61,13 +61,29 @@ export: (month: string, year: string, week: string) =>
     method: "GET"
   }),
   },
-  analytics:{
-    
-branch: (storeId:string) =>
-  fetchHandler(`${API_BASE_URL}/analytics/branches?storeId=${storeId}`, 
-    {
-    method: "GET"
-  }),
+  analytics: {
+    branch: (storeId: string) =>
+      fetchHandler(`${API_BASE_URL}/analytics/branches?storeId=${storeId}`, {
+        method: "GET",
+      }),
+    timeSeries: (params: Record<string, string>) => {
+      const qs = new URLSearchParams(params).toString();
+      return fetchHandler(`${API_BASE_URL}/analytics/time-series?${qs}`, {
+        method: "GET",
+      });
+    },
+    branchReports: (params: Record<string, string>) => {
+      const qs = new URLSearchParams(params).toString();
+      return fetchHandler(`${API_BASE_URL}/analytics/branch-reports?${qs}`, {
+        method: "GET",
+      });
+    },
+    topProduct: (params: Record<string, string>) => {
+      const qs = new URLSearchParams(params).toString();
+      return fetchHandler(`${API_BASE_URL}/analytics/top-product?${qs}`, {
+        method: "GET",
+      });
+    },
   },
   accounts: {
     getAll: () => fetchHandler(`${API_BASE_URL}/accounts`),

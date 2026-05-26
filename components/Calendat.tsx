@@ -15,9 +15,7 @@ import {
 export function Calendar22({label, onDateChange}:{label:string ,onDateChange: (date: Date | undefined)=>void}) {
   const [open, setOpen] = React.useState(false)
   const [date, setDate] = React.useState<Date | undefined>(undefined)
-onDateChange(date)
 
-  console.log(date)
   return (
     <div className="flex flex-col gap-3">
       <Label htmlFor="date" className="px-1">
@@ -41,6 +39,7 @@ onDateChange(date)
             captionLayout="dropdown"
             onSelect={(date) => {
               setDate(date)
+              onDateChange(date)
               setOpen(false)
             }}
           />

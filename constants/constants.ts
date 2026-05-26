@@ -65,11 +65,11 @@ export const mainSidebarLinks = [
         url:""
       },
 
-    {
-      title: "Download Centre",
-      url: "/download-centre",
-      icon: IconPackages,
-    },
+    // {
+    //   title: "Download Centre",
+    //   url: "/download-centre",
+    //   icon: IconPackages,
+    // },
 
     {
       title: "Ask AI",

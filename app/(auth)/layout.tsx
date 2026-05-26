@@ -28,7 +28,7 @@ const AuthLayout = ({ children }: { children: ReactNode }) => {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-2">
               <h1 className="h2-bold text-dark100_light900">
-                Welcome back — please sign in
+                Welcome back - please sign in
               </h1>
             </div>
           </div>

@@ -41,6 +41,7 @@ const WeeklyProductSummariesSchema = new Schema<IWeeklyProductSummaries>(
     timestamps: true,
   }
 );
+WeeklyProductSummariesSchema.index({ storeId: 1, upload_date: -1 });
 const WeeklyProductSummaries = models?.WeeklyProductSummaries || model<IWeeklyProductSummaries>("WeeklyProductSummaries", WeeklyProductSummariesSchema);
 
 export default WeeklyProductSummaries;

@@ -23,7 +23,7 @@ export async function SiteHeader() {
     day: "numeric",
     year: "numeric",
   })} */}
-  VistionTech Enterprises
+ {/* VistionTech Enterprises */}
 
         </h1>
         <div className="ml-auto flex items-center gap-2">

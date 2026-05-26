@@ -61,7 +61,19 @@ export const columnAllUploadReports: ColumnDef<BranchUploadReportRow>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} title="est Revenue" />
     ),
-    cell: ({ row }) => <Name name={String(row.getValue("revenue"))} />,
+    cell: ({ row }) => {
+      const v = row.getValue("revenue");
+      const n = typeof v === "number" ? v : parseFloat(String(v));
+      return (
+        <Name
+          name={
+            Number.isFinite(n)
+              ? n.toLocaleString(undefined, { minimumFractionDigits: 2 })
+              : String(v ?? "")
+          }
+        />
+      );
+    },
     enableSorting: true,
   },
 
@@ -70,7 +82,13 @@ export const columnAllUploadReports: ColumnDef<BranchUploadReportRow>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} title="Total Units" />
     ),
-    cell: ({ row }) => <Name name={String(row.getValue("units") ?? "")} />,
+    cell: ({ row }) => {
+      const v = row.getValue("units");
+      const n = typeof v === "number" ? v : parseFloat(String(v));
+      return (
+        <Name name={Number.isFinite(n) ? String(Math.round(n)) : String(v ?? "")} />
+      );
+    },
     enableSorting: true,
   },
 
@@ -79,7 +97,19 @@ export const columnAllUploadReports: ColumnDef<BranchUploadReportRow>[] = [
     header: ({ column }) => (
       <SortableHeader column={column} title="est Sales" />
     ),
-    cell: ({ row }) => <Name name={String(row.getValue("sales") ?? "")} />,
+    cell: ({ row }) => {
+      const v = row.getValue("sales");
+      const n = typeof v === "number" ? v : parseFloat(String(v));
+      return (
+        <Name
+          name={
+            Number.isFinite(n)
+              ? n.toLocaleString(undefined, { minimumFractionDigits: 2 })
+              : String(v ?? "")
+          }
+        />
+      );
+    },
     enableSorting: true,
   },
 

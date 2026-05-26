@@ -1,5 +1,6 @@
 "use client";
 
+import { StockAgentWidget } from "@/components/ai/StockAgentWidget";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
@@ -515,6 +516,7 @@ export default function ProductsPage() {
           </div>
         </div>
       </div>
+      <StockAgentWidget />
     </div>
   );
 }

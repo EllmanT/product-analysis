@@ -1,259 +1,183 @@
-"use client"
-// import data from "./data.json";
-import { Button } from "@/components/ui/button";
-import { FilterIcon, RefreshCcw } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
-import React, { startTransition, useEffect, useMemo, useState } from "react";
-import { BranchSalesLineChart } from "@/components/charts/BranchSalesLineChart";
-import { downloadExportProductAll, downloadExportProductBranch } from "@/app/api/products/downloadexcel";
-import BranchFilter from "@/components/filter/BranchFilter";
-import { Calendar22 } from "@/components/Calendat";
-import { useSearchParams } from "next/navigation";
+"use client";
+
+import { AnalyticsFilterBar } from "@/components/analytics/AnalyticsFilterBar";
+import { AnalyticsLineChart } from "@/components/analytics/AnalyticsLineChart";
 import GlobalSearch from "@/components/search/GlobalSearch";
+import { Separator } from "@/components/ui/separator";
+import { useAnalyticsChartData } from "@/hooks/useAnalyticsChartData";
+import { formatDateParam, getDefaultDateRange } from "@/lib/analytics/defaults";
+import { Info } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-type BranchSalesChartRow = {
-  date: string;
-  [storeName: string]: number | string;
-};
+export default function Page() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const branchId = searchParams.get("branch");
+  const productIdParam = searchParams.get("productId");
 
-export default  function Page() {
-    
-  const searchParams = useSearchParams()
-    const [branches, setBranches] = useState<Branch[]>([]);
-    const [chartData, setChartData] = useState<BranchSalesChartRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [storeId, setStoreId]= useState("");
-  const [productId, setProductId]= useState("");
-  
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [storeId, setStoreId] = useState("");
+  const [initLoading, setInitLoading] = useState(true);
+  const [productName, setProductName] = useState("");
+  const [productCode, setProductCode] = useState("");
+  const defaultProductSet = useRef(false);
 
-const [date, setDate] = React.useState<Date | undefined>(undefined);
-const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
-  const handleStartDateChange = (next: Date | undefined) => {
-    if (!next) return;
-    console.log("Selected Date:", next);
-    setDate(next);
-  };
-  const handleEndDateChange = (enddate: Date | undefined) => {
-    if (!enddate) return;
-    console.log("Selected Date:", enddate);
-    setEndDate(enddate);
-  };
-  const handleApplyFilter = (e: React.MouseEvent<HTMLButtonElement>) => {
-     e.preventDefault()
-    const params = new URLSearchParams(window.location.search);
-    const branch = params.get("branch")
-    const product= params.get("productId")
-  
-    console.log(date)
+  const {
+    filters,
+    setStartDate,
+    setEndDate,
+    setGranularity,
+    reset,
+    chartData,
+    loading: chartLoading,
+    fetchChart,
+  } = useAnalyticsChartData();
 
-    console.log("sending this data",product)
-    if (!date || !endDate || !product) {
-      console.warn("❗ Missing filter values (month/week/year) product");
-      return;
-    }
+  const selectedBranch = useMemo(
+    () => branches.find((b) => b._id === branchId),
+    [branchId, branches]
+  );
 
-  
-    startTransition(async () => {
-          if(!branch || branch==="all"){
-         try {
-       
-      await downloadExportProductAll(date, endDate, storeId, product);
-      console.log("✅ Export all branches triggered successfully");
-      // Optional: show toast or notification
-    } catch (err) {
-      console.error("❌ Export all branches failed:", err);
-      // Optional: show error toast
-    }
-      }else{
-        try {
-  
-          console.log(date)
-          console.log(endDate)
-      await downloadExportProductBranch(date, endDate, branch, product);
-      console.log(`✅ Export ${branch} triggered successfully`);
-      // Optional: show toast or notification
-    } catch (err) {
-      console.error(`❌ Export  ${branch} failed:`, err);
-      // Optional: show error toast
-    }
-      }
-   
+  const loadChart = useCallback(
+    (productId: string) => {
+      if (!storeId || !productId) return;
+      fetchChart({
+        storeId,
+        scope: "product",
+        productId,
+        branchId: branchId && branchId !== "all" ? branchId : undefined,
+      });
+    },
+    [storeId, branchId, fetchChart]
+  );
+
+  const ensureDefaultProduct = useCallback(async () => {
+    if (!storeId || productIdParam || defaultProductSet.current) return;
+    defaultProductSet.current = true;
+
+    const { startDate, endDate } = getDefaultDateRange();
+    const params = new URLSearchParams({
+      storeId,
+      startDate: formatDateParam(startDate),
+      endDate: formatDateParam(endDate),
     });
-  };
-  
-  const handleResetFilters=async()=>{
-      window.location.href = window.location.pathname // full page reload, no query params
-  } 
-
-   
-
-  
-    useEffect(() => {
-
-       const fetchBranches = async () => {
-        try {
-          console.log("here")
-          const res = await fetch("/api/branches");
-          if (!res.ok) throw new Error("Failed to fetch branches");
-  
-          const {data} = await res.json();
-          setBranches(data.branches);
-          setStoreId(data.branches[0].storeId._id)
-          
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setLoading(false);
-        }
-      };
-        
-      
-      fetchBranches();
-           
-
-    }, []);
-
-      
-useEffect(() => {
-  const fetchProducts = async () => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const myproductId = params.get("productId");
-
-      if (myproductId) {
-        setProductId(myproductId)
-        console.log("storeId", storeId);
-        console.log("productId", myproductId); // Use directly here
-
-        const response = await fetch(
-          `/api/analytics/products?storeId=${storeId}&productId=${myproductId}`
-        );
-        if (!response.ok) throw new Error("Failed to fetch product data");
-
-        const { data: datas } = await response.json();
-        setChartData(datas);
-      } else {
-        console.log("no product selected");
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+    const res = await fetch(`/api/analytics/top-product?${params}`);
+    if (!res.ok) return;
+    const json = await res.json();
+    if (json.data?.productId) {
+      setProductName(json.data.name);
+      setProductCode(json.data.code);
+      const next = new URLSearchParams(searchParams.toString());
+      next.set("productId", json.data.productId);
+      router.replace(`?${next.toString()}`, { scroll: false });
     }
-  };
+  }, [storeId, productIdParam, searchParams, router]);
 
-  fetchProducts();
-}, [searchParams]); // run this effect whenever storeId changes
-
-
-    console.log("store id", storeId)
-    console.log("product id", productId)
-  
-            console.log("datas",chartData)
-
-
-  const branchId = searchParams.get('branch')
-
-  const selectedBranch = useMemo(() => {
-    return branches.find(branch => branch._id === branchId)
-  }, [branchId, branches])
-
- const filteredData = React.useMemo(() => {
-  if (!selectedBranch) return chartData
-
-  const branchName = selectedBranch.location
-
-  return chartData.map((entry) => {
-    const filteredEntry: BranchSalesChartRow = { date: entry.date };
-
-    if (branchName in entry) {
-      const v = entry[branchName];
-      filteredEntry[branchName] = typeof v === "number" || typeof v === "string" ? v : 0;
-    } else {
-      filteredEntry[branchName] = 0;
-    }
-
-    return filteredEntry;
-  });
-}, [chartData, selectedBranch])
-
-console.log("filteredData",filteredData)
   useEffect(() => {
-    if (selectedBranch) {
-      console.log("Selected Branch Name:", selectedBranch.name)
-      console.log("Selected Branch Location:", selectedBranch.location)
-    }
-  }, [selectedBranch])
+    const init = async () => {
+      try {
+        const res = await fetch("/api/branches");
+        if (!res.ok) throw new Error("Failed to fetch branches");
+        const { data } = await res.json();
+        setBranches(data.branches);
+        setStoreId(data.branches[0]?.storeId?._id ?? "");
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setInitLoading(false);
+      }
+    };
+    init();
+  }, []);
 
-      if (loading) return <div>Loading branches...</div>;
+  useEffect(() => {
+    if (storeId) ensureDefaultProduct();
+  }, [storeId, ensureDefaultProduct]);
+
+  useEffect(() => {
+    const pid = searchParams.get("productId");
+    if (!storeId || !pid) return;
+
+    fetch(`/api/admin/products/${pid}`)
+      .then((r) => r.json())
+      .then((json) => {
+        const p = json?.data?.product;
+        if (p?.name) {
+          setProductName(p.name);
+          setProductCode(p.standardCode ?? "");
+        }
+      })
+      .catch(() => {});
+
+    loadChart(pid);
+  }, [storeId, searchParams, loadChart]);
+
+  if (initLoading) return <div className="p-6">Loading product movement…</div>;
+
+  const activeProductId = searchParams.get("productId");
 
   return (
     <div className="flex flex-1 flex-col">
-       <div className="flex w-full -ml-2 items-center gap-1 px-4 lg:gap-2 lg:px-6">
+      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
         <Separator
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
-        <h1 className="text-base font-medium">Branch Analytics</h1>
-       
+        <h1 className="text-base font-medium">Product Movement</h1>
       </div>
-       <div className="flex  justify-center w-full"> 
-       <GlobalSearch />
-          </div>
-     <section className="ml-6 mr-4 mt-5 flex justify-between gap-1 max-sm:flex-col sm:items-center bg-white items-center rounded-md p-2">
-            <div className="flex space-x-1">
-                <Calendar22 label={"From"}  onDateChange={handleStartDateChange}/>
-                <Calendar22 label={"To"}  onDateChange={handleEndDateChange}/>
-        
-            </div>
-           
-            
-                <BranchFilter
-                         label="Branch"
-        
-                  filters={branches}
-                  // otherClasses="min-h-[56px] sm:min-w-[170px]"
-                  containerClasses="  max-md:flex"
-                  queryKey="branch"
-                />
-        
-                 <div className="space-x-1">
-                   <Button
-                  className="mt-5 primary-gradient h-9 px-4 py-1 !text-light-900 bg-blue-500"
-                  // asChild
-                  onClick={handleApplyFilter}
-                >
-                  <FilterIcon/>
-               Filter
-                </Button>
-                                  
-         <Button
-                  className="mt-5 primary-gradient h-9 py-1 !text-light-900 bg-orange-500"
-                  // asChild
-                  onClick={handleResetFilters}
-                >
-                  <RefreshCcw/>
-               Filter
-                </Button>
-                  </div>        
-        
-              </section>
-       
-   
-          
+
+      <div className="mx-4 mt-4 flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900 lg:mx-6">
+        <Info className="size-4 mt-0.5 shrink-0" />
+        <p>
+          Search any product below to see its sales trend across branches. By default
+          we show the fastest-moving product from the last 7 days.
+        </p>
+      </div>
+
+      <div className="flex justify-center w-full mt-4">
+        <GlobalSearch />
+      </div>
+
+      <AnalyticsFilterBar
+        branches={branches}
+        filters={filters}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onGranularityChange={setGranularity}
+        onApply={() => activeProductId && loadChart(activeProductId)}
+        onReset={() => {
+          reset();
+          defaultProductSet.current = false;
+          router.replace(window.location.pathname);
+        }}
+        loading={chartLoading}
+        showMetric={false}
+      />
+
       <div className="@container/main flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-          {/* Statistics cards section */}
-         
           <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-12">
-             <BranchSalesLineChart branch={selectedBranch} startDate={date} endDate={endDate} chartData={filteredData}/>
+              <AnalyticsLineChart
+                data={chartData}
+                metric="sales"
+                granularity={filters.granularity}
+                title={
+                  productName
+                    ? `Sales trend — ${productName}${productCode ? ` (${productCode})` : ""}`
+                    : "Product sales trend"
+                }
+                description={
+                  activeProductId
+                    ? "Estimated sales by branch for the selected product"
+                    : "Select a product to view movement"
+                }
+                selectedBranch={selectedBranch}
+                loading={chartLoading}
+              />
             </div>
-           
-
-
           </div>
-        
         </div>
       </div>
     </div>

@@ -18,7 +18,7 @@ const AuthLayout = ({ children }: { children: ReactNode }) => {
               alt=""
               height={40}
               width={40}
-              className="ml-0.5 h-10 w-10 shrink-0 translate-y-4 object-contain"
+              className="ml-0.5 h-10 w-10 -z-12 shrink-0 translate-y-4 object-contain"
               aria-hidden
             />
             <span className="-ml-2 text-xl font-bold tracking-tight text-dark100_light900">

@@ -38,53 +38,10 @@ export const metadata: Metadata = {
 export default async function ShopLayout({ children }: { children: ReactNode }) {
   redirect("/sign-in");
 
-  // #region agent log
-  fetch(
-    "http://127.0.0.1:7467/ingest/2de68ee5-e25c-499c-9697-defc2dfd27b9",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "61e806",
-      },
-      body: JSON.stringify({
-        sessionId: "61e806",
-        runId: "pre-fix",
-        hypothesisId: "H3",
-        location: "app/(shop)/layout.tsx:beforeDbConnect",
-        message: "shop layout before dbConnect",
-        data: {},
-        timestamp: Date.now(),
-      }),
-    }
-  ).catch(() => {});
-  // #endregion
-
   let customer: { firstName: string; id: string } | null = null;
 
   try {
     await dbConnect();
-    // #region agent log
-    fetch(
-      "http://127.0.0.1:7467/ingest/2de68ee5-e25c-499c-9697-defc2dfd27b9",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "61e806",
-        },
-        body: JSON.stringify({
-          sessionId: "61e806",
-          runId: "pre-fix",
-          hypothesisId: "H3",
-          location: "app/(shop)/layout.tsx:afterDbConnect",
-          message: "shop layout after dbConnect ok",
-          data: {},
-          timestamp: Date.now(),
-        }),
-      }
-    ).catch(() => {});
-    // #endregion
     const resolvedId = await getShopCustomerIdForRequest();
     const cookieStore = await cookies();
     const token = cookieStore.get("shop_token")?.value ?? null;
@@ -111,29 +68,6 @@ export default async function ShopLayout({ children }: { children: ReactNode }) 
     if (payload?.sub) {
       customer = { firstName: payload.firstName || "User", id: payload.sub };
     }
-    // #region agent log
-    fetch(
-      "http://127.0.0.1:7467/ingest/2de68ee5-e25c-499c-9697-defc2dfd27b9",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Debug-Session-Id": "61e806",
-        },
-        body: JSON.stringify({
-          sessionId: "61e806",
-          runId: "post-fix",
-          hypothesisId: "H3",
-          location: "app/(shop)/layout.tsx:mongoDegraded",
-          message: "shop layout continuing without mongo (jwt-only)",
-          data: {
-            jwtCustomerFallback: Boolean(payload?.sub),
-          },
-          timestamp: Date.now(),
-        }),
-      }
-    ).catch(() => {});
-    // #endregion
   }
 
   return (

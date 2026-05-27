@@ -5,12 +5,28 @@ import path from "path";
 
 dotenv.config({ path: path.join(process.cwd(), ".env.local") });
 
-const RAW_URI = process.env.OFFLINE_MONGODB_URI || process.env.MONGODB_URI;
-const MONGODB_URI = RAW_URI?.replace(/\/?$/, "/stockflow");
+const args = process.argv.slice(2);
+const targetLive = args.includes("--target=live");
+
+const rawUri = targetLive
+  ? process.env.MONGODB_URI
+  : process.env.OFFLINE_MONGODB_URI || process.env.MONGODB_URI;
+
+const MONGODB_URI = rawUri?.replace(/\/?$/, "/stockflow");
 
 if (!MONGODB_URI) {
-  console.error("❌ OFFLINE_MONGODB_URI not set in .env.local");
+  if (targetLive) {
+    console.error("❌ MONGODB_URI not set in .env.local (required for --target=live)");
+  } else {
+    console.error("❌ OFFLINE_MONGODB_URI or MONGODB_URI not set in .env.local");
+  }
   process.exit(1);
+}
+
+if (targetLive) {
+  console.log("🌐 Target: live (MONGODB_URI only)\n");
+} else {
+  console.log("💻 Target: local (OFFLINE_MONGODB_URI or MONGODB_URI)\n");
 }
 
 const StoreSchema = new mongoose.Schema({

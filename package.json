@@ -9,11 +9,15 @@
     "start": "next start",
     "lint": "eslint .",
     "seed:roles": "node scripts/seed-roles.mjs",
+    "seed:roles:live": "node --env-file=.env.local scripts/seed-roles.mjs --target=live",
+    "reset:live": "node --env-file=.env.local scripts/reset-stockflow-live.mjs",
+    "reset:live:confirm": "node --env-file=.env.local scripts/reset-stockflow-live.mjs --confirm-live-reset",
     "sync:stockflow": "node scripts/sync-stockflow-to-atlas.mjs",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
-    "seed:test": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/seed-test-users.ts",
+    "seed:test": "npx tsx scripts/seed-test-users.ts",
+    "seed:test:live": "npx tsx scripts/seed-test-users.ts --target=live",
     "simulate:uploads": "npx tsx scripts/simulate-test-uploads.ts"
   },
   "dependencies": {

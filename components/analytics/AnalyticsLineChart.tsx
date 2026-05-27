@@ -18,6 +18,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Granularity, Metric, TimeSeriesPoint } from "@/lib/analytics/types";
 import {
   GRANULARITY_LABELS,
@@ -111,9 +112,7 @@ export function AnalyticsLineChart({
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         {loading ? (
-          <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
-            Loading chart…
-          </div>
+          <Skeleton className="h-[280px] w-full rounded-lg" />
         ) : displayData.length === 0 ? (
           <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
             No data for this period. Try adjusting the date range or upload stock files.

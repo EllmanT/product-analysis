@@ -3,24 +3,26 @@
 import type { ProductUploadSummary } from "@/types/upload-summary";
 import {
   Activity,
+  BarChart3,
   Building2,
   Calendar,
   Database,
   FileSpreadsheet,
   FileText,
   HardDrive,
-  Loader2,
   Package,
   Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const PROCESSING_PHRASES = [
-  "Reading file…",
+  "Reading your stock file…",
   "Parsing product lines…",
   "Resolving product codes…",
+  "Checking the product catalogue…",
   "Updating inventory records…",
   "Reconciling weekly summaries…",
+  "Crunching the numbers…",
   "Almost there…",
 ];
 
@@ -79,17 +81,43 @@ export function UploadResultsCard({
   errorDetails,
 }: UploadResultsCardProps) {
   const [phraseIndex, setPhraseIndex] = useState(0);
+  const [iconPhase, setIconPhase] = useState(0); // 0-3 cycling
+  const [progress, setProgress] = useState(0);   // 0-100 fake progress
 
   useEffect(() => {
     if (phase !== "processing") return;
     const id = window.setInterval(() => {
       setPhraseIndex((i) => (i + 1) % PROCESSING_PHRASES.length);
-    }, 2200);
+    }, 1800);
     return () => window.clearInterval(id);
   }, [phase]);
 
   useEffect(() => {
     if (phase === "processing") setPhraseIndex(0);
+  }, [phase]);
+
+  // Icon baton-pass animation
+  useEffect(() => {
+    if (phase !== "processing") { setIconPhase(0); return; }
+    const id = window.setInterval(() => setIconPhase(p => (p + 1) % 4), 700);
+    return () => window.clearInterval(id);
+  }, [phase]);
+
+  // Fake progress bar: fast at first, slows to stall at 88%
+  useEffect(() => {
+    if (phase !== "processing") { setProgress(0); return; }
+    const id = window.setInterval(() => {
+      setProgress(p => {
+        if (p >= 88) return p;
+        return Math.min(88, p + (88 - p) * 0.04 + 0.3);
+      });
+    }, 400);
+    return () => window.clearInterval(id);
+  }, [phase]);
+
+  // When success/error, jump progress to 100
+  useEffect(() => {
+    if (phase === "success" || phase === "error") setProgress(100);
   }, [phase]);
 
   const displayMeta =
@@ -128,28 +156,79 @@ export function UploadResultsCard({
       )}
 
       {phase === "processing" && (
-        <div className="flex flex-1 flex-col gap-6">
-          <div className="flex items-center justify-center gap-4 py-4">
-            <div className="relative flex size-14 items-center justify-center rounded-full bg-blue-50">
-              <Loader2 className="size-7 animate-spin text-blue-600" />
-            </div>
-            <div className="flex gap-2">
-              <Package
-                className="size-8 text-amber-500 opacity-90 animate-pulse"
-                style={{ animationDelay: "0ms" }}
-              />
-              <Database className="size-8 text-emerald-600 opacity-90 animate-pulse [animation-delay:200ms]" />
-              <Sparkles className="size-8 text-violet-500 opacity-90 animate-pulse [animation-delay:400ms]" />
-            </div>
+        <div className="flex flex-1 flex-col gap-5">
+          {/* Progress bar */}
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-blue-500 via-violet-500 to-emerald-500 transition-all duration-700 ease-out"
+              style={{ width: `${progress}%` }}
+            />
           </div>
 
+          {/* Icon row — sequential spotlight animation */}
+          <div className="flex items-center justify-center gap-5 py-2">
+            {[
+              {
+                Icon: Package,
+                label: "Parsing",
+                color: "text-amber-500",
+                bg: "bg-amber-50",
+                ring: "ring-amber-300",
+                activeStyle: { transform: "translateY(-6px) scale(1.25)" },
+              },
+              {
+                Icon: Database,
+                label: "Storing",
+                color: "text-emerald-600",
+                bg: "bg-emerald-50",
+                ring: "ring-emerald-300",
+                activeStyle: { transform: "rotate(180deg) scale(1.2)" },
+              },
+              {
+                Icon: Sparkles,
+                label: "Analysing",
+                color: "text-violet-500",
+                bg: "bg-violet-50",
+                ring: "ring-violet-300",
+                activeStyle: { transform: "scale(1.3)", filter: "drop-shadow(0 0 8px rgb(139 92 246 / 0.8))" },
+              },
+              {
+                Icon: BarChart3,
+                label: "Summarising",
+                color: "text-blue-500",
+                bg: "bg-blue-50",
+                ring: "ring-blue-300",
+                activeStyle: { transform: "scale(1.2)", filter: "drop-shadow(0 0 6px rgb(59 130 246 / 0.7))" },
+              },
+            ].map(({ Icon, label, color, bg, ring, activeStyle }, idx) => {
+              const isActive = iconPhase === idx;
+              return (
+                <div key={label} className="flex flex-col items-center gap-1.5">
+                  <div
+                    className={`flex size-12 items-center justify-center rounded-xl transition-all duration-500 ease-in-out ${bg} ${isActive ? `ring-2 ${ring}` : "ring-0"}`}
+                    style={isActive ? activeStyle : { transform: "scale(0.9)", opacity: 0.45 }}
+                  >
+                    <Icon className={`size-6 ${color}`} />
+                  </div>
+                  <span
+                    className={`text-[10px] font-medium transition-all duration-500 ${isActive ? "text-gray-700 opacity-100" : "text-gray-400 opacity-60"}`}
+                  >
+                    {label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Cycling phrase */}
           <p
-            className="min-h-[1.5rem] text-center text-sm font-medium text-blue-800 transition-all duration-300"
             key={phraseIndex}
+            className="min-h-[1.5rem] text-center text-sm font-medium text-blue-800 transition-opacity duration-300"
           >
             {PROCESSING_PHRASES[phraseIndex]}
           </p>
 
+          {/* File meta */}
           {displayMeta && (
             <ul className="mx-auto w-full max-w-md space-y-2 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
               <li className="flex items-start gap-2">

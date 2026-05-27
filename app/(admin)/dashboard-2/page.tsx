@@ -1,6 +1,4 @@
 import { ChartAreaInteractive } from "@/components/charts/LineChartInteractive";
-import { SectionCards } from "@/components/statistics/StatisticsSection";
-
 // import data from "./data.json";
 import { projects, reOrderItems } from "@/app/data";
 import { columns } from "@/components/data-table/columns/columns";
@@ -13,8 +11,6 @@ export default function Page() {
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-          {/* Statistics cards section */}
-          <SectionCards />
           <div className="px-4 lg:px-6 grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-7">
               <ChartAreaInteractive />

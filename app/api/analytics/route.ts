@@ -145,5 +145,8 @@ export async function GET() {
     totalStoreUsers,
   };
 
-  return NextResponse.json({ success: true, data: combined }, { status: 200 });
+  return NextResponse.json({ success: true, data: combined }, {
+    status: 200,
+    headers: { "Cache-Control": "private, no-cache, must-revalidate" },
+  });
 }

@@ -2,13 +2,14 @@ import handleError from "@/lib/handlers/error";
 import { ValidationError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
 import { uploadProductsSchema } from "@/lib/validations";
-import { NextResponse } from "next/server";
-import { Branch } from "@/database";
+import { NextResponse, after } from "next/server";
+import { Branch, Upload } from "@/database";
 import { auth } from "@/auth";
 import { getUser } from "@/lib/actions/user.action";
 import { normalizeRole } from "@/lib/auth/role";
 import {
-  processStockUpload,
+  initializeUpload,
+  executeUploadBatch,
 } from "@/lib/upload/processStockUpload";
 
 export async function POST(req: Request) {
@@ -85,18 +86,20 @@ export async function POST(req: Request) {
     const buffer = await file.arrayBuffer();
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const fileName = `upload_${timestamp}_${file.name}`;
+    const originalFileName = file.name;
+    const fileSizeBytes = file.size;
 
-    const result = await processStockUpload({
+    const initResult = await initializeUpload({
       buffer,
       fileName,
-      originalFileName: file.name,
-      fileSizeBytes: file.size,
+      originalFileName,
+      fileSizeBytes,
       userId: userIdStr,
       storeId,
       branchId,
     });
 
-    if (result.duplicate) {
+    if (initResult.duplicate) {
       return NextResponse.json(
         {
           success: true,
@@ -107,15 +110,39 @@ export async function POST(req: Request) {
       );
     }
 
+    const { uploadId, parsedLines, upload_date, week, month, year } = initResult;
+
+    after(async () => {
+      try {
+        await executeUploadBatch(
+          uploadId,
+          parsedLines,
+          { storeId, branchId, originalFileName, fileSizeBytes },
+          { upload_date, week, month, year }
+        );
+      } catch (err) {
+        console.error("Background upload batch failed:", err);
+        await Upload.updateOne(
+          { _id: uploadId },
+          {
+            $set: {
+              status: "failed",
+              processingError: err instanceof Error ? err.message : "Unknown error",
+            },
+          }
+        );
+      }
+    });
+
     return NextResponse.json(
       {
         success: true,
         data: {
-          uploadId: result.uploadId,
-          summary: result.summary,
+          jobId: String(uploadId),
+          status: "processing",
         },
       },
-      { status: 201 }
+      { status: 202 }
     );
   } catch (error) {
     console.error("Error during product upload:", error);

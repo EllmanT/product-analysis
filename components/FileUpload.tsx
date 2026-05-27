@@ -5,7 +5,7 @@ import { uploadProductsSchema } from "@/lib/validations";
 import type { ProductUploadSuccessData } from "@/types/upload-summary";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoaderPinwheelIcon } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -40,7 +40,12 @@ type FileUploadProps = {
   allowBranchPicker?: boolean;
 };
 
-type UploadApiResponse = ActionResponse<ProductUploadSuccessData> & {
+type AsyncUploadData = {
+  jobId: string;
+  status: "processing";
+};
+
+type UploadApiResponse = ActionResponse<ProductUploadSuccessData | AsyncUploadData> & {
   duplicate?: boolean;
   message?: string;
 };
@@ -70,6 +75,58 @@ const FileUpload = ({
   const [branchesLoading, setBranchesLoading] = useState(allowBranchPicker);
   const [branchError, setBranchError] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear any pending poll on unmount
+  useEffect(() => {
+    return () => {
+      if (pollTimeoutRef.current !== null) {
+        clearTimeout(pollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const pollForCompletion = (jobId: string) => {
+    let attempts = 0;
+    const maxAttempts = 60; // 3 minutes max
+
+    const tick = async () => {
+      if (attempts >= maxAttempts) {
+        setResultsPhase("error");
+        setErrorMessage("Upload is taking longer than expected. Please check back later.");
+        toast.error("Upload timed out. Please try again.");
+        return;
+      }
+      attempts++;
+
+      try {
+        const res = await fetch(`/api/products/upload/status/${jobId}`);
+        const data = await res.json();
+
+        if (data.data?.status === "complete") {
+          setSummary(data.data.summary);
+          setResultsPhase("success");
+          toast.success("Upload completed successfully.");
+          return;
+        }
+
+        if (data.data?.status === "failed") {
+          setResultsPhase("error");
+          setErrorMessage(data.data.error ?? "Processing failed.");
+          toast.error(data.data.error ?? "Processing failed.");
+          return;
+        }
+
+        // Still processing
+        pollTimeoutRef.current = setTimeout(tick, 3000);
+      } catch {
+        pollTimeoutRef.current = setTimeout(tick, 3000); // retry on network error
+      }
+    };
+
+    pollTimeoutRef.current = setTimeout(tick, 2000); // first check after 2s
+  };
 
   useEffect(() => {
     if (branchId) setSelectedBranchId(branchId);
@@ -188,7 +245,14 @@ const FileUpload = ({
         return;
       }
 
-      if (res.data?.summary) {
+      // New async response: server returns immediately with a jobId
+      if (res.data && "jobId" in res.data && res.data.status === "processing") {
+        pollForCompletion(res.data.jobId);
+        return;
+      }
+
+      // Old sync response (backward compat): server returned a full summary
+      if (res.data && "summary" in res.data && res.data.summary) {
         setSummary(res.data.summary);
         setResultsPhase("success");
         toast.success("Upload completed successfully.");

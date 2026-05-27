@@ -1,6 +1,6 @@
 import { Decimal128, Document, model, models, Schema, Types } from "mongoose";
 
-// validation for the ide 
+// validation for the ide
 // validation for the developer while we type code
 export interface IUpload {
   uploadedBy:Types.ObjectId;
@@ -15,7 +15,14 @@ export interface IUpload {
   products: Types.ObjectId[];
   totalProducts:number;
   estimatedValue:Decimal128;
- 
+  // async processing fields (backward-compat: default "complete")
+  status?: "processing" | "complete" | "failed";
+  processingError?: string;
+  productLineCount?: number;
+  deadStockSkus?: number;
+  activeStockSkus?: number;
+  originalFileName?: string;
+  fileSizeBytes?: number;
 }
 
 
@@ -35,8 +42,14 @@ const UploadSchema = new Schema<IUpload>(
     contentHash: { type: String,required: true, unique: true}, // enforce one-time uploads for same content
     products: [{ type: Schema.Types.ObjectId, ref: "UploadProduct", required: true }],
     totalProducts:{type:Number, required:true},
-    estimatedValue:{type:Schema.Types.Decimal128, required:true}
-
+    estimatedValue:{type:Schema.Types.Decimal128, required:true},
+    status: { type: String, enum: ["processing", "complete", "failed"], default: "complete" },
+    processingError: { type: String },
+    productLineCount: { type: Number },
+    deadStockSkus: { type: Number },
+    activeStockSkus: { type: Number },
+    originalFileName: { type: String },
+    fileSizeBytes: { type: Number },
   },
   {
     timestamps: true,

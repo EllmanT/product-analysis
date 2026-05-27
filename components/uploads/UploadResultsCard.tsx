@@ -99,19 +99,24 @@ export function UploadResultsCard({
   // Icon baton-pass animation
   useEffect(() => {
     if (phase !== "processing") { setIconPhase(0); return; }
-    const id = window.setInterval(() => setIconPhase(p => (p + 1) % 4), 700);
+    const id = window.setInterval(() => setIconPhase(p => (p + 1) % 4), 1400);
     return () => window.clearInterval(id);
   }, [phase]);
 
-  // Fake progress bar: fast at first, slows to stall at 88%
+  // Time-based progress: linear 0→85% over 12s, slow crawl after, never stalls
   useEffect(() => {
-    if (phase !== "processing") { setProgress(0); return; }
+    if (phase !== "processing") {
+      if (phase !== "success" && phase !== "error") setProgress(0);
+      return;
+    }
+    const startTime = Date.now();
+    const ESTIMATED_MS = 12_000;
     const id = window.setInterval(() => {
-      setProgress(p => {
-        if (p >= 88) return p;
-        return Math.min(88, p + (88 - p) * 0.04 + 0.3);
-      });
-    }, 400);
+      const elapsed = Date.now() - startTime;
+      const linear = Math.min(85, (elapsed / ESTIMATED_MS) * 85);
+      const crawl = elapsed > ESTIMATED_MS ? ((elapsed - ESTIMATED_MS) / 1000) * 0.4 : 0;
+      setProgress(Math.min(96, linear + crawl));
+    }, 250);
     return () => window.clearInterval(id);
   }, [phase]);
 
@@ -172,44 +177,34 @@ export function UploadResultsCard({
                 Icon: Package,
                 label: "Parsing",
                 color: "text-amber-500",
-                bg: "bg-amber-50",
-                ring: "ring-amber-300",
                 activeStyle: { transform: "translateY(-6px) scale(1.25)" },
               },
               {
                 Icon: Database,
                 label: "Storing",
                 color: "text-emerald-600",
-                bg: "bg-emerald-50",
-                ring: "ring-emerald-300",
                 activeStyle: { transform: "rotate(180deg) scale(1.2)" },
               },
               {
                 Icon: Sparkles,
                 label: "Analysing",
                 color: "text-violet-500",
-                bg: "bg-violet-50",
-                ring: "ring-violet-300",
                 activeStyle: { transform: "scale(1.3)", filter: "drop-shadow(0 0 8px rgb(139 92 246 / 0.8))" },
               },
               {
                 Icon: BarChart3,
                 label: "Summarising",
                 color: "text-blue-500",
-                bg: "bg-blue-50",
-                ring: "ring-blue-300",
                 activeStyle: { transform: "scale(1.2)", filter: "drop-shadow(0 0 6px rgb(59 130 246 / 0.7))" },
               },
-            ].map(({ Icon, label, color, bg, ring, activeStyle }, idx) => {
+            ].map(({ Icon, label, color, activeStyle }, idx) => {
               const isActive = iconPhase === idx;
               return (
                 <div key={label} className="flex flex-col items-center gap-1.5">
-                  <div
-                    className={`flex size-12 items-center justify-center rounded-xl transition-all duration-500 ease-in-out ${bg} ${isActive ? `ring-2 ${ring}` : "ring-0"}`}
-                    style={isActive ? activeStyle : { transform: "scale(0.9)", opacity: 0.45 }}
-                  >
-                    <Icon className={`size-6 ${color}`} />
-                  </div>
+                  <Icon
+                    className={`size-8 transition-all duration-700 ease-in-out ${color}`}
+                    style={isActive ? activeStyle : { transform: "scale(0.85)", opacity: 0.35 }}
+                  />
                   <span
                     className={`text-[10px] font-medium transition-all duration-500 ${isActive ? "text-gray-700 opacity-100" : "text-gray-400 opacity-60"}`}
                   >

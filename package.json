@@ -18,6 +18,8 @@
     "test:e2e:ui": "playwright test --ui",
     "seed:test": "npx tsx scripts/seed-test-users.ts",
     "seed:test:live": "npx tsx scripts/seed-test-users.ts --target=live",
+    "reset:test": "npx tsx scripts/reset-test-db.ts",
+    "reset:test:live": "npx tsx scripts/reset-test-db.ts --target=live",
     "simulate:uploads": "npx tsx scripts/simulate-test-uploads.ts"
   },
   "dependencies": {

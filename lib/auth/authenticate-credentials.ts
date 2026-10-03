@@ -60,7 +60,10 @@ export async function authorizeCredentialsOrThrow(
     );
   }
 
-  if (!isStaffEmailAllowed(existingUser.email)) {
+  // Cashiers are provisioned by an admin in the Users screen and can only reach /pos,
+  // so they are admitted by role instead of being listed in STAFF_ALLOWED_EMAILS.
+  const isCashier = normalizeRole(existingUser.role) === "cashier";
+  if (!isCashier && !isStaffEmailAllowed(existingUser.email)) {
     throw new DetailedCredentialsSignin(
       "This account is not authorized to access the staff application.",
       "not_staff"

@@ -32,7 +32,7 @@ export async function getDashboardStats(user: IUser): Promise<DashboardStats> {
   const role = normalizeRole(user.role)
 
   const branchMatch =
-    role === "branch_user" && user.branchId
+    role !== "admin" && user.branchId
       ? { storeId: objectStoreId, branchId: new Types.ObjectId(String(user.branchId)) }
       : { storeId: objectStoreId }
 
@@ -58,7 +58,7 @@ export async function getDashboardStats(user: IUser): Promise<DashboardStats> {
       { $group: { _id: null, totalEstimatedSales: { $sum: "$estimatedSales" }, totalQuantitySold: { $sum: "$quantitySold" } } },
       { $project: { _id: 0, totalEstimatedSales: 1, totalQuantitySold: 1 } },
     ]),
-    role === "branch_user" && user.branchId
+    role !== "admin" && user.branchId
       ? Promise.resolve(1)
       : Branch.countDocuments({ storeId: objectStoreId }),
     Upload.aggregate([

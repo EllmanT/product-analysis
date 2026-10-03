@@ -42,3 +42,19 @@ export async function sendPasswordResetOtp(email: string, otp: string) {
     `,
   });
 }
+
+/** Send a till slip / fiscal invoice to a customer. `html` is already the finished slip markup. */
+export async function sendPosInvoiceEmail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  fromName?: string;
+}) {
+  const from = process.env.SMTP_FROM || '"StockFlow" <noreply@stockflow.com>';
+  await transporter.sendMail({
+    from: opts.fromName ? `"${opts.fromName.replace(/"/g, "")}" <${from.match(/<(.+)>/)?.[1] ?? from}>` : from,
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+  });
+}

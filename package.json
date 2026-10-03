@@ -20,7 +20,10 @@
     "seed:test:live": "npx tsx scripts/seed-test-users.ts --target=live",
     "reset:test": "npx tsx scripts/reset-test-db.ts",
     "reset:test:live": "npx tsx scripts/reset-test-db.ts --target=live",
-    "simulate:uploads": "npx tsx scripts/simulate-test-uploads.ts"
+    "simulate:uploads": "npx tsx scripts/simulate-test-uploads.ts",
+    "pos:simulate": "npx tsx scripts/pos-simulate.ts",
+    "pos:demo": "npx tsx scripts/pos-setup-demo.ts",
+    "pos:cron": "node --env-file=.env.local scripts/run-cron.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",

@@ -82,7 +82,7 @@ export const UserSchema = z.object({
     .email({ message: "Please provide a valid email address." }),
   branchId: z.string().min(1, { message: "Branch ID is required" }).optional(),
   storeId: z.string().min(1, { message: "Store ID is required" }).optional(),
-  role: z.enum(["admin", "branch_user"]).optional(),
+  role: z.enum(["admin", "branch_user", "cashier"]).optional(),
 
   image: z.string().url({ message: "Please provide a valid URL" }).optional(),
   location: z.string().optional(),
@@ -91,7 +91,7 @@ export const UserSchema = z.object({
 /** Admin-only updates to users in the same store (no email/storeId changes). */
 export const UpdateManagedUserSchema = z
   .object({
-    role: z.enum(["admin", "branch_user"]).optional(),
+    role: z.enum(["admin", "branch_user", "cashier"]).optional(),
     branchId: z.union([z.string().min(1), z.null()]).optional(),
   })
   .refine((d) => d.role !== undefined || d.branchId !== undefined, {

@@ -2,7 +2,7 @@ import { Role } from "@/database";
 import dbConnect from "@/lib/mongoose";
 import { NextResponse } from "next/server";
 
-const ROLE_NAMES = ["admin", "branch_user"] as const;
+const ROLE_NAMES = ["admin", "branch_user", "cashier"] as const;
 
 export async function POST() {
   try {

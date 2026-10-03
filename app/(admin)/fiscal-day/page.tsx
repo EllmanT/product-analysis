@@ -16,6 +16,7 @@ export default function FiscalDayPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<"open" | "close" | null>(null);
+  const [posPending, setPosPending] = useState<string | null>(null);
   const [lastZReportId, setLastZReportId] = useState<string | null>(null);
 
   async function loadStatus() {
@@ -40,18 +41,29 @@ export default function FiscalDayPage() {
     void loadStatus();
   }, []);
 
-  async function executeAction(action: "open" | "close") {
+  async function executeAction(action: "open" | "close", force = false) {
     setConfirmAction(null);
     setActionLoading(action);
     setError(null);
     setSuccessMsg(null);
     try {
-      const res = await fetch(`/api/admin/fiscal-day/${action}`, { method: "POST" });
+      setPosPending(null);
+      const res = await fetch(`/api/admin/fiscal-day/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(force ? { force: true } : {}),
+      });
       const json = await res.json() as {
         success: boolean;
         message?: string;
+        code?: string;
+        pending?: number;
         report?: { _id: string };
       };
+      if (res.status === 409 && json.code === "POS_PENDING") {
+        setPosPending(json.message ?? "POS sales are not fiscalised yet.");
+        return;
+      }
       if (res.ok && json.success) {
         setLastZReportId(action === "close" && json.report?._id ? json.report._id : null);
         setSuccessMsg(action === "open" ? "Fiscal day opened successfully." : "Fiscal day closed successfully.");
@@ -172,6 +184,25 @@ export default function FiscalDayPage() {
           </Button>
         </div>
       </div>
+
+      {posPending && (
+        <div role="alert" className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-medium">The day was not closed.</p>
+          <p className="mt-1">{posPending}</p>
+          <p className="mt-1">
+            Open <a className="underline" href="/pos-sales">POS sales</a> to fiscalise them first, or close anyway: sales left
+            unfiscalised can then only be fiscalised on a later day with an administrator&apos;s approval.
+          </p>
+          <div className="mt-3 flex gap-3">
+            <Button type="button" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50" onClick={() => void executeAction("close", true)}>
+              Close anyway
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setPosPending(null)}>
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation dialog */}
       {confirmAction && (

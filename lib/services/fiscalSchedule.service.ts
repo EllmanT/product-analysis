@@ -5,11 +5,20 @@ import {
   setLastAutoCloseDate,
   setLastAutoOpenDate,
 } from "@/lib/services/fiscalSettings.service";
-import { closeFiscalDayWithReport, openFiscalDayOnly } from "@/lib/services/fiscalDayOps.service";
+import { checkFiscalDayStatus } from "@/lib/services/zimraFiscal.service";
+import { closeFiscalDayWithReport, openFiscalDayOnly, PendingPosSalesError } from "@/lib/services/fiscalDayOps.service";
 
 function timeMatches(stored: string, hm: string): boolean {
   return stored.trim() === hm;
 }
+
+function toMinutes(hm: string): number {
+  const [h, m] = hm.trim().split(":").map(Number);
+  return h * 60 + m;
+}
+
+/** How long after the configured close time the day may stay open while POS sales are being fiscalised. */
+const CLOSE_DEFER_MAX_MIN = 120;
 
 function weekdayMatches(isoDow: number, weekdays: number[]): boolean {
   if (!weekdays.length) return false;
@@ -49,17 +58,30 @@ export async function runFiscalScheduleTick(): Promise<{
     doc.autoCloseEnabled &&
     doc.closeTime &&
     weekdayMatches(isoDow, closeWeekdays) &&
-    timeMatches(doc.closeTime, hm) &&
+    // At the close time, and on every later minute of the deferral window until it succeeds.
+    toMinutes(hm) >= toMinutes(doc.closeTime) &&
+    toMinutes(hm) - toMinutes(doc.closeTime) <= CLOSE_DEFER_MAX_MIN &&
     doc.lastAutoCloseDate !== today
   ) {
     try {
-      await closeFiscalDayWithReport("scheduled");
-      await setLastAutoCloseDate(today);
-      closed = true;
-      messages.push(`Scheduled fiscal day close OK (${today} ${hm} ${tz})`);
+      // After the deferral window the day is closed regardless; unfiscalised sales then wait for admin approval.
+      // An admin may already have closed it by hand: record that and stop trying.
+      const status = await checkFiscalDayStatus();
+      if (!status.isOpen) {
+        await setLastAutoCloseDate(today);
+        messages.push(`Fiscal day was already closed (${today} ${hm} ${tz})`);
+      } else {
+        const overdue = toMinutes(hm) - toMinutes(doc.closeTime) >= CLOSE_DEFER_MAX_MIN;
+        await closeFiscalDayWithReport("scheduled", { force: overdue });
+        await setLastAutoCloseDate(today);
+        closed = true;
+        messages.push(`Scheduled fiscal day close OK (${today} ${hm} ${tz})`);
+      }
     } catch (e) {
       messages.push(
-        `Scheduled close failed: ${e instanceof Error ? e.message : String(e)}`
+        e instanceof PendingPosSalesError
+          ? `Scheduled close deferred: ${e.message} Retrying every minute for up to ${CLOSE_DEFER_MAX_MIN} minutes.`
+          : `Scheduled close failed: ${e instanceof Error ? e.message : String(e)}`
       );
     }
   }

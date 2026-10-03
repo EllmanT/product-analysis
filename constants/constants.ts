@@ -10,7 +10,7 @@ import {
     IconAlertTriangle,
     IconCurrencyDollar
   } from "@tabler/icons-react"
-import { Calendar, FileText, MessageCircle, Package, Receipt } from "lucide-react"
+import { Calendar, FileText, MessageCircle, Package, Receipt, ScanBarcode, Store, Tags, ReceiptText } from "lucide-react"
 
 export const mainSidebarLinks = [
     {
@@ -75,6 +75,32 @@ export const mainSidebarLinks = [
       title: "Ask AI",
       url: "/ai-agent",
       icon: MessageCircle,
+    },
+
+    {
+      title: "Point of sale",
+      url: "",
+    },
+    {
+      title: "Open till",
+      url: "/pos",
+      icon: ScanBarcode,
+    },
+    {
+      title: "POS sales",
+      url: "/pos-sales",
+      icon: ReceiptText,
+    },
+    {
+      title: "POS products",
+      url: "/pos-products",
+      icon: Tags,
+    },
+    {
+      title: "POS settings",
+      url: "/pos-settings",
+      icon: Store,
+      adminOnly: true,
     },
 
     {

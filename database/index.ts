@@ -15,6 +15,8 @@ import HomepageConfig from "./homepage-config.model";
 import ShopPublicStats from "./shop-public-stats.model";
 import FiscalSettings from "./fiscalSettings.model";
 import ZReport from "./zReport.model";
+import InvoiceCounter from "./invoiceCounter.model";
+import PosSale from "./posSale.model";
 
 export {
   Account,
@@ -33,4 +35,6 @@ export {
   ShopPublicStats,
   FiscalSettings,
   ZReport,
+  InvoiceCounter,
+  PosSale,
 };

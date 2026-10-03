@@ -1,12 +1,14 @@
 import type { Session } from "next-auth";
 import { NextResponse } from "next/server";
 
-export type AppRole = "admin" | "branch_user";
+export type AppRole = "admin" | "branch_user" | "cashier";
 
 export function normalizeRole(
   role: string | undefined | null
 ): AppRole {
-  return role === "admin" ? "admin" : "branch_user";
+  if (role === "admin") return "admin";
+  if (role === "cashier") return "cashier";
+  return "branch_user";
 }
 
 export function getSessionUserRole(session: Session | null): AppRole | null {

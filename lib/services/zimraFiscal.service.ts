@@ -185,7 +185,7 @@ function mapResponseToFiscalResult(response: Record<string, unknown>): FiscalRes
   };
 }
 
-async function getZimraContext(): Promise<{
+export async function getZimraContext(): Promise<{
   base: string;
   deviceId?: string;
   tls: ZimraTlsConfig | null;

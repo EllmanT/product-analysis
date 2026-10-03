@@ -37,7 +37,7 @@ const db = client.db("stockflow");
 const col = db.collection("roles");
 const now = new Date();
 
-for (const name of ["admin", "branch_user"]) {
+for (const name of ["admin", "branch_user", "cashier"]) {
   await col.updateOne(
     { name },
     { $setOnInsert: { name, createdAt: now, updatedAt: now } },
@@ -45,5 +45,5 @@ for (const name of ["admin", "branch_user"]) {
   );
 }
 
-console.log("Seeded roles collection:", ["admin", "branch_user"]);
+console.log("Seeded roles collection:", ["admin", "branch_user", "cashier"]);
 await client.close();

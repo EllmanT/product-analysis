@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 
 import { runFiscalScheduleTick } from "@/lib/services/fiscalSchedule.service";
 
+/** A fiscal receipt can queue behind other branches at the device; allow time for that. */
+export const maxDuration = 60;
+
 /**
  * Call every minute from an external scheduler with header:
  *   Authorization: Bearer <CRON_SECRET>

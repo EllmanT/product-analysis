@@ -79,7 +79,7 @@ interface User {
   image?:string;
   storeId?:string;
   branchId?:string;
-  role?: "admin" | "branch_user";
+  role?: "admin" | "branch_user" | "cashier";
 }
 
 

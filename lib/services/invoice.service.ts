@@ -18,7 +18,7 @@ import {
 } from "@/lib/utils/zimraInvoiceDisplay";
 
 const DEFAULT_TAX_CODE = process.env.INVOICE_DEFAULT_TAX_CODE ?? "A";
-const DEFAULT_TAX_PERCENT = parseFloat(process.env.INVOICE_DEFAULT_TAX_PERCENT ?? "15");
+const DEFAULT_TAX_PERCENT = parseFloat(process.env.INVOICE_DEFAULT_TAX_PERCENT ?? "15.5");
 const DEFAULT_CURRENCY = process.env.INVOICE_DEFAULT_CURRENCY ?? "USD";
 const DEFAULT_PRINT_FORM = process.env.INVOICE_DEFAULT_RECEIPT_PRINT_FORM ?? "InvoiceA4";
 
@@ -179,6 +179,6 @@ export async function openFiscalDay() {
   await openFiscalDayOnly();
 }
 
-export async function closeFiscalDay(): Promise<IZReportDoc> {
-  return closeFiscalDayWithReport("manual");
+export async function closeFiscalDay(opts: { force?: boolean } = {}): Promise<IZReportDoc> {
+  return closeFiscalDayWithReport("manual", opts);
 }

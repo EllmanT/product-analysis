@@ -20,14 +20,14 @@ type Props = {
 
 export function UserRoleCell({ userId, role, onUpdated }: Props) {
   const normalized = normalizeRole(role);
-  const [value, setValue] = useState<"admin" | "branch_user">(normalized);
+  const [value, setValue] = useState<"admin" | "branch_user" | "cashier">(normalized);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
     setValue(normalizeRole(role));
   }, [role]);
 
-  async function onChange(next: "admin" | "branch_user") {
+  async function onChange(next: "admin" | "branch_user" | "cashier") {
     if (next === normalizeRole(role)) return;
     setPending(true);
     try {
@@ -58,7 +58,7 @@ export function UserRoleCell({ userId, role, onUpdated }: Props) {
     <Select
       value={value}
       disabled={pending}
-      onValueChange={(v) => onChange(v as "admin" | "branch_user")}
+      onValueChange={(v) => onChange(v as "admin" | "branch_user" | "cashier")}
     >
       <SelectTrigger className="h-8 w-[140px]" aria-label="User role">
         <SelectValue />
@@ -66,6 +66,7 @@ export function UserRoleCell({ userId, role, onUpdated }: Props) {
       <SelectContent>
         <SelectItem value="admin">Admin</SelectItem>
         <SelectItem value="branch_user">Branch user</SelectItem>
+        <SelectItem value="cashier">Cashier (POS)</SelectItem>
       </SelectContent>
     </Select>
   );

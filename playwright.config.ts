@@ -41,6 +41,12 @@ export default defineConfig({
       dependencies: ["upload"],
       use: { ...devices["Desktop Chrome"] },
     },
+    // Point of sale: needs `npm run pos:demo` data and TEST_POS_CASHIER_* in .env.test
+    {
+      name: "pos",
+      testMatch: ["**/pos.spec.ts", "**/pos-supervisor.spec.ts"],
+      use: { ...devices["Desktop Chrome"] },
+    },
     {
       name: "upload-history",
       testMatch: "**/upload-history.spec.ts",

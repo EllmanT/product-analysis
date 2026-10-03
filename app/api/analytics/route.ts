@@ -31,7 +31,7 @@ export async function GET() {
   const objectStoreId = new Types.ObjectId(storeId);
   const role = normalizeRole(data.user.role);
   const branchMatch =
-    role === "branch_user" && data.user.branchId
+    role !== "admin" && data.user.branchId
       ? { storeId: objectStoreId, branchId: new Types.ObjectId(data.user.branchId) }
       : { storeId: objectStoreId };
 
@@ -74,7 +74,7 @@ export async function GET() {
   ]);
 
   let totalBranches: number;
-  if (role === "branch_user" && data.user.branchId) {
+  if (role !== "admin" && data.user.branchId) {
     totalBranches = 1;
   } else {
     totalBranches = await Branch.countDocuments({ storeId: objectStoreId });

@@ -15,6 +15,17 @@ export async function proxy(request: NextRequest) {
       req: request,
       secret,
     });
+    // Cashiers are confined to the POS: every other page or API is closed to them.
+    if (token?.role === "cashier") {
+      const allowed = ["/pos", "/api/pos", "/sign-in", "/unauthorized"];
+      const ok = allowed.some((p) => path === p || path.startsWith(`${p}/`));
+      if (!ok) {
+        if (path.startsWith("/api/")) {
+          return NextResponse.json({ success: false }, { status: 403 });
+        }
+        return NextResponse.redirect(new URL("/pos", request.url));
+      }
+    }
     if (
       token?.role === "branch_user" &&
       (path.startsWith("/users") || path.startsWith("/branches"))

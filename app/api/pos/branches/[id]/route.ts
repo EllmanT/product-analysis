@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import Branch from "@/database/branch.model";
 import { requireAdmin } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
+import { assignBranchDevice, DeviceConfigError } from "@/lib/services/fiscalDevice.service";
 import { getPosBranch } from "@/lib/services/posBranch.service";
 
 const text = (max: number) => z.string().trim().max(max).optional();
@@ -19,6 +20,8 @@ const PatchSchema = z
     defaultCurrency: z.enum(["USD", "ZWG"]).optional(),
     /** null = no limit: the till keeps selling offline for as long as it needs to. */
     offlineLimitHours: z.number().min(0.25).max(24 * 30).nullable().optional(),
+    /** FiscalDevice id for a branch with its own device; null = use the central device. */
+    fiscalDeviceId: z.string().regex(/^[a-f0-9]{24}$/, "Invalid device").nullable().optional(),
     receipt: z
       .object({
         companyName: text(120),
@@ -55,11 +58,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     await dbConnect();
-    const { receipt, ...rest } = parsed.data;
+    const { receipt, fiscalDeviceId, ...rest } = parsed.data;
     const $set: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(rest)) $set[`pos.${k}`] = v;
     for (const [k, v] of Object.entries(receipt ?? {})) $set[`pos.receipt.${k}`] = v;
-    if (Object.keys($set).length === 0) {
+    if (Object.keys($set).length === 0 && fiscalDeviceId === undefined) {
       return NextResponse.json({ success: false, message: "Nothing to change" }, { status: 400 });
     }
 
@@ -72,8 +75,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     try {
-      await Branch.updateOne({ _id: id }, { $set });
+      if (Object.keys($set).length) await Branch.updateOne({ _id: id }, { $set });
+      if (fiscalDeviceId !== undefined) await assignBranchDevice(id, fiscalDeviceId);
     } catch (e) {
+      if (e instanceof DeviceConfigError) {
+        return NextResponse.json({ success: false, message: e.message }, { status: 422 });
+      }
       if ((e as { code?: number }).code === 11000) {
         return NextResponse.json({ success: false, message: "Another branch already uses this prefix" }, { status: 409 });
       }

@@ -5,20 +5,39 @@ import { requireAdmin } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import ZReport from "@/database/zReport.model";
 
-export async function GET() {
+/**
+ * Every closed fiscal day. `?deviceKey=central|<FiscalDevice id>` shows one device. Each device has its
+ * own fiscal day, so totals are also given per device; the overall sum is only meaningful as a company total.
+ */
+export async function GET(request: Request) {
   try {
     const session = await auth();
     const denied = requireAdmin(session);
     if (denied) return denied;
 
     await dbConnect();
-    const reports = await ZReport.find().sort({ closedAt: -1 }).lean();
+    const deviceKey = new URL(request.url).searchParams.get("deviceKey");
+    // Reports written before multi-device support have no key and belong to the central device.
+    const filter =
+      deviceKey === "central"
+        ? { $or: [{ fiscalDeviceKey: "central" }, { fiscalDeviceKey: { $exists: false } }] }
+        : deviceKey
+          ? { fiscalDeviceKey: deviceKey }
+          : {};
+    const reports = await ZReport.find(filter).sort({ closedAt: -1 }).lean();
+    const byDevice = new Map<string, { deviceKey: string; deviceName: string; reportCount: number; sumUsd: number; sumZwg: number }>();
 
     let grandUsd = 0;
     let grandZwg = 0;
     let countUsd = 0;
     let countZwg = 0;
     for (const r of reports) {
+      const key = r.fiscalDeviceKey || "central";
+      const d = byDevice.get(key) ?? { deviceKey: key, deviceName: r.deviceName || (key === "central" ? "Central device" : key), reportCount: 0, sumUsd: 0, sumZwg: 0 };
+      d.reportCount++;
+      d.sumUsd += r.totalSalesUsd ?? 0;
+      d.sumZwg += r.totalSalesZwg ?? 0;
+      byDevice.set(key, d);
       if (r.totalSalesUsd != null) {
         grandUsd += r.totalSalesUsd;
         countUsd++;
@@ -37,10 +56,14 @@ export async function GET() {
           source: r.source,
           closedAt: r.closedAt,
           fiscalDayNo: r.fiscalDayNo,
+          fiscalDeviceKey: r.fiscalDeviceKey || "central",
+          deviceName: r.deviceName || (r.fiscalDeviceKey && r.fiscalDeviceKey !== "central" ? r.fiscalDeviceKey : "Central device"),
+          deviceId: r.deviceId ?? null,
           totalSalesUsd: r.totalSalesUsd,
           totalSalesZwg: r.totalSalesZwg,
           createdAt: r.createdAt,
         })),
+        totalsByDevice: [...byDevice.values()],
         totals: {
           sumUsd: grandUsd,
           sumZwg: grandZwg,

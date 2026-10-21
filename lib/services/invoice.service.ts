@@ -8,6 +8,7 @@ import { generateInvoiceNumber } from "@/lib/utils/invoiceNumber";
 import { computeLineTotals, computeInvoiceTotals } from "@/lib/utils/invoiceCalculations";
 import type { IZReportDoc } from "@/database/zReport.model";
 import { closeFiscalDayWithReport, openFiscalDayOnly } from "@/lib/services/fiscalDayOps.service";
+import { resolveDeviceByKey } from "@/lib/services/fiscalDevice.service";
 import {
   submitReceipt,
   checkFiscalDayStatus,
@@ -171,14 +172,14 @@ export async function fiscalizeInvoice(invoiceId: string) {
   return invoice;
 }
 
-export async function getFiscalDayStatus() {
-  return checkFiscalDayStatus();
+export async function getFiscalDayStatus(deviceKey?: string) {
+  return checkFiscalDayStatus(await resolveDeviceByKey(deviceKey));
 }
 
-export async function openFiscalDay() {
-  await openFiscalDayOnly();
+export async function openFiscalDay(deviceKey?: string) {
+  await openFiscalDayOnly(deviceKey);
 }
 
-export async function closeFiscalDay(opts: { force?: boolean } = {}): Promise<IZReportDoc> {
+export async function closeFiscalDay(opts: { force?: boolean; deviceKey?: string } = {}): Promise<IZReportDoc> {
   return closeFiscalDayWithReport("manual", opts);
 }

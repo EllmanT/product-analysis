@@ -3,20 +3,24 @@ import { Types } from "mongoose";
 import Branch, { type IBranchPos } from "@/database/branch.model";
 import dbConnect from "@/lib/mongoose";
 
+/** The IBranchPos shape sent to clients: the device reference is a plain string. */
+export type PosBranchPosDto = Omit<IBranchPos, "fiscalDeviceId"> & { fiscalDeviceId: string | null };
+
 export interface PosBranchDto {
   id: string;
   name: string;
   location: string;
-  pos: IBranchPos;
+  pos: PosBranchPosDto;
 }
 
-const DEFAULT_POS: IBranchPos = {
+const DEFAULT_POS: PosBranchPosDto = {
   enabled: false,
   taxPercent: 15.5,
   taxCode: "A",
   taxInclusive: true,
   defaultCurrency: "USD",
   offlineLimitHours: 5,
+  fiscalDeviceId: null,
   receipt: {},
 };
 
@@ -36,6 +40,7 @@ function toDto(b: BranchLean): PosBranchDto {
       ...DEFAULT_POS,
       ...(b.pos ?? {}),
       receipt: { ...(b.pos?.receipt ?? {}) },
+      fiscalDeviceId: b.pos?.fiscalDeviceId ? String(b.pos.fiscalDeviceId) : null,
       // Mongoose stores "no limit" as null; keep that distinct from "not set".
       offlineLimitHours: b.pos && "offlineLimitHours" in b.pos ? (b.pos.offlineLimitHours ?? null) : 5,
     },

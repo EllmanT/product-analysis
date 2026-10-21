@@ -13,6 +13,7 @@ const patchSchema = z.object({
   zimraUseProductionUrl: z.boolean().optional(),
   deviceId: z.string().nullable().optional(),
   deviceSerialNumber: z.string().nullable().optional(),
+  autoRenewCertificate: z.boolean().optional(),
   autoScheduleEnabled: z.boolean().optional(),
   autoCloseEnabled: z.boolean().optional(),
   autoOpenEnabled: z.boolean().optional(),

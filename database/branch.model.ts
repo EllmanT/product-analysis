@@ -28,6 +28,11 @@ export interface IBranchPos {
   defaultCurrency: "USD" | "ZWG";
   /** Hours a till may keep selling offline. null/undefined = no limit. */
   offlineLimitHours?: number | null;
+  /**
+   * Own ZIMRA virtual device for this branch (FiscalDevice). Absent = the central device that
+   * every other branch shares.
+   */
+  fiscalDeviceId?: Types.ObjectId | null;
   receipt: IBranchReceiptProfile;
 }
 
@@ -56,6 +61,7 @@ const BranchSchema = new Schema<IBranch>(
       taxInclusive: { type: Boolean, default: true },
       defaultCurrency: { type: String, enum: ["USD", "ZWG"], default: "USD" },
       offlineLimitHours: { type: Number, default: 5 },
+      fiscalDeviceId: { type: Schema.Types.ObjectId, ref: "FiscalDevice", default: null },
       receipt: {
         companyName: String,
         branchName: String,

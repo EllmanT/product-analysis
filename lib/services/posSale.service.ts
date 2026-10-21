@@ -13,7 +13,16 @@ import PosSale, {
   type PosPaymentMethod,
 } from "@/database/posSale.model";
 import logger from "@/lib/logger";
+import { checkFiscalMatchesSale, type MatchableSale } from "@/lib/pos/fiscalMatch";
 import dbConnect from "@/lib/mongoose";
+import {
+  CENTRAL_KEY,
+  DeviceConfigError,
+  deviceKeyForBranch,
+  resolveDeviceByKey,
+  saleDeviceFilter,
+  type ResolvedDevice,
+} from "@/lib/services/fiscalDevice.service";
 import {
   allocateNumber,
   formatCreditNumber,
@@ -58,29 +67,33 @@ export class PosError extends Error {
 // bursts inside the 30 s request timeout and stop us hammering a dead device.
 // ---------------------------------------------------------------------------
 
-let inFlight = 0;
-const waiters: (() => void)[] = [];
+// Both are kept per fiscal device: one branch device being slow or down must not hold up, or turn
+// into provisional slips, the sales of branches that use a different device.
 
-async function withDeviceSlot<T>(fn: () => Promise<T>): Promise<T> {
-  if (inFlight >= MAX_IN_FLIGHT) {
-    await new Promise<void>((resolve) => waiters.push(resolve));
+const slots = new Map<string, { inFlight: number; waiters: (() => void)[] }>();
+
+async function withDeviceSlot<T>(deviceKey: string, fn: () => Promise<T>): Promise<T> {
+  let s = slots.get(deviceKey);
+  if (!s) slots.set(deviceKey, (s = { inFlight: 0, waiters: [] }));
+  if (s.inFlight >= MAX_IN_FLIGHT) {
+    await new Promise<void>((resolve) => s.waiters.push(resolve));
   }
-  inFlight++;
+  s.inFlight++;
   try {
     return await fn();
   } finally {
-    inFlight--;
-    waiters.shift()?.();
+    s.inFlight--;
+    s.waiters.shift()?.();
   }
 }
 
-let deviceDownUntil = 0;
-const breakerOpen = () => Date.now() < deviceDownUntil;
-const openBreaker = (ms: number) => {
-  deviceDownUntil = Math.max(deviceDownUntil, Date.now() + ms);
+const deviceDownUntil = new Map<string, number>();
+const breakerOpen = (deviceKey: string) => Date.now() < (deviceDownUntil.get(deviceKey) ?? 0);
+const openBreaker = (deviceKey: string, ms: number) => {
+  deviceDownUntil.set(deviceKey, Math.max(deviceDownUntil.get(deviceKey) ?? 0, Date.now() + ms));
 };
-const closeBreaker = () => {
-  deviceDownUntil = 0;
+const closeBreaker = (deviceKey: string) => {
+  deviceDownUntil.delete(deviceKey);
 };
 
 export function todayInTz(now: Date = new Date()): string {
@@ -222,6 +235,8 @@ export async function createPosSale(input: CreatePosSaleInput): Promise<IPosSale
   );
 
   const doc: Partial<IPosSale> = {
+    // The branch's device at this moment, fixed for the life of the sale.
+    fiscalDeviceKey: deviceKeyForBranch(branch),
     branchId: new Types.ObjectId(input.branchId),
     cashierId: new Types.ObjectId(input.cashierId),
     idempotencyKey: input.idempotencyKey,
@@ -304,7 +319,20 @@ async function dropFiscalNumber(sale: IPosSaleDoc): Promise<void> {
   if (n != null) await releaseNumber(sale.branchId, seriesFor(sale.currency, false, sale.kind === "CREDIT_NOTE"), n);
 }
 
+class FiscalMismatchError extends Error {}
+
+/**
+ * The only place fiscal data is attached to a sale. It refuses a device receipt that does not
+ * match the sale, so a QR for somebody else's invoice can never be stored or printed.
+ */
 async function markFiscalised(id: Types.ObjectId, fiscal: NonNullable<IPosSale["fiscal"]>) {
+  const sale = await PosSale.findById(id).select("invoiceNumber currency totalAmount lines kind").lean<MatchableSale>();
+  if (!sale) return null;
+  const match = checkFiscalMatchesSale(sale, fiscal);
+  if (!match.ok) {
+    logger.error({ saleId: String(id), invoiceNumber: sale.invoiceNumber, reason: match.reason }, "Device receipt does not match sale");
+    throw new FiscalMismatchError(match.reason);
+  }
   return PosSale.findByIdAndUpdate(
     id,
     {
@@ -313,6 +341,16 @@ async function markFiscalised(id: Types.ObjectId, fiscal: NonNullable<IPosSale["
     },
     { new: true }
   );
+}
+
+/**
+ * The device already holds this number for a different receipt. The number is spent for good:
+ * it is not released back to the counter, and the sale gets a fresh one.
+ */
+async function burnNumber(sale: IPosSaleDoc, reason: string): Promise<void> {
+  logger.warn({ saleId: String(sale._id), invoiceNumber: sale.invoiceNumber, reason }, "Invoice number belongs to another device receipt; skipping it");
+  await PosSale.updateOne({ _id: sale._id }, { $unset: { invoiceNumber: "" } });
+  sale.invoiceNumber = undefined;
 }
 
 async function settle(
@@ -355,8 +393,11 @@ export async function fiscalisePosSale(saleId: string, opts: FiscaliseOptions): 
     return (await PosSale.findById(saleId))!;
   }
 
+  // The sale's own device, fixed when it was created. Older sales have none and used the central device.
+  const deviceKey = seen.fiscalDeviceKey || CENTRAL_KEY;
+
   // Fast path while the device is known to be down: hand the till a provisional slip at once.
-  if (breakerOpen() && !opts.force && seen.status === "PENDING") {
+  if (breakerOpen(deviceKey) && !opts.force && seen.status === "PENDING") {
     return settle(seen, prefix, "UNFISCALISED", "Fiscal device unavailable; queued for retry", false);
   }
 
@@ -375,28 +416,32 @@ export async function fiscalisePosSale(saleId: string, opts: FiscaliseOptions): 
   if (!claimed) return (await PosSale.findById(saleId))!; // another worker has it
 
   try {
+    let device: ResolvedDevice;
+    try {
+      device = await resolveDeviceByKey(deviceKey);
+    } catch (e) {
+      // The branch's device is missing, switched off or incomplete. Never fall back to another device.
+      if (!(e instanceof DeviceConfigError)) throw e;
+      return settle(claimed, prefix, "UNFISCALISED", `Fiscal device not available: ${e.message}`, false);
+    }
+
     // A sale that might already be on the device is checked first, never blindly resubmitted.
     if (claimed.invoiceNumber && (seen.status === "UNKNOWN" || seen.status === "UNFISCALISED")) {
       try {
-        const found = await getDeviceInvoice(claimed.invoiceNumber);
+        const found = await getDeviceInvoice(claimed.invoiceNumber, device);
         if (found.found) {
-          closeBreaker();
-          return (await markFiscalised(claimed._id, found.fiscal))!;
+          const m = checkFiscalMatchesSale(claimed, found.fiscal);
+          if (m.ok) {
+            closeBreaker(deviceKey);
+            return (await markFiscalised(claimed._id, found.fiscal))!;
+          }
+          await burnNumber(claimed, m.reason); // someone else's receipt: take a new number below
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        openBreaker(BREAKER_UNKNOWN_MS);
+        openBreaker(deviceKey, BREAKER_UNKNOWN_MS);
         return settle(claimed, prefix, "UNKNOWN", `Could not confirm with device: ${msg}`, false);
       }
-    }
-
-    let invoiceNumber = claimed.invoiceNumber;
-    if (!invoiceNumber) {
-      const credit = claimed.kind === "CREDIT_NOTE";
-      const n = await allocateNumber(claimed.branchId, seriesFor(claimed.currency, false, credit));
-      invoiceNumber = credit ? formatCreditNumber(prefix, claimed.currency, n) : formatInvoiceNumber(prefix, claimed.currency, n, false);
-      await PosSale.updateOne({ _id: claimed._id }, { $set: { invoiceNumber } });
-      claimed.invoiceNumber = invoiceNumber;
     }
 
     const notes = [claimed.provisionalNumber ? `Ref provisional ${claimed.provisionalNumber}` : "", claimed.notes ?? ""]
@@ -413,51 +458,78 @@ export async function fiscalisePosSale(saleId: string, opts: FiscaliseOptions): 
       creditNote = { refDeviceId: f.deviceId, refReceiptGlobalNo: f.receiptGlobalNo, refFiscalDay: String(f.fiscalDayNo) };
     }
 
-    const outcome: PosDeviceOutcome = await withDeviceSlot(() =>
-      submitPosReceipt({
-        creditNote,
-        invoiceNumber,
-        currency: claimed.currency,
-        totalAmount: claimed.totalAmount,
-        totalVat: claimed.totalVat,
-        taxInclusive: claimed.taxInclusive,
-        paymentMethod: claimed.paymentMethod,
-        notes,
-        buyer: claimed.buyer ?? undefined,
-        lines: claimed.lines,
-      })
-    );
+    for (let attempt = 0; attempt < 6; attempt++) {
+      let invoiceNumber = claimed.invoiceNumber;
+      if (!invoiceNumber) {
+        const credit = claimed.kind === "CREDIT_NOTE";
+        const n = await allocateNumber(claimed.branchId, seriesFor(claimed.currency, false, credit));
+        invoiceNumber = credit ? formatCreditNumber(prefix, claimed.currency, n) : formatInvoiceNumber(prefix, claimed.currency, n, false);
+        await PosSale.updateOne({ _id: claimed._id }, { $set: { invoiceNumber } });
+        claimed.invoiceNumber = invoiceNumber;
+      }
 
-    switch (outcome.kind) {
-      case "ok":
-        closeBreaker();
-        return (await markFiscalised(claimed._id, outcome.fiscal))!;
+      const outcome: PosDeviceOutcome = await withDeviceSlot(deviceKey, () =>
+        submitPosReceipt(
+          {
+            creditNote,
+            invoiceNumber,
+            currency: claimed.currency,
+            totalAmount: claimed.totalAmount,
+            totalVat: claimed.totalVat,
+            taxInclusive: claimed.taxInclusive,
+            paymentMethod: claimed.paymentMethod,
+            notes,
+            buyer: claimed.buyer ?? undefined,
+            lines: claimed.lines,
+          },
+          device
+        )
+      );
 
-      case "rejected":
-        if (outcome.reason === "duplicate") {
-          // The device already holds this number (an earlier attempt landed). Recover its QR.
+      switch (outcome.kind) {
+        case "ok":
+          closeBreaker(deviceKey);
           try {
-            const found = await getDeviceInvoice(invoiceNumber);
-            if (found.found) return (await markFiscalised(claimed._id, found.fiscal))!;
-          } catch {
-            /* fall through to UNKNOWN */
+            return (await markFiscalised(claimed._id, outcome.fiscal))!;
+          } catch (e) {
+            if (!(e instanceof FiscalMismatchError)) throw e;
+            // The device signed something that is not this sale: keep the QR off the slip, flag it.
+            return settle(claimed, prefix, "FAILED", `Fiscal receipt mismatch: ${e.message}. Do not hand out a slip; contact support.`, false);
           }
+
+        case "rejected":
+          if (outcome.reason === "duplicate") {
+            // The device already holds this number: either an earlier attempt of THIS sale landed,
+            // or the number belongs to an older receipt. Only the first may reuse the device's QR.
+            try {
+              const found = await getDeviceInvoice(invoiceNumber, device);
+              if (found.found) {
+                const m = checkFiscalMatchesSale(claimed, found.fiscal);
+                if (m.ok) return (await markFiscalised(claimed._id, found.fiscal))!;
+                await burnNumber(claimed, m.reason);
+                continue; // submit again under a fresh number
+              }
+            } catch {
+              /* fall through to UNKNOWN */
+            }
+            return settle(claimed, prefix, "UNKNOWN", outcome.message, false);
+          }
+          if (outcome.reason === "validation") {
+            return settle(claimed, prefix, "FAILED", outcome.message, true);
+          }
+          // day closed, or a refusal we do not recognise: never lose the sale
+          return settle(claimed, prefix, "UNFISCALISED", outcome.message, true);
+
+        case "not_sent":
+          openBreaker(deviceKey, BREAKER_NOT_SENT_MS);
+          return settle(claimed, prefix, "UNFISCALISED", outcome.message, true);
+
+        case "unknown":
+          openBreaker(deviceKey, BREAKER_UNKNOWN_MS);
           return settle(claimed, prefix, "UNKNOWN", outcome.message, false);
-        }
-        if (outcome.reason === "validation") {
-          return settle(claimed, prefix, "FAILED", outcome.message, true);
-        }
-        // day closed, or a refusal we do not recognise: never lose the sale
-        return settle(claimed, prefix, "UNFISCALISED", outcome.message, true);
-
-      case "not_sent":
-        openBreaker(BREAKER_NOT_SENT_MS);
-        return settle(claimed, prefix, "UNFISCALISED", outcome.message, true);
-
-      case "unknown":
-        openBreaker(BREAKER_UNKNOWN_MS);
-        return settle(claimed, prefix, "UNKNOWN", outcome.message, false);
+      }
     }
+    return settle(claimed, prefix, "UNFISCALISED", "Device keeps returning used invoice numbers; will retry", false);
   } catch (e) {
     // Unexpected local failure after the claim: keep the sale recoverable.
     const msg = e instanceof Error ? e.message : String(e);
@@ -471,57 +543,77 @@ export async function fiscalisePosSale(saleId: string, opts: FiscaliseOptions): 
 // Background work (called by the cron route)
 // ---------------------------------------------------------------------------
 
+export interface PosQueueDeviceResult {
+  key: string;
+  name: string;
+  reachable: boolean;
+  dayOpen: boolean | null;
+  attempted: number;
+  fiscalised: number;
+  stillPending: number;
+  message?: string;
+}
+
 export interface PosQueueRunResult {
+  /** True only when every device that was checked answered. */
   deviceReachable: boolean;
+  /** Day state of the central device (or of the one device checked). */
   dayOpen: boolean | null;
   reclaimedStale: number;
   attempted: number;
   fiscalised: number;
   stillPending: number;
   needApproval: number;
+  devices: PosQueueDeviceResult[];
 }
 
-/**
- * 1. SUBMITTING claims that died become UNKNOWN.
- * 2. Older-day sales are flagged for admin approval (never auto-fiscalised).
- * 3. If the device is reachable and the day is open: reconcile UNKNOWN sales (GetInvoice first)
- *    and retry UNFISCALISED sales from today, with exponential backoff.
- */
-export async function runPosQueue(limit = 25): Promise<PosQueueRunResult> {
-  await dbConnect();
+const OPEN_STATES = ["UNFISCALISED", "UNKNOWN"];
 
-  const stale = await PosSale.updateMany(
-    { status: "SUBMITTING", submittingAt: { $lt: new Date(Date.now() - STALE_SUBMITTING_MS) } },
-    { $set: { status: "UNKNOWN", lastError: "Request interrupted; awaiting reconciliation" }, $unset: { submittingAt: "" } }
-  );
+/** Retry one device's sales. A dead device only affects its own branches. */
+async function runQueueForDevice(deviceKey: string, limit: number, today: string): Promise<PosQueueDeviceResult> {
+  const filter = saleDeviceFilter(deviceKey);
+  const pendingCount = () => PosSale.countDocuments({ ...filter, status: { $in: OPEN_STATES } });
 
-  const today = todayInTz();
-  await PosSale.updateMany(
-    { status: { $in: ["UNFISCALISED", "UNKNOWN"] }, soldDate: { $lt: today }, needsApproval: false },
-    { $set: { needsApproval: true } }
-  );
-  const needApproval = await PosSale.countDocuments({ status: { $in: ["UNFISCALISED", "UNKNOWN"] }, needsApproval: true });
+  let device: ResolvedDevice;
+  try {
+    device = await resolveDeviceByKey(deviceKey);
+  } catch (e) {
+    return {
+      key: deviceKey,
+      name: deviceKey,
+      reachable: false,
+      dayOpen: null,
+      attempted: 0,
+      fiscalised: 0,
+      stillPending: await pendingCount(),
+      message: e instanceof Error ? e.message : String(e),
+    };
+  }
 
-  const status = await getPosDeviceStatus();
-  const result: PosQueueRunResult = {
-    deviceReachable: status.reachable,
-    dayOpen: status.dayOpen,
-    reclaimedStale: stale.modifiedCount,
+  const out: PosQueueDeviceResult = {
+    key: deviceKey,
+    name: device.name,
+    reachable: false,
+    dayOpen: null,
     attempted: 0,
     fiscalised: 0,
     stillPending: 0,
-    needApproval,
   };
 
+  const status = await getPosDeviceStatus(device);
+  out.reachable = status.reachable;
+  out.dayOpen = status.dayOpen;
   if (!status.reachable) {
-    openBreaker(BREAKER_NOT_SENT_MS);
-    result.stillPending = await PosSale.countDocuments({ status: { $in: ["UNFISCALISED", "UNKNOWN"] } });
-    return result;
+    openBreaker(deviceKey, BREAKER_NOT_SENT_MS);
+    out.message = status.message;
+    out.stillPending = await pendingCount();
+    return out;
   }
-  closeBreaker();
+  closeBreaker(deviceKey);
 
   // UNKNOWN sales can be reconciled even when the day is closed (GetInvoice only reads).
   const candidates = await PosSale.find({
+    ...filter,
     status: { $in: status.dayOpen ? ["UNKNOWN", "UNFISCALISED"] : ["UNKNOWN"] },
     soldDate: today,
     needsApproval: false,
@@ -531,17 +623,80 @@ export async function runPosQueue(limit = 25): Promise<PosQueueRunResult> {
 
   const now = Date.now();
   for (const sale of candidates) {
-    if (result.attempted >= limit) break;
+    if (out.attempted >= limit) break;
     const wait = Math.min(RETRY_BASE_MS * 2 ** Math.max(0, sale.attempts - 1), RETRY_MAX_MS);
     const last = (sale as unknown as { updatedAt?: Date }).updatedAt?.getTime() ?? 0;
     if (now - last < wait) continue;
-    result.attempted++;
+    out.attempted++;
     const after = await fiscalisePosSale(String(sale._id), { reason: "auto-retry", force: true });
-    if (after.status === "FISCALISED") result.fiscalised++;
+    if (after.status === "FISCALISED") out.fiscalised++;
   }
 
-  result.stillPending = await PosSale.countDocuments({ status: { $in: ["UNFISCALISED", "UNKNOWN"] } });
-  return result;
+  out.stillPending = await pendingCount();
+  return out;
+}
+
+/**
+ * 1. SUBMITTING claims that died become UNKNOWN.
+ * 2. Older-day sales are flagged for admin approval (never auto-fiscalised).
+ * 3. For each fiscal device: if it is reachable and the day is open, reconcile UNKNOWN sales
+ *    (GetInvoice first) and retry UNFISCALISED sales from today, with exponential backoff.
+ *
+ * Without `deviceKey` every device is processed: the central one always, the others when they
+ * have sales waiting. Devices run independently, so one being down never blocks another.
+ */
+export async function runPosQueue(limit = 25, opts: { deviceKey?: string } = {}): Promise<PosQueueRunResult> {
+  await dbConnect();
+
+  const stale = await PosSale.updateMany(
+    { status: "SUBMITTING", submittingAt: { $lt: new Date(Date.now() - STALE_SUBMITTING_MS) } },
+    { $set: { status: "UNKNOWN", lastError: "Request interrupted; awaiting reconciliation" }, $unset: { submittingAt: "" } }
+  );
+
+  const today = todayInTz();
+  await PosSale.updateMany(
+    { status: { $in: OPEN_STATES }, soldDate: { $lt: today }, needsApproval: false },
+    { $set: { needsApproval: true } }
+  );
+  const scope = opts.deviceKey ? saleDeviceFilter(opts.deviceKey) : {};
+  const needApproval = await PosSale.countDocuments({ ...scope, status: { $in: OPEN_STATES }, needsApproval: true });
+
+  let keys: string[];
+  if (opts.deviceKey) {
+    keys = [opts.deviceKey];
+  } else {
+    const others = (
+      await PosSale.distinct("fiscalDeviceKey", { status: { $in: OPEN_STATES }, soldDate: today, needsApproval: false })
+    ).filter((k): k is string => typeof k === "string" && k !== CENTRAL_KEY);
+    keys = [CENTRAL_KEY, ...others];
+  }
+
+  const settled = await Promise.allSettled(keys.map((k) => runQueueForDevice(k, limit, today)));
+  const devices = settled.map((r, i): PosQueueDeviceResult =>
+    r.status === "fulfilled"
+      ? r.value
+      : {
+          key: keys[i],
+          name: keys[i],
+          reachable: false,
+          dayOpen: null,
+          attempted: 0,
+          fiscalised: 0,
+          stillPending: 0,
+          message: r.reason instanceof Error ? r.reason.message : String(r.reason),
+        }
+  );
+
+  return {
+    deviceReachable: devices.every((d) => d.reachable),
+    dayOpen: (devices.find((d) => d.key === CENTRAL_KEY) ?? devices[0])?.dayOpen ?? null,
+    reclaimedStale: stale.modifiedCount,
+    attempted: devices.reduce((n, d) => n + d.attempted, 0),
+    fiscalised: devices.reduce((n, d) => n + d.fiscalised, 0),
+    stillPending: devices.reduce((n, d) => n + d.stillPending, 0),
+    needApproval,
+    devices,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -561,11 +716,12 @@ export async function voidPosSale(saleId: string): Promise<IPosSaleDoc> {
     // It may have reached the device. Check before cancelling.
     let found: Awaited<ReturnType<typeof getDeviceInvoice>>;
     try {
-      found = await getDeviceInvoice(sale.invoiceNumber);
+      // Ask the device that numbered it, not whichever device the branch uses now.
+      found = await getDeviceInvoice(sale.invoiceNumber, await resolveDeviceByKey(sale.fiscalDeviceKey));
     } catch {
       throw new PosError("Cannot confirm with the fiscal device right now; try again later", 503, "DEVICE_UNREACHABLE");
     }
-    if (found.found) {
+    if (found.found && checkFiscalMatchesSale(sale, found.fiscal).ok) {
       await markFiscalised(sale._id, found.fiscal);
       throw new PosError("This sale was already fiscalised on the device", 409, "FISCALISED");
     }
@@ -619,6 +775,8 @@ export async function issueCreditNote(originalId: string, actorUserId: string, r
       originalSaleId: original._id,
       originalNumber: original.invoiceNumber,
       creditReason: reason?.trim() || undefined,
+      // A credit note must reach the device that signed the original receipt.
+      fiscalDeviceKey: original.fiscalDeviceKey || CENTRAL_KEY,
       branchId: original.branchId,
       cashierId: new Types.ObjectId(actorUserId),
       idempotencyKey: `cn:${cnId}`,

@@ -8,6 +8,8 @@
  * Every minute it calls, with `Authorization: Bearer $CRON_SECRET`:
  *   GET /api/cron/pos-queue        retry unfiscalised sales (same fiscal day), reconcile unknown outcomes
  *   GET /api/cron/fiscal-schedule  automatic open/close of the shared fiscal day
+ * and once an hour:
+ *   GET /api/cron/cert-expiry      emails the administrators as the ZIMRA device certificate nears expiry
  * Run it under a process manager (pm2, a Windows service, systemd) so it restarts with the machine.
  */
 const args = process.argv.slice(2);
@@ -22,10 +24,14 @@ if (!secret) {
 }
 
 const jobs = ["/api/cron/pos-queue", "/api/cron/fiscal-schedule"];
+const HOURLY_JOB = "/api/cron/cert-expiry";
+let lastHourly = 0;
 
 async function tick() {
   const at = new Date().toISOString();
-  for (const path of jobs) {
+  const runHourly = Date.now() - lastHourly >= 3_600_000;
+  if (runHourly) lastHourly = Date.now();
+  for (const path of runHourly ? [...jobs, HOURLY_JOB] : jobs) {
     try {
       const res = await fetch(base + path, {
         headers: { Authorization: `Bearer ${secret}` },

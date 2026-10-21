@@ -1,0 +1,30 @@
+import { NextResponse } from "next/server";
+
+import { auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth/role";
+import { handleCertificateUpload } from "@/lib/fiscalCertUpload";
+import {
+  clearDevicePem,
+  clearDevicePfx,
+  getFiscalDeviceSafe,
+  setDevicePem,
+  setDevicePfx,
+} from "@/lib/services/fiscalDevice.service";
+
+/** Certificate for one branch device. Same modes and validation as the central endpoint. */
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  // Check the caller before revealing whether a device id exists.
+  const denied = requireAdmin(await auth());
+  if (denied) return denied;
+  const { id } = await params;
+  if (!(await getFiscalDeviceSafe(id))) {
+    return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
+  }
+  return handleCertificateUpload(request, {
+    setPem: (c, k, a) => setDevicePem(id, c, k, a),
+    setPfx: (b, p, a) => setDevicePfx(id, b, p, a),
+    clearPem: (a) => clearDevicePem(id, a),
+    clearPfx: (a) => clearDevicePfx(id, a),
+    safe: () => getFiscalDeviceSafe(id),
+  });
+}

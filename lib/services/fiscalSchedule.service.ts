@@ -1,10 +1,18 @@
 import { formatInTimeZone } from "date-fns-tz";
 
 import {
+  CENTRAL_KEY,
+  listScheduledDevices,
+  resolveDeviceByKey,
+  setDeviceLastAutoCloseDate,
+  setDeviceLastAutoOpenDate,
+} from "@/lib/services/fiscalDevice.service";
+import {
   getFiscalSettingsDoc,
   setLastAutoCloseDate,
   setLastAutoOpenDate,
 } from "@/lib/services/fiscalSettings.service";
+import { sendFiscalAlertOnce } from "@/lib/services/fiscalAlerts.service";
 import { checkFiscalDayStatus } from "@/lib/services/zimraFiscal.service";
 import { closeFiscalDayWithReport, openFiscalDayOnly, PendingPosSalesError } from "@/lib/services/fiscalDayOps.service";
 
@@ -19,37 +27,65 @@ function toMinutes(hm: string): number {
 
 /** How long after the configured close time the day may stay open while POS sales are being fiscalised. */
 const CLOSE_DEFER_MAX_MIN = 120;
+/** After the deferral window the close is forced; if ZIMRA still refuses it, keep retrying this much longer. */
+const FORCED_RETRY_MAX_MIN = 180;
+/** Tell the administrators when a close has been blocked this long. */
+const ALERT_AFTER_MIN = 30;
 
 function weekdayMatches(isoDow: number, weekdays: number[]): boolean {
   if (!weekdays.length) return false;
   return weekdays.includes(isoDow);
 }
 
-/**
- * Intended to be triggered every minute (e.g. cron + CRON_SECRET). Mirrors Laravel fiscal:process-schedules.
- */
-export async function runFiscalScheduleTick(): Promise<{
+/** The schedule fields and run markers shared by the central settings and every FiscalDevice. */
+interface ScheduleState {
+  autoScheduleEnabled: boolean;
+  autoCloseEnabled: boolean;
+  autoOpenEnabled: boolean;
+  closeTime?: string;
+  openTime?: string;
+  timezone?: string;
+  closeWeekdays?: number[];
+  openWeekdays?: number[];
+  lastAutoCloseDate?: string;
+  lastAutoOpenDate?: string;
+}
+
+interface ScheduleTarget {
+  key: string;
+  name: string;
+  load: () => Promise<ScheduleState>;
+  markClosed: (date: string) => Promise<void>;
+  markOpened: (date: string) => Promise<void>;
+}
+
+export interface ScheduleTickResult {
   closed: boolean;
   opened: boolean;
   messages: string[];
-}> {
+}
+
+/** Open/close one device's fiscal day when its own schedule says so. */
+async function runScheduleForTarget(t: ScheduleTarget, now: Date): Promise<ScheduleTickResult> {
   const messages: string[] = [];
-  const doc = await getFiscalSettingsDoc();
+  const doc = await t.load();
 
   if (!doc.autoScheduleEnabled) {
     return { closed: false, opened: false, messages: ["Auto schedule is off"] };
   }
 
+  const central = t.key === CENTRAL_KEY;
+  // The central device keeps its original alert keys; each other device gets its own.
+  const alertKey = (kind: string, today: string) => (central ? `${kind}:${today}` : `${kind}:${t.key}:${today}`);
+  const label = central ? "Fiscal day" : `Fiscal day (${t.name})`;
+
   const tz = doc.timezone?.trim() || "Africa/Harare";
-  const now = new Date();
   const hm = formatInTimeZone(now, tz, "HH:mm");
   const today = formatInTimeZone(now, tz, "yyyy-MM-dd");
   const isoDow = Number(formatInTimeZone(now, tz, "i"));
 
-  const closeWeekdays =
-    doc.closeWeekdays?.length ? doc.closeWeekdays : [1, 2, 3, 4, 5, 6, 7];
-  const openWeekdays =
-    doc.openWeekdays?.length ? doc.openWeekdays : [1, 2, 3, 4, 5, 6, 7];
+  const closeWeekdays = doc.closeWeekdays?.length ? doc.closeWeekdays : [1, 2, 3, 4, 5, 6, 7];
+  const openWeekdays = doc.openWeekdays?.length ? doc.openWeekdays : [1, 2, 3, 4, 5, 6, 7];
 
   let closed = false;
   let opened = false;
@@ -60,33 +96,58 @@ export async function runFiscalScheduleTick(): Promise<{
     weekdayMatches(isoDow, closeWeekdays) &&
     // At the close time, and on every later minute of the deferral window until it succeeds.
     toMinutes(hm) >= toMinutes(doc.closeTime) &&
-    toMinutes(hm) - toMinutes(doc.closeTime) <= CLOSE_DEFER_MAX_MIN &&
+    toMinutes(hm) - toMinutes(doc.closeTime) <= CLOSE_DEFER_MAX_MIN + FORCED_RETRY_MAX_MIN &&
     doc.lastAutoCloseDate !== today
   ) {
     try {
       // After the deferral window the day is closed regardless; unfiscalised sales then wait for admin approval.
       // An admin may already have closed it by hand: record that and stop trying.
-      const status = await checkFiscalDayStatus();
+      const status = await checkFiscalDayStatus(await resolveDeviceByKey(t.key));
       if (!status.isOpen) {
-        await setLastAutoCloseDate(today);
+        await t.markClosed(today);
         messages.push(`Fiscal day was already closed (${today} ${hm} ${tz})`);
       } else {
         const overdue = toMinutes(hm) - toMinutes(doc.closeTime) >= CLOSE_DEFER_MAX_MIN;
-        await closeFiscalDayWithReport("scheduled", { force: overdue });
-        await setLastAutoCloseDate(today);
+        await closeFiscalDayWithReport("scheduled", { force: overdue, deviceKey: t.key });
+        await t.markClosed(today);
         closed = true;
         messages.push(`Scheduled fiscal day close OK (${today} ${hm} ${tz})`);
       }
     } catch (e) {
+      const waited = toMinutes(hm) - toMinutes(doc.closeTime);
+      const detail = e instanceof Error ? e.message : String(e);
+      const blocked = e instanceof PendingPosSalesError;
       messages.push(
-        e instanceof PendingPosSalesError
-          ? `Scheduled close deferred: ${e.message} Retrying every minute for up to ${CLOSE_DEFER_MAX_MIN} minutes.`
-          : `Scheduled close failed: ${e instanceof Error ? e.message : String(e)}`
+        blocked
+          ? `Scheduled close deferred: ${detail} Retrying every minute for up to ${CLOSE_DEFER_MAX_MIN} minutes.`
+          : `Scheduled close failed: ${detail}`
       );
+      if (waited >= CLOSE_DEFER_MAX_MIN && !blocked) {
+        // The forced close itself was refused (for example ZIMRA rejected it): someone must act.
+        await sendFiscalAlertOnce(
+          alertKey("close-forced-failed", today),
+          `${label} could not be closed`,
+          `The scheduled close of ${central ? "the fiscal day" : `the fiscal day on "${t.name}"`} for ${today} was forced ${CLOSE_DEFER_MAX_MIN} minutes after ${doc.closeTime} and still failed.
+
+Reason: ${detail}
+
+The system keeps retrying for another ${FORCED_RETRY_MAX_MIN} minutes. If it does not close, check Admin > Fiscal Day (receipts waiting to upload) and close the day by hand.`
+        );
+      } else if (blocked && waited >= ALERT_AFTER_MIN) {
+        await sendFiscalAlertOnce(
+          alertKey("close-deferred", today),
+          `${label} close is being held back`,
+          `The scheduled close${central ? "" : ` of "${t.name}"`} for ${today} (${doc.closeTime}) has been held back for ${waited} minutes.
+
+${detail}
+
+It keeps retrying every minute and will be forced after ${CLOSE_DEFER_MAX_MIN} minutes. Check Admin > Fiscal Day.`
+        );
+      }
     }
   }
 
-  const docAfter = await getFiscalSettingsDoc();
+  const docAfter = await t.load();
   if (
     docAfter.autoOpenEnabled &&
     docAfter.openTime &&
@@ -95,14 +156,12 @@ export async function runFiscalScheduleTick(): Promise<{
     docAfter.lastAutoOpenDate !== today
   ) {
     try {
-      await openFiscalDayOnly();
-      await setLastAutoOpenDate(today);
+      await openFiscalDayOnly(t.key);
+      await t.markOpened(today);
       opened = true;
       messages.push(`Scheduled fiscal day open OK (${today} ${hm} ${tz})`);
     } catch (e) {
-      messages.push(
-        `Scheduled open failed: ${e instanceof Error ? e.message : String(e)}`
-      );
+      messages.push(`Scheduled open failed: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -110,5 +169,57 @@ export async function runFiscalScheduleTick(): Promise<{
     messages.push("No schedule action for this minute");
   }
 
+  return { closed, opened, messages };
+}
+
+/**
+ * Intended to be triggered every minute (e.g. cron + CRON_SECRET). Mirrors Laravel fiscal:process-schedules.
+ * Runs the central device's schedule and each branch device's own schedule independently: a failing
+ * device is reported in the messages and never stops the others.
+ */
+export async function runFiscalScheduleTick(): Promise<ScheduleTickResult> {
+  const now = new Date();
+
+  const targets: ScheduleTarget[] = [
+    {
+      key: CENTRAL_KEY,
+      name: "Central device",
+      load: () => getFiscalSettingsDoc(),
+      markClosed: setLastAutoCloseDate,
+      markOpened: setLastAutoOpenDate,
+    },
+  ];
+  for (const d of await listScheduledDevices()) {
+    const id = String(d._id);
+    targets.push({
+      key: id,
+      name: d.name,
+      // Re-read each time so the open step sees a close/open marker written moments earlier.
+      load: async () => (await listScheduledDevices()).find((x) => String(x._id) === id) ?? { ...d.toObject(), autoScheduleEnabled: false },
+      markClosed: (date) => setDeviceLastAutoCloseDate(id, date),
+      markOpened: (date) => setDeviceLastAutoOpenDate(id, date),
+    });
+  }
+
+  const settled = await Promise.allSettled(targets.map((t) => runScheduleForTarget(t, now)));
+  const messages: string[] = [];
+  let closed = false;
+  let opened = false;
+  settled.forEach((r, i) => {
+    const prefix = targets[i].key === CENTRAL_KEY ? "" : `[${targets[i].name}] `;
+    if (r.status === "fulfilled") {
+      closed ||= r.value.closed;
+      opened ||= r.value.opened;
+      // Branch devices that are off or idle would add noise every minute.
+      const quiet = targets[i].key !== CENTRAL_KEY;
+      for (const m of r.value.messages) {
+        if (quiet && (m === "Auto schedule is off" || m === "No schedule action for this minute")) continue;
+        messages.push(prefix + m);
+      }
+    } else {
+      messages.push(`${prefix}Schedule failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
+    }
+  });
+  if (!messages.length) messages.push("No schedule action for this minute");
   return { closed, opened, messages };
 }

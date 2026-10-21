@@ -1,4 +1,5 @@
 import type { IPosFiscal, PosPaymentMethod } from "@/database/posSale.model";
+import type { ResolvedDevice } from "@/lib/services/fiscalDevice.service";
 import { getZimraContext } from "@/lib/services/zimraFiscal.service";
 import { getFdmsAuthorizationHeader } from "@/lib/zimraFdmsAuth";
 import { zimraRequest } from "@/lib/zimraHttp";
@@ -119,11 +120,12 @@ async function deviceRequest(
   path: string,
   method: "GET" | "POST",
   body: Record<string, unknown> | undefined,
-  timeoutMs: number
+  timeoutMs: number,
+  device?: ResolvedDevice
 ): Promise<{ statusCode: number; json: Record<string, unknown> | null; raw: string }> {
-  const ctx = await getZimraContext();
+  const ctx = await getZimraContext(device);
   const headers: Record<string, string> = { Accept: "*/*" };
-  const auth = await getFdmsAuthorizationHeader(ctx.base);
+  const auth = await getFdmsAuthorizationHeader(ctx.base, ctx.vd);
   if (auth) headers["Authorization"] = auth;
   let payload: string | undefined;
   if (method === "POST") {
@@ -173,13 +175,13 @@ function isCodeOne(json: Record<string, unknown>): boolean {
   return str(json["Code"] ?? json["code"]) === "1";
 }
 
-export async function submitPosReceipt(input: PosReceiptInput): Promise<PosDeviceOutcome> {
+export async function submitPosReceipt(input: PosReceiptInput, device?: ResolvedDevice): Promise<PosDeviceOutcome> {
   const body = buildPosReceiptPayload(input);
   let res: Awaited<ReturnType<typeof deviceRequest>>;
   try {
     // Credit notes go through SubmitReceiptExt, which carries the reference to the original receipt.
     const path = input.creditNote ? "/api/VirtualDevice/SubmitReceiptExt" : "/api/VirtualDevice/SubmitReceipt";
-    res = await deviceRequest(path, "POST", body, POS_TIMEOUT_MS);
+    res = await deviceRequest(path, "POST", body, POS_TIMEOUT_MS, device);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return { kind: classifyTransportError(e), message };
@@ -211,13 +213,15 @@ export async function submitPosReceipt(input: PosReceiptInput): Promise<PosDevic
  * Throws if the device cannot be reached or answers in an unexpected way.
  */
 export async function getDeviceInvoice(
-  invoiceNumber: string
+  invoiceNumber: string,
+  device?: ResolvedDevice
 ): Promise<{ found: true; fiscal: IPosFiscal } | { found: false }> {
   const res = await deviceRequest(
     `/api/VirtualDevice/GetInvoice/${encodeURIComponent(invoiceNumber)}`,
     "GET",
     undefined,
-    STATUS_TIMEOUT_MS
+    STATUS_TIMEOUT_MS,
+    device
   );
   if (!res.json) throw new Error(`GetInvoice: unreadable reply (HTTP ${res.statusCode})`);
   if (isCodeOne(res.json)) return { found: true, fiscal: mapFiscal(res.json) };
@@ -234,9 +238,9 @@ export interface PosDeviceStatus {
   message?: string;
 }
 
-export async function getPosDeviceStatus(): Promise<PosDeviceStatus> {
+export async function getPosDeviceStatus(device?: ResolvedDevice): Promise<PosDeviceStatus> {
   try {
-    const res = await deviceRequest("/api/VirtualDevice/GetStatus", "GET", undefined, STATUS_TIMEOUT_MS);
+    const res = await deviceRequest("/api/VirtualDevice/GetStatus", "GET", undefined, STATUS_TIMEOUT_MS, device);
     if (!res.json || !isCodeOne(res.json)) {
       return {
         reachable: false,
@@ -265,4 +269,52 @@ export async function getPosDeviceStatus(): Promise<PosDeviceStatus> {
       message: e instanceof Error ? e.message : String(e),
     };
   }
+}
+
+/**
+ * Receipts the device has signed but not yet uploaded to ZIMRA for the open fiscal day.
+ * The device signs on the spot and uploads afterwards, so a receipt can be valid yet "not found"
+ * on ZIMRA's verification page until this reaches 0. Closing the day before then risks a failed close.
+ */
+export async function getDeviceUploadBacklog(device?: ResolvedDevice): Promise<{ ok: true; pending: number; fiscalDayNo: number } | { ok: false; message: string }> {
+  try {
+    const status = await deviceRequest("/api/VirtualDevice/GetStatus", "GET", undefined, STATUS_TIMEOUT_MS, device);
+    const day = Number(status.json?.["FiscalDayNo"]);
+    if (!status.json || !isCodeOne(status.json) || !Number.isFinite(day)) {
+      return { ok: false, message: "Fiscal device did not report its fiscal day" };
+    }
+    const res = await deviceRequest(`/api/VirtualDevice/GetUnProcessedInvoicesSummary?fiscalDayNumber=${day}`, "GET", undefined, STATUS_TIMEOUT_MS, device);
+    if (!res.json || !isCodeOne(res.json)) return { ok: false, message: str(res.json?.["Message"]) || "Could not read the device upload backlog" };
+    const data = (res.json["Data"] ?? {}) as Record<string, unknown>;
+    const pending = Number(data["TotalRecords"]);
+    if (!Number.isFinite(pending)) return { ok: false, message: "Device returned an unreadable upload backlog" };
+    return { ok: true, pending, fiscalDayNo: day };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export interface DeviceHealth {
+  reachable: boolean;
+  dayOpen: boolean | null;
+  fiscalDayNo: number | null;
+  /** Receipts signed by the device but not yet uploaded to ZIMRA; null when it could not be read. */
+  uploadBacklog: number | null;
+  message?: string;
+}
+
+/** One read of everything the Fiscal Day page and alerts need about the device. */
+export async function getDeviceHealth(device?: ResolvedDevice): Promise<DeviceHealth> {
+  const status = await getPosDeviceStatus(device);
+  if (!status.reachable) {
+    return { reachable: false, dayOpen: null, fiscalDayNo: null, uploadBacklog: null, message: status.message };
+  }
+  const backlog = await getDeviceUploadBacklog(device);
+  return {
+    reachable: true,
+    dayOpen: status.dayOpen,
+    fiscalDayNo: status.fiscalDayNo,
+    uploadBacklog: backlog.ok ? backlog.pending : null,
+    message: backlog.ok ? undefined : backlog.message,
+  };
 }

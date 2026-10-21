@@ -49,6 +49,7 @@ export async function sendPosInvoiceEmail(opts: {
   subject: string;
   html: string;
   fromName?: string;
+  attachments?: { filename: string; content: Buffer; cid?: string; contentType?: string }[];
 }) {
   const from = process.env.SMTP_FROM || '"StockFlow" <noreply@stockflow.com>';
   await transporter.sendMail({
@@ -56,5 +57,16 @@ export async function sendPosInvoiceEmail(opts: {
     to: opts.to,
     subject: opts.subject,
     html: opts.html,
+    attachments: opts.attachments,
+  });
+}
+
+/** Plain operational alert for administrators (fiscal day problems). */
+export async function sendAdminAlertEmail(opts: { to: string[]; subject: string; text: string }) {
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || '"StockFlow" <noreply@stockflow.com>',
+    to: opts.to,
+    subject: opts.subject,
+    text: opts.text,
   });
 }

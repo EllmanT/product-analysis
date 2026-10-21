@@ -1,10 +1,17 @@
-import tls from "node:tls";
-
+import FiscalCertEvent, { type IFiscalCertEvent } from "@/database/fiscalCertEvent.model";
 import FiscalSettings, { type IFiscalSettingsDoc } from "@/database/fiscalSettings.model";
+import { type CertExpiryStatus, evaluateExpiry } from "@/lib/fiscalCertInfo";
+import { isEncryptionConfigured } from "@/lib/security/secretBox";
 import {
-  tryExtractDeviceSerialFromCertPem,
-  tryExtractDeviceSerialFromPfx,
-} from "@/lib/fiscalCertSerial";
+  CENTRAL_SCOPE,
+  applyPem,
+  applyPfx,
+  clearPemFrom,
+  clearPfxFrom,
+  secretCtx,
+  secretsEncrypted,
+  tlsFromHolder,
+} from "@/lib/services/fiscalCertStore";
 import { ZIMRA_DEFAULT_TEST_BASE } from "@/lib/zimraConstants";
 import dbConnect from "@/lib/mongoose";
 import type { ZimraTlsConfig } from "@/lib/zimraHttp";
@@ -37,6 +44,18 @@ export type FiscalSettingsSafe = {
   hasClientCert: boolean;
   hasClientKey: boolean;
   hasPfx: boolean;
+  certSubject: string | null;
+  certSerial: string | null;
+  certNotAfter: string | null;
+  certExpiryStatus: CertExpiryStatus;
+  certDaysLeft: number | null;
+  /** False while a private key / PFX is still stored as plaintext (run the encrypt script). */
+  secretsEncrypted: boolean;
+  encryptionConfigured: boolean;
+  autoRenewCertificate: boolean;
+  lastRenewalAt: string | null;
+  lastRenewalError: string | null;
+  renewalPending: boolean;
   autoScheduleEnabled: boolean;
   autoCloseEnabled: boolean;
   autoOpenEnabled: boolean;
@@ -75,7 +94,30 @@ export async function getFiscalSettingsSafe(): Promise<FiscalSettingsSafe> {
   return toSafe(doc);
 }
 
+/** Encryption context binds each secret to its field, so values cannot be swapped between fields. */
+export const SECRET_CTX = secretCtx(CENTRAL_SCOPE);
+
+export type CertActor = { id?: string | null; email?: string | null };
+
+export async function recordCertEvent(
+  action: IFiscalCertEvent["action"],
+  actor: CertActor | undefined,
+  extra: Partial<IFiscalCertEvent> = {}
+): Promise<void> {
+  try {
+    await FiscalCertEvent.create({
+      action,
+      actorId: actor?.id ?? undefined,
+      actorEmail: actor?.email ?? undefined,
+      ...extra,
+    });
+  } catch {
+    // An audit write problem must not block a certificate change that already succeeded.
+  }
+}
+
 function toSafe(doc: IFiscalSettingsDoc): FiscalSettingsSafe {
+  const expiry = evaluateExpiry(doc.certNotAfter);
   return {
     zimraApiUrl: doc.zimraApiUrl?.trim() || null,
     zimraUseProductionUrl: doc.zimraUseProductionUrl === true,
@@ -85,6 +127,17 @@ function toSafe(doc: IFiscalSettingsDoc): FiscalSettingsSafe {
     hasClientCert: Boolean(doc.clientCertPem?.trim()),
     hasClientKey: Boolean(doc.clientKeyPem?.trim()),
     hasPfx: Boolean(doc.clientPfxBase64?.trim()),
+    certSubject: doc.certSubject ?? null,
+    certSerial: doc.certSerial ?? null,
+    certNotAfter: doc.certNotAfter ? doc.certNotAfter.toISOString() : null,
+    certExpiryStatus: expiry.status,
+    certDaysLeft: expiry.daysLeft,
+    secretsEncrypted: secretsEncrypted(doc),
+    encryptionConfigured: isEncryptionConfigured(),
+    autoRenewCertificate: doc.autoRenewCertificate === true,
+    lastRenewalAt: doc.lastRenewalAt ? doc.lastRenewalAt.toISOString() : null,
+    lastRenewalError: doc.lastRenewalError?.trim() || null,
+    renewalPending: Boolean(doc.pendingKeyPem?.trim()),
     autoScheduleEnabled: doc.autoScheduleEnabled,
     autoCloseEnabled: doc.autoCloseEnabled,
     autoOpenEnabled: doc.autoOpenEnabled,
@@ -100,20 +153,8 @@ function toSafe(doc: IFiscalSettingsDoc): FiscalSettingsSafe {
 }
 
 export function buildTlsFromDoc(doc: IFiscalSettingsDoc): ZimraTlsConfig | null {
-  // Prefer PEM when both are set so a stale/wrong PFX passphrase cannot block mTLS (PFX was checked first before).
-  if (doc.clientCertPem?.trim() && doc.clientKeyPem?.trim()) {
-    return {
-      certPem: doc.clientCertPem,
-      keyPem: doc.clientKeyPem,
-    };
-  }
-  if (doc.clientPfxBase64?.trim()) {
-    return {
-      pfxBase64: doc.clientPfxBase64,
-      pfxPassphrase: doc.clientPfxPassphrase,
-    };
-  }
-  return null;
+  // PEM wins over PFX when both are set, so a stale PFX passphrase cannot block mTLS.
+  return tlsFromHolder(doc, CENTRAL_SCOPE);
 }
 
 export async function patchFiscalSettings(
@@ -122,6 +163,7 @@ export async function patchFiscalSettings(
     zimraUseProductionUrl: boolean;
     deviceId: string | null;
     deviceSerialNumber: string | null;
+    autoRenewCertificate: boolean;
     autoScheduleEnabled: boolean;
     autoCloseEnabled: boolean;
     autoOpenEnabled: boolean;
@@ -140,6 +182,7 @@ export async function patchFiscalSettings(
     set.zimraUseProductionUrl = input.zimraUseProductionUrl;
   if (input.deviceId !== undefined) set.deviceId = input.deviceId ?? "";
   if (input.deviceSerialNumber !== undefined) set.deviceSerialNumber = input.deviceSerialNumber ?? "";
+  if (input.autoRenewCertificate !== undefined) set.autoRenewCertificate = input.autoRenewCertificate;
   if (input.autoScheduleEnabled !== undefined) set.autoScheduleEnabled = input.autoScheduleEnabled;
   if (input.autoCloseEnabled !== undefined) set.autoCloseEnabled = input.autoCloseEnabled;
   if (input.autoOpenEnabled !== undefined) set.autoOpenEnabled = input.autoOpenEnabled;
@@ -153,58 +196,34 @@ export async function patchFiscalSettings(
   return toSafe(doc);
 }
 
-export async function clearPemCertificates(): Promise<void> {
+export async function clearPemCertificates(actor?: CertActor): Promise<void> {
   const doc = await getFiscalSettingsDoc();
-  doc.clientCertPem = "";
-  doc.clientKeyPem = "";
+  clearPemFrom(doc);
   await doc.save();
+  await recordCertEvent("clear_pem", actor);
 }
 
-export async function clearPfxCertificate(): Promise<void> {
+export async function clearPfxCertificate(actor?: CertActor): Promise<void> {
   const doc = await getFiscalSettingsDoc();
-  doc.clientPfxBase64 = "";
-  doc.clientPfxPassphrase = "";
+  clearPfxFrom(doc);
   await doc.save();
+  await recordCertEvent("clear_pfx", actor);
 }
 
-export async function setPemCertificates(certPem: string, keyPem: string): Promise<void> {
+export async function setPemCertificates(certPem: string, keyPem: string, actor?: CertActor): Promise<void> {
   await dbConnect();
   const doc = await getFiscalSettingsDoc();
-  doc.clientCertPem = certPem;
-  doc.clientKeyPem = keyPem;
-  doc.clientPfxBase64 = "";
-  doc.clientPfxPassphrase = "";
-  const serial = tryExtractDeviceSerialFromCertPem(certPem);
-  if (serial) doc.deviceSerialNumber = serial;
+  const info = applyPem(doc, certPem, keyPem, CENTRAL_SCOPE);
   await doc.save();
+  await recordCertEvent("upload_pem", actor, { certSerial: info.serial, certNotAfter: info.notAfter });
 }
 
-export async function setPfxCertificate(base64: string, passphrase: string): Promise<void> {
-  const pfxBuf = Buffer.from(base64, "base64");
-  try {
-    tls.createSecureContext({
-      pfx: pfxBuf,
-      ...(passphrase ? { passphrase } : {}),
-    });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (/mac verify|bad decrypt|pkcs12|invalid password/i.test(msg)) {
-      throw new Error(
-        "PFX could not be loaded (wrong passphrase or bad file). Re-enter the password or export a new PFX."
-      );
-    }
-    throw e;
-  }
-
+export async function setPfxCertificate(base64: string, passphrase: string, actor?: CertActor): Promise<void> {
   await dbConnect();
   const doc = await getFiscalSettingsDoc();
-  doc.clientPfxBase64 = base64;
-  doc.clientPfxPassphrase = passphrase;
-  doc.clientCertPem = "";
-  doc.clientKeyPem = "";
-  const serial = tryExtractDeviceSerialFromPfx(pfxBuf, passphrase);
-  if (serial) doc.deviceSerialNumber = serial;
+  const info = applyPfx(doc, base64, passphrase, CENTRAL_SCOPE);
   await doc.save();
+  await recordCertEvent("upload_pfx", actor, { certSerial: info.serial, certNotAfter: info.notAfter });
 }
 
 export async function setLastAutoCloseDate(dateStr: string): Promise<void> {

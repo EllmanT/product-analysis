@@ -64,6 +64,12 @@ export interface IPosFiscal {
 export type PosSaleKind = "SALE" | "CREDIT_NOTE";
 
 export interface IPosSale {
+  /**
+   * Which fiscal device this sale belongs to: "central" or a FiscalDevice id. Fixed when the sale is
+   * created and never re-resolved, so a later change of the branch's device cannot send an
+   * already-numbered sale to a different device. Missing on older sales, which means central.
+   */
+  fiscalDeviceKey?: string;
   /** SALE (default) or the credit note that reverses a fiscalised sale (negative amounts). */
   kind: PosSaleKind;
   /** Credit note: the sale it reverses, its number, and why. */
@@ -168,6 +174,7 @@ const PosSaleSchema = new Schema<IPosSale>(
       enum: ["PENDING", "SUBMITTING", "FISCALISED", "UNFISCALISED", "UNKNOWN", "FAILED", "VOIDED"],
       default: "PENDING",
     },
+    fiscalDeviceKey: { type: String },
     invoiceNumber: String,
     provisionalNumber: String,
     fiscal: {
@@ -211,6 +218,7 @@ PosSaleSchema.index(
 );
 PosSaleSchema.index({ branchId: 1, soldDate: -1, status: 1 });
 PosSaleSchema.index({ status: 1, soldDate: 1 });
+PosSaleSchema.index({ fiscalDeviceKey: 1, status: 1, soldDate: 1 });
 
 const PosSale = models?.PosSale || model<IPosSale>("PosSale", PosSaleSchema);
 

@@ -4,7 +4,8 @@ import {
   getFiscalSettingsDoc,
   resolveZimraBaseUrl,
 } from "@/lib/services/fiscalSettings.service";
-import { getFdmsAuthorizationHeader } from "@/lib/zimraFdmsAuth";
+import type { ResolvedDevice } from "@/lib/services/fiscalDevice.service";
+import { getFdmsAuthorizationHeader, type VdCredentials } from "@/lib/zimraFdmsAuth";
 import { zimraRequest, type ZimraTlsConfig } from "@/lib/zimraHttp";
 import logger from "@/lib/logger";
 import { isBareZimraPortalUrl } from "@/lib/utils/zimraInvoiceDisplay";
@@ -185,11 +186,18 @@ function mapResponseToFiscalResult(response: Record<string, unknown>): FiscalRes
   };
 }
 
-export async function getZimraContext(): Promise<{
+/**
+ * Connection details for a device. Without `device` this is the central device, exactly as before;
+ * with one it is that branch device (its own URL, certificate and Virtual Device login).
+ */
+export async function getZimraContext(device?: ResolvedDevice): Promise<{
   base: string;
   deviceId?: string;
   tls: ZimraTlsConfig | null;
+  /** undefined = use the central login from the environment; null = this device needs no login. */
+  vd?: VdCredentials;
 }> {
+  if (device) return { base: device.base, deviceId: device.deviceId, tls: device.tls, vd: device.vd };
   const doc = await getFiscalSettingsDoc();
   const base = resolveZimraBaseUrl(doc);
   const tls = buildTlsFromDoc(doc);
@@ -200,12 +208,13 @@ export async function getZimraContext(): Promise<{
 async function zimraCall(
   path: string,
   init: { method: "GET" | "POST"; body?: Record<string, unknown> },
-  operation: string
+  operation: string,
+  device?: ResolvedDevice
 ): Promise<Record<string, unknown>> {
-  const ctx = await getZimraContext();
+  const ctx = await getZimraContext(device);
   const url = `${ctx.base}${path}`;
   const headers: Record<string, string> = { Accept: "*/*" };
-  const auth = await getFdmsAuthorizationHeader(ctx.base);
+  const auth = await getFdmsAuthorizationHeader(ctx.base, ctx.vd);
   if (auth) headers["Authorization"] = auth;
   let body: string | undefined;
   if (init.method === "POST") {
@@ -222,8 +231,8 @@ async function zimraCall(
 }
 
 /** GET /api/VirtualDevice/GetConfig — device identity and tax table for shared / test VD. */
-export async function getVirtualDeviceConfig(): Promise<VirtualDeviceConfigSummary> {
-  const data = await zimraCall("/api/VirtualDevice/GetConfig", { method: "GET" }, "GetConfig");
+export async function getVirtualDeviceConfig(device?: ResolvedDevice): Promise<VirtualDeviceConfigSummary> {
+  const data = await zimraCall("/api/VirtualDevice/GetConfig", { method: "GET" }, "GetConfig", device);
   const code = String(data["Code"] ?? data["code"] ?? "");
   if (code !== "1") {
     throw new Error(String(data["Message"] ?? data["message"] ?? "GetConfig failed"));
@@ -253,8 +262,8 @@ export async function getVirtualDeviceConfig(): Promise<VirtualDeviceConfigSumma
   };
 }
 
-export async function checkFiscalDayStatus(): Promise<{ isOpen: boolean; status: string }> {
-  const data = await zimraCall("/api/VirtualDevice/GetStatus", { method: "GET" }, "GetStatus");
+export async function checkFiscalDayStatus(device?: ResolvedDevice): Promise<{ isOpen: boolean; status: string }> {
+  const data = await zimraCall("/api/VirtualDevice/GetStatus", { method: "GET" }, "GetStatus", device);
   const code = String(data["Code"] ?? data["code"] ?? "");
 
   if (code !== "1") {
@@ -272,8 +281,8 @@ export async function checkFiscalDayStatus(): Promise<{ isOpen: boolean; status:
   };
 }
 
-export async function openFiscalDay(): Promise<void> {
-  const data = await zimraCall("/api/VirtualDevice/OpenFiscalDay", { method: "GET" }, "OpenFiscalDay");
+export async function openFiscalDay(device?: ResolvedDevice): Promise<void> {
+  const data = await zimraCall("/api/VirtualDevice/OpenFiscalDay", { method: "GET" }, "OpenFiscalDay", device);
   const code = String(data["Code"] ?? data["code"] ?? "");
 
   if (code !== "1") {
@@ -282,8 +291,8 @@ export async function openFiscalDay(): Promise<void> {
 }
 
 /** Returns full ZIMRA JSON payload (persist for Z-reports). */
-export async function closeFiscalDay(): Promise<Record<string, unknown>> {
-  const data = await zimraCall("/api/VirtualDevice/CloseFiscalDay", { method: "GET" }, "CloseFiscalDay");
+export async function closeFiscalDay(device?: ResolvedDevice): Promise<Record<string, unknown>> {
+  const data = await zimraCall("/api/VirtualDevice/CloseFiscalDay", { method: "GET" }, "CloseFiscalDay", device);
   const code = String(data["Code"] ?? data["code"] ?? "");
 
   if (code !== "1") {

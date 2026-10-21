@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import PosSale from "@/database/posSale.model";
 import { resolvePosScope } from "@/lib/auth/pos-scope";
 import dbConnect from "@/lib/mongoose";
+import { DeviceConfigError, resolveDeviceByKey, resolveDeviceForBranch } from "@/lib/services/fiscalDevice.service";
 import { getPosSummary } from "@/lib/services/posSale.service";
 import { getPosDeviceStatus } from "@/lib/services/zimraPosDevice.service";
 
@@ -22,9 +23,19 @@ export async function GET(request: Request) {
     const { scope } = scoped;
 
     await dbConnect();
+    // The till shows its own branch's device. An admin looking across branches sees the central one.
+    const deviceStatus = async () => {
+      try {
+        const d = scope.branchId ? await resolveDeviceForBranch(scope.branchId) : await resolveDeviceByKey();
+        return await getPosDeviceStatus(d);
+      } catch (e) {
+        if (!(e instanceof DeviceConfigError)) throw e;
+        return { reachable: false, dayOpen: null, fiscalDayNo: null, lastReceiptGlobalNo: null, message: e.message };
+      }
+    };
     const [totals, device, unfiscalised] = await Promise.all([
       getPosSummary({ branchId: scope.branchId ?? undefined, date: url.searchParams.get("date") ?? undefined }),
-      getPosDeviceStatus(),
+      deviceStatus(),
       PosSale.countDocuments({
         status: { $in: ["UNFISCALISED", "UNKNOWN"] },
         isTest: { $ne: true },

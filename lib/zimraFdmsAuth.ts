@@ -2,7 +2,10 @@ import { zimraRequest } from "@/lib/zimraHttp";
 
 const LOGIN_TIMEOUT_MS = 20_000;
 
-let cache: { token: string; expiresAtMs: number } | null = null;
+/** One cached login per Virtual Device + account, so a branch device never reuses another device's token. */
+const cache = new Map<string, { token: string; expiresAtMs: number }>();
+
+export type VdCredentials = { email: string; password: string } | null;
 
 function normalizeBase(baseUrl: string): string {
   return baseUrl.replace(/\/$/, "");
@@ -47,16 +50,19 @@ function jwtExpiryMs(token: string): number | null {
 
 /**
  * Axis Virtual Device on HTTP often requires POST /api/Auth/login before VirtualDevice routes (401 otherwise).
- * Set ZIMRA_VD_EMAIL + ZIMRA_VD_PASSWORD in env. Skips when unset (HTTPS+mTLS-only deployments).
+ * `creds` is the device's own login (null = none needed). When omitted, the central device's
+ * ZIMRA_VD_EMAIL + ZIMRA_VD_PASSWORD from the environment are used. Skips when there is no login.
  */
-export async function getFdmsAuthorizationHeader(baseUrl: string): Promise<string | null> {
-  const email = process.env.ZIMRA_VD_EMAIL?.trim();
-  const password = process.env.ZIMRA_VD_PASSWORD?.trim();
+export async function getFdmsAuthorizationHeader(baseUrl: string, creds?: VdCredentials): Promise<string | null> {
+  const email = creds === undefined ? process.env.ZIMRA_VD_EMAIL?.trim() : creds?.email;
+  const password = creds === undefined ? process.env.ZIMRA_VD_PASSWORD?.trim() : creds?.password;
   if (!email || !password) return null;
 
   const now = Date.now();
-  if (cache && cache.expiresAtMs > now + 30_000) {
-    return `Bearer ${cache.token}`;
+  const cacheKey = `${normalizeBase(baseUrl).toLowerCase()}|${email.toLowerCase()}`;
+  const hit = cache.get(cacheKey);
+  if (hit && hit.expiresAtMs > now + 30_000) {
+    return `Bearer ${hit.token}`;
   }
 
   const url = `${normalizeBase(baseUrl)}/api/Auth/login`;
@@ -93,13 +99,13 @@ export async function getFdmsAuthorizationHeader(baseUrl: string): Promise<strin
   }
 
   const jwtExp = jwtExpiryMs(token);
-  cache = {
+  cache.set(cacheKey, {
     token,
     expiresAtMs: jwtExp ?? now + 55 * 60_000,
-  };
+  });
   return `Bearer ${token}`;
 }
 
 export function clearFdmsAuthCache(): void {
-  cache = null;
+  cache.clear();
 }

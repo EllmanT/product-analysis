@@ -14,6 +14,34 @@ export interface IFiscalSettings {
   /** Base64 PFX / PKCS#12 (optional alternative to PEM pair). */
   clientPfxBase64?: string;
   clientPfxPassphrase?: string;
+  /**
+   * clientKeyPem, clientPfxBase64 and clientPfxPassphrase are stored encrypted ("enc:v1:...").
+   * Plain values are legacy rows; scripts/fiscal-encrypt-secrets.ts converts them.
+   */
+
+  /** Parsed from the stored device certificate when it is uploaded (never from the private key). */
+  certSubject?: string;
+  certSerial?: string;
+  certFingerprint256?: string;
+  certNotBefore?: Date;
+  certNotAfter?: Date;
+
+  /** Gateway headers: the model name/version ZIMRA registered this device under (defaults: env, then Server / v1). */
+  deviceModelName?: string;
+  deviceModelVersion?: string;
+  /**
+   * Renew the certificate by itself when 30 days or less remain. OFF unless an admin turns it on:
+   * ZIMRA revokes the old certificate the moment it issues the new one, so anything else holding the
+   * old copy (e.g. a Virtual Device with its own certificate) stops working at once.
+   */
+  autoRenewCertificate?: boolean;
+  /** A renewal in flight: the new key (encrypted) and the certificate ZIMRA issued, kept until verified. */
+  pendingKeyPem?: string;
+  pendingCertPem?: string;
+  renewalLockedAt?: Date;
+  lastRenewalAt?: Date;
+  lastRenewalAttemptAt?: Date;
+  lastRenewalError?: string;
 
   autoScheduleEnabled: boolean;
   autoCloseEnabled: boolean;
@@ -46,6 +74,21 @@ const FiscalSettingsSchema = new Schema<IFiscalSettings>(
     clientKeyPem: { type: String },
     clientPfxBase64: { type: String },
     clientPfxPassphrase: { type: String },
+    certSubject: { type: String },
+    certSerial: { type: String },
+    certFingerprint256: { type: String },
+    certNotBefore: { type: Date },
+    certNotAfter: { type: Date },
+
+    deviceModelName: { type: String, trim: true },
+    deviceModelVersion: { type: String, trim: true },
+    autoRenewCertificate: { type: Boolean, default: false },
+    pendingKeyPem: { type: String },
+    pendingCertPem: { type: String },
+    renewalLockedAt: { type: Date },
+    lastRenewalAt: { type: Date },
+    lastRenewalAttemptAt: { type: Date },
+    lastRenewalError: { type: String },
 
     autoScheduleEnabled: { type: Boolean, default: false },
     autoCloseEnabled: { type: Boolean, default: false },

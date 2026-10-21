@@ -44,3 +44,9 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# ZIMRA device certificate bundles (private keys) - never commit
+certificates_*/
+*.key
+*.pfx
+certificates_*.zip

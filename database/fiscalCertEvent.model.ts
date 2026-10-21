@@ -2,7 +2,7 @@ import { model, models, Schema } from "mongoose";
 
 /** Append-only audit trail for certificate changes. Never holds key material. */
 export interface IFiscalCertEvent {
-  action: "upload_pem" | "upload_pfx" | "clear_pem" | "clear_pfx" | "encrypt_migration" | "renew" | "renew_failed";
+  action: "upload_pem" | "upload_pfx" | "clear_pem" | "clear_pfx" | "encrypt_migration" | "renew" | "renew_failed" | "register" | "register_failed";
   actorId?: string;
   actorEmail?: string;
   certSerial?: string;

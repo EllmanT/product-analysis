@@ -429,6 +429,21 @@ export async function setDeviceLastAutoOpenDate(id: string, date: string): Promi
   await FiscalDevice.updateOne({ _id: id }, { $set: { lastAutoOpenDate: date } });
 }
 
+/**
+ * A device ID may belong to only one record (the central device or one FiscalDevice). `selfKey` is the
+ * record that wants it, so it does not clash with itself.
+ */
+export async function assertDeviceIdFree(selfKey: string, deviceId: string): Promise<void> {
+  const id = deviceId.trim();
+  if (!id) return;
+  if (selfKey !== CENTRAL_KEY) {
+    const central = await getFiscalSettingsDoc();
+    if (central.deviceId?.trim() === id) throw new DeviceConfigError(`Device ID ${id} is already the central device`);
+  }
+  const clash = await FiscalDevice.findOne({ deviceId: id, ...(selfKey === CENTRAL_KEY ? {} : { _id: { $ne: selfKey } }) }).select("name");
+  if (clash) throw new DeviceConfigError(`Device ID ${id} is already used by "${clash.name}"`);
+}
+
 /** Persist the serial/ID read from the device's GetConfig. */
 export async function saveDeviceIdentity(id: string, deviceId: string, serial: string): Promise<void> {
   await assertNotDuplicate(id, { deviceId });

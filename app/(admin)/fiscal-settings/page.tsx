@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type InputHTMLAttributes } from "reac
 
 import type { CertBundleValidation } from "@/lib/fiscalCertBundle";
 import { ZIMRA_DEFAULT_TEST_BASE } from "@/lib/zimraConstants";
+import RegisterDevicePanel from "@/components/fiscal/RegisterDevicePanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -622,6 +623,20 @@ export default function FiscalSettingsPage() {
             {certInfo.lastRenewalError && (
               <p className="text-xs text-red-700" role="alert">Last renewal attempt failed: {certInfo.lastRenewalError}</p>
             )}
+          </div>
+        )}
+
+        {(!(hasPem || hasPfx) || certInfo?.certExpiryStatus === "expired") && (
+          <div className="mt-3">
+            <RegisterDevicePanel
+              endpoint="/api/admin/fiscal-settings/register"
+              initialDeviceId={deviceId}
+              initialSerial={deviceSerial}
+              pending={Boolean(certInfo?.renewalPending)}
+              encryptionConfigured={certInfo?.encryptionConfigured ?? true}
+              expired={hasPem || hasPfx}
+              onDone={() => void load()}
+            />
           </div>
         )}
 

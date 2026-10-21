@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { useFiscalDevices } from "@/components/fiscal/DeviceSelect";
+import RegisterDevicePanel from "@/components/fiscal/RegisterDevicePanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -486,6 +487,18 @@ function CertificatePanel({
           <dt className="font-medium">Private key</dt>
           <dd>{device.secretsEncrypted ? "stored encrypted" : "stored UNENCRYPTED. Run npm run fiscal:encrypt -- --apply"}</dd>
         </dl>
+      )}
+
+      {(!hasCert || device.certExpiryStatus === "expired") && (
+        <RegisterDevicePanel
+          endpoint={`/api/admin/fiscal-devices/${device.id}/register`}
+          initialDeviceId={device.deviceId}
+          initialSerial={device.deviceSerialNumber}
+          pending={device.renewalPending}
+          encryptionConfigured={encryptionConfigured}
+          expired={hasCert}
+          onDone={onChanged}
+        />
       )}
 
       {device.hasClientCert && (

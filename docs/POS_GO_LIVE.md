@@ -56,6 +56,7 @@ Things to know:
 - Closing a device's day only waits for that device's unfiscalised sales. Z-reports are per device; do not add totals across devices unless you want a company total.
 - Certificate expiry for every device is checked daily and shown to admins.
 - Renewing a certificate (by hand with "Renew now", or automatically if switched on) makes ZIMRA cancel the old one at once. Only renew where this app is the certificate's only holder, or hand the new one to whatever else uses it (for example a Virtual Device that keeps its own copy) straight away. Automatic renewal is off until an admin turns it on.
+- A new device (or one whose certificate expired) is onboarded with "Register with ZIMRA" on its device page or on Fiscal settings: enter the device ID, serial number and activation key from the ZIMRA portal, check the taxpayer ZIMRA shows, then register. The activation key is used once and never saved.
 
 ## 5. Acceptance run on the real device before opening
 

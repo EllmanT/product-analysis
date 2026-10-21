@@ -1,82 +1,24 @@
-import type { Model } from "mongoose";
-
-import FiscalDevice from "@/database/fiscalDevice.model";
-import FiscalSettings from "@/database/fiscalSettings.model";
 import { certMatchesKey, parseCertPem } from "@/lib/fiscalCertInfo";
 import { generateCsr, parseDeviceCommonName } from "@/lib/fiscalCsr";
-import logger from "@/lib/logger";
-import dbConnect from "@/lib/mongoose";
-import { decryptSecret, encryptSecret, isEncryptionConfigured } from "@/lib/security/secretBox";
+import { encryptSecret, isEncryptionConfigured } from "@/lib/security/secretBox";
 import { sendFiscalAlertOnce } from "@/lib/services/fiscalAlerts.service";
-import {
-  CENTRAL_SCOPE,
-  applyPem,
-  deviceScope,
-  hasCertificate,
-  secretCtx,
-  tlsFromHolder,
-  type CertHolder,
-} from "@/lib/services/fiscalCertStore";
+import { hasCertificate, secretCtx, tlsFromHolder } from "@/lib/services/fiscalCertStore";
 import { getCertExpiryReports } from "@/lib/services/fiscalCertExpiry.service";
-import { CENTRAL_KEY } from "@/lib/services/fiscalDevice.service";
-import { getFiscalSettingsDoc, recordCertEvent, type CertActor } from "@/lib/services/fiscalSettings.service";
+import {
+  RenewalError,
+  acquireLock,
+  installPending,
+  loadDoc,
+  loadTarget,
+  releaseLock,
+} from "@/lib/services/fiscalCertTarget";
+import { recordCertEvent, type CertActor } from "@/lib/services/fiscalSettings.service";
 import { gatewayBase, gatewayCall, gatewayModel, gatewayProblem } from "@/lib/zimraGateway";
 
-/** A renewal could not be completed. The message is safe to show to an administrator. */
-export class RenewalError extends Error {}
+export { RenewalError };
 
 /** ZIMRA recommends renewing a month before expiry. */
 export const AUTO_RENEW_DAYS = 30;
-/** A renewal that crashed mid-way must not block the next attempt forever. */
-const LOCK_TTL_MS = 10 * 60_000;
-
-type RenewalDoc = CertHolder & {
-  _id: unknown;
-  deviceId?: string;
-  deviceSerialNumber?: string;
-  zimraUseProductionUrl?: boolean;
-  deviceModelName?: string;
-  deviceModelVersion?: string;
-  autoRenewCertificate?: boolean;
-  lastRenewalAt?: Date;
-  lastRenewalAttemptAt?: Date;
-  lastRenewalError?: string;
-  save(): Promise<unknown>;
-};
-
-interface Target {
-  key: string;
-  name: string;
-  scope: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  model: Model<any>;
-  id: unknown;
-}
-
-async function loadTarget(key: string): Promise<Target> {
-  await dbConnect();
-  if (key === CENTRAL_KEY) {
-    const doc = await getFiscalSettingsDoc();
-    return { key, name: "Central device", scope: CENTRAL_SCOPE, model: FiscalSettings, id: doc._id };
-  }
-  const doc = await FiscalDevice.findById(key).select("name");
-  if (!doc) throw new RenewalError("Fiscal device not found");
-  return { key, name: doc.name, scope: deviceScope(key), model: FiscalDevice, id: doc._id };
-}
-
-const loadDoc = async (t: Target): Promise<RenewalDoc> => (await t.model.findById(t.id)) as RenewalDoc;
-
-async function acquireLock(t: Target): Promise<void> {
-  const stale = new Date(Date.now() - LOCK_TTL_MS);
-  const got = await t.model.findOneAndUpdate(
-    { _id: t.id, $or: [{ renewalLockedAt: { $exists: false } }, { renewalLockedAt: null }, { renewalLockedAt: { $lt: stale } }] },
-    { $set: { renewalLockedAt: new Date() } }
-  );
-  // Two overlapping renewals could each ask ZIMRA for a certificate and invalidate the other's.
-  if (!got) throw new RenewalError("A renewal for this device is already running");
-}
-
-const releaseLock = (t: Target) => t.model.updateOne({ _id: t.id }, { $unset: { renewalLockedAt: "" } });
 
 export interface RenewalResult {
   key: string;
@@ -112,7 +54,7 @@ export async function renewCertificate(key: string, opts: { actor?: CertActor } 
   const ctx = secretCtx(t.scope);
 
   try {
-    let doc = await loadDoc(t);
+    const doc = await loadDoc(t);
     if (!hasCertificate(doc)) throw new RenewalError("No certificate is stored for this device, so there is nothing to renew from");
     const current = tlsFromHolder(doc, t.scope);
     const currentPem = current?.certPem;
@@ -121,7 +63,7 @@ export async function renewCertificate(key: string, opts: { actor?: CertActor } 
     }
     const cur = parseCertPem(currentPem);
     if (cur.notAfter.getTime() <= Date.now()) {
-      throw new RenewalError("The certificate has already expired, so ZIMRA will not accept a renewal. The device must be registered again.");
+      throw new RenewalError("The certificate has already expired, so ZIMRA will not accept a renewal. Register the device again with its activation key.");
     }
 
     const identity = parseDeviceCommonName(cur.subject);
@@ -168,47 +110,17 @@ export async function renewCertificate(key: string, opts: { actor?: CertActor } 
       await t.model.updateOne({ _id: t.id }, { $set: { pendingCertPem: newCert } });
     }
 
-    doc = await loadDoc(t);
-    const pendingKey = decryptSecret(doc.pendingKeyPem, ctx.pendingKey);
-    if (!newCert || !pendingKey || !certMatchesKey(newCert, pendingKey)) {
-      // The leftover pending pair is unusable; drop it so the next attempt starts clean.
-      await t.model.updateOne({ _id: t.id }, { $set: { pendingKeyPem: "", pendingCertPem: "" } });
-      throw new RenewalError("The pending certificate did not match its key and was discarded; try again");
-    }
-
-    // Prove it works with ZIMRA before it replaces the working one.
-    const check = await gatewayCall({
+    const { newNotAfter } = await installPending(t, {
+      deviceId,
       base,
-      path: `/Device/v1/${encodeURIComponent(deviceId)}/GetConfig`,
-      method: "GET",
-      tls: { certPem: newCert, keyPem: pendingKey },
       model,
+      newCert,
+      action: "renew",
+      actor: opts.actor,
+      resumed,
+      label: t.name,
     });
-    if (check.status !== 200) {
-      throw new RenewalError(
-        `The new certificate was issued but ZIMRA rejected it on a test call (HTTP ${check.status}: ${gatewayProblem(check)}). ` +
-          "The current certificate is still installed; the new one is kept and re-tested on the next attempt."
-      );
-    }
-
-    // Swap. applyPem validates and encrypts; the serial it derives is not the device serial, so keep ours.
-    const keepSerial = doc.deviceSerialNumber;
-    applyPem(doc, newCert, pendingKey, t.scope);
-    doc.deviceSerialNumber = keepSerial;
-    doc.pendingKeyPem = "";
-    doc.pendingCertPem = "";
-    doc.lastRenewalAt = new Date();
-    doc.lastRenewalError = undefined;
-    await doc.save();
-
-    const installed = parseCertPem(newCert);
-    await recordCertEvent("renew", opts.actor, {
-      certSerial: installed.serial,
-      certNotAfter: installed.notAfter,
-      detail: `${t.name}${resumed ? " (resumed)" : ""}`,
-    });
-    logger.info({ key, notAfter: installed.notAfter }, "Fiscal device certificate renewed");
-    return { key, name: t.name, oldNotAfter: cur.notAfter, newNotAfter: installed.notAfter, resumed };
+    return { key, name: t.name, oldNotAfter: cur.notAfter, newNotAfter, resumed };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await t.model.updateOne({ _id: t.id }, { $set: { lastRenewalError: message.slice(0, 500) } }).catch(() => undefined);

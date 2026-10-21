@@ -64,7 +64,7 @@ export async function gatewayCall(opts: {
 export function gatewayProblem(r: GatewayResult): string {
   const j = r.json ?? {};
   const code = typeof j.errorCode === "string" ? j.errorCode : "";
-  const title = typeof j.title === "string" ? j.title : "";
+  const title = typeof j.detail === "string" ? j.detail : typeof j.title === "string" ? j.title : "";
   const detail = [code, title].filter(Boolean).join(": ");
   return detail || r.raw.slice(0, 160) || "no detail";
 }

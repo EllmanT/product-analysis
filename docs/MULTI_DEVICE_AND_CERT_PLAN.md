@@ -122,7 +122,14 @@ Read-only spike against the ZIMRA test gateway with the device 31591 bundle (`ce
      2. **Validity is not a fixed year.** Device 31591's original certificate lasted a year; the renewed one lasts about six months (to 2027-04-21). Always read the real expiry from the certificate.
      3. `IssueCertificate` needs no activation key; the current certificate authenticates it. An expired certificate cannot renew (HTTP 401), so the device would have to be registered again (`RegisterDevice`, not built yet).
    - Renewed bundle for 31591 is in `certificates_31591_renewed/` (gitignored). The original `certificates_31591/` bundle is now dead (revoked).
-   - Still open: whether the Axis Virtual Device uses a certificate held by this app or keeps its own. Until that is known, renewing in this app does not update a VD-held copy. `RegisterDevice` onboarding (new device from device ID + activation key) is not built.
+   - Still open: whether the Axis Virtual Device uses a certificate held by this app or keeps its own. Until that is known, renewing in this app does not update a VD-held copy.
+6. **RegisterDevice onboarding: done, verified** (`lib/services/fiscalDeviceRegistration.service.ts`, shared install/lock plumbing in `fiscalCertTarget.ts`). From the ZIMRA portal's device ID and 8-character activation key:
+   - `VerifyTaxpayerInformation` first: shows the taxpayer, TIN, VAT number, branch and address so the right taxpayer can be confirmed. It does not use up the key.
+   - `RegisterDevice`: same safety as renewal (new key stored encrypted before the request, reply checked, certificate tested with ZIMRA over mTLS before installing, a failed test leaves it pending and "Finish pending registration" completes it without the key). Sets the device ID and the real device serial.
+   - The activation key is used for that one request and is never stored, audited or echoed in an error (verified by scanning every collection). Refused while a still-valid certificate exists (renew instead); an expired certificate can be replaced, which is the recovery path.
+   - Device IDs cannot be registered twice across the central device and branch devices; a lock stops two registrations running at once.
+   - UI: a "Register with ZIMRA" panel (check details, then register) on each device and on Fiscal settings, shown when there is no valid certificate. API: `POST /api/admin/fiscal-devices/[id]/register` and `/api/admin/fiscal-settings/register` with `action` verify | register | resume.
+   - Verified against ZIMRA's real test gateway only as far as the harmless parts: both Public endpoints answered correctly for a non-existent device ("Device not found", DEV01). A real registration needs a device ID and activation key ZIMRA has issued and not yet used, so the full flow was verified against a fake gateway (10 scenarios) and in the browser.
 6. **Tests and docs:** rewrite the simulation assertions per device (`pos-simulate.ts` mutates the singleton today), E2E for two devices with one down, update `POS_GO_LIVE.md`, `POS_TILL_SETUP.md`, `POS_MODULE_PLAN.md`.
 
 ## 7. Remaining questions

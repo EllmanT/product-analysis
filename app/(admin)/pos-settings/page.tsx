@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { CENTRAL, DeviceSelect } from "@/components/fiscal/DeviceSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,8 @@ interface Form {
   taxPercent: string;
   taxCode: string;
   defaultCurrency: "USD" | "ZWG";
+  /** "" = the central device that other branches share. */
+  fiscalDeviceId: string;
   noOfflineLimit: boolean;
   offlineLimitHours: string;
   companyName: string;
@@ -36,6 +39,7 @@ const toForm = (b: PosBranchDto): Form => ({
   taxPercent: String(b.pos.taxPercent),
   taxCode: b.pos.taxCode,
   defaultCurrency: b.pos.defaultCurrency,
+  fiscalDeviceId: b.pos.fiscalDeviceId ?? "",
   noOfflineLimit: b.pos.offlineLimitHours === null,
   offlineLimitHours: String(b.pos.offlineLimitHours ?? 5),
   companyName: b.pos.receipt.companyName ?? "",
@@ -174,6 +178,7 @@ function SettingsForm({ branch, onSaved }: { branch: PosBranchDto; onSaved: () =
       taxPercent: Number(form.taxPercent),
       taxCode: form.taxCode.trim(),
       defaultCurrency: form.defaultCurrency,
+      fiscalDeviceId: form.fiscalDeviceId || null,
       offlineLimitHours: form.noOfflineLimit ? null : hours,
       receipt: {
         companyName: form.companyName,
@@ -238,6 +243,17 @@ function SettingsForm({ branch, onSaved }: { branch: PosBranchDto; onSaved: () =
                 <Input value={form.taxCode} maxLength={4} onChange={(e) => set("taxCode", e.target.value.toUpperCase())} />
               </Field>
             </div>
+            <DeviceSelect
+              value={form.fiscalDeviceId || CENTRAL}
+              onChange={(k) => set("fiscalDeviceId", k === CENTRAL ? "" : k)}
+              label="Fiscal device"
+              activeOnly
+            />
+            {form.fiscalDeviceId !== (branch.pos.fiscalDeviceId ?? "") && (
+              <p className="text-xs text-muted-foreground">
+                New sales will use the selected device. Sales still waiting to be fiscalised stay with the device they were made on.
+              </p>
+            )}
             <div className="space-y-2 border-t pt-4">
               <div className="flex items-center justify-between">
                 <div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { DeviceSelect, useFiscalDevices } from "@/components/fiscal/DeviceSelect";
 import { Button } from "@/components/ui/button";
 
 type Row = {
@@ -10,9 +11,13 @@ type Row = {
   source: string;
   closedAt: string;
   fiscalDayNo: number | null;
+  fiscalDeviceKey: string;
+  deviceName: string;
   totalSalesUsd: number | null;
   totalSalesZwg: number | null;
 };
+
+type DeviceTotals = { deviceKey: string; deviceName: string; reportCount: number; sumUsd: number; sumZwg: number };
 
 type Totals = {
   sumUsd: number;
@@ -42,6 +47,10 @@ function fmtDate(iso: string): string {
 export default function ZReportsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
+  const [byDevice, setByDevice] = useState<DeviceTotals[]>([]);
+  // "" = every device; otherwise "central" or a FiscalDevice id.
+  const [deviceKey, setDeviceKey] = useState("");
+  const { devices } = useFiscalDevices();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,10 +58,10 @@ export default function ZReportsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/z-reports");
+      const res = await fetch(`/api/admin/z-reports${deviceKey ? `?deviceKey=${encodeURIComponent(deviceKey)}` : ""}`);
       const json = (await res.json()) as {
         success: boolean;
-        data?: { reports: Row[]; totals: Totals };
+        data?: { reports: Row[]; totals: Totals; totalsByDevice: DeviceTotals[] };
         message?: string;
       };
       if (!res.ok || !json.success || !json.data) {
@@ -61,12 +70,13 @@ export default function ZReportsPage() {
       }
       setRows(json.data.reports);
       setTotals(json.data.totals);
+      setByDevice(json.data.totalsByDevice ?? []);
     } catch {
       setError("Network error");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [deviceKey]);
 
   useEffect(() => {
     void load();
@@ -92,6 +102,12 @@ export default function ZReportsPage() {
           </Button>
         </div>
       </div>
+
+      {devices.length > 0 && (
+        <div className="flex flex-wrap items-end gap-3">
+          <DeviceSelect value={deviceKey} onChange={setDeviceKey} label="Show reports for" allLabel="All devices" />
+        </div>
+      )}
 
       {error && (
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -120,11 +136,40 @@ export default function ZReportsPage() {
         </div>
       )}
 
+      {byDevice.length > 1 && (
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <caption className="px-4 pt-3 text-left text-xs font-medium uppercase text-slate-500">
+              Totals per device (each device has its own fiscal day)
+            </caption>
+            <thead className="text-xs font-semibold uppercase text-slate-600">
+              <tr>
+                <th className="px-4 py-2">Device</th>
+                <th className="px-4 py-2">Reports</th>
+                <th className="px-4 py-2">USD</th>
+                <th className="px-4 py-2">ZWG</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byDevice.map((d) => (
+                <tr key={d.deviceKey} className="border-t border-slate-100">
+                  <td className="px-4 py-2 text-slate-800">{d.deviceName}</td>
+                  <td className="px-4 py-2">{d.reportCount}</td>
+                  <td className="px-4 py-2 font-mono text-xs">{fmtMoney(d.sumUsd, "")}</td>
+                  <td className="px-4 py-2 font-mono text-xs">{fmtMoney(d.sumZwg, "")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase text-slate-600">
             <tr>
               <th className="px-4 py-3">Closed</th>
+              {devices.length > 0 && <th className="px-4 py-3">Device</th>}
               <th className="px-4 py-3">Source</th>
               <th className="px-4 py-3">Fiscal day</th>
               <th className="px-4 py-3">USD</th>
@@ -135,13 +180,13 @@ export default function ZReportsPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   Loading…
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   No Z-reports yet. Close a fiscal day to create one.
                 </td>
               </tr>
@@ -149,6 +194,7 @@ export default function ZReportsPage() {
               rows.map((r) => (
                 <tr key={r._id} className="border-b border-slate-100">
                   <td className="px-4 py-3 text-slate-800">{fmtDate(r.closedAt)}</td>
+                  {devices.length > 0 && <td className="px-4 py-3 text-slate-600">{r.deviceName}</td>}
                   <td className="px-4 py-3 capitalize text-slate-600">{r.source}</td>
                   <td className="px-4 py-3">{r.fiscalDayNo ?? "—"}</td>
                   <td className="px-4 py-3 font-mono text-xs">{fmtMoney(r.totalSalesUsd, "")}</td>

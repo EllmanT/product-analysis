@@ -5,6 +5,7 @@ import React, { ReactNode } from 'react'
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { isStaffEmailAllowed } from '@/lib/auth/staff-allowlist';
+import CertExpiryBanner from '@/components/fiscal/CertExpiryBanner';
 
 const layout =async ({ children }: { children: ReactNode}) => {
   const session = await auth();
@@ -30,6 +31,7 @@ const layout =async ({ children }: { children: ReactNode}) => {
       <AppSidebar variant="floating" />
       <SidebarInset className='bg-gray-50' >
         <SiteHeader />
+        {session.user?.role === 'admin' && <CertExpiryBanner />}
         {children}
       </SidebarInset>
     </SidebarProvider>

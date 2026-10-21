@@ -10,6 +10,8 @@ type Report = {
   source: string;
   closedAt: string;
   fiscalDayNo: number | null;
+  deviceName?: string;
+  deviceId?: string | null;
   totalSalesUsd: number | null;
   totalSalesZwg: number | null;
   rawCloseResponse: unknown;
@@ -74,6 +76,12 @@ export default function ZReportPrintPage() {
         <p className="mt-1 text-sm text-slate-600">
           Closed: {new Date(report.closedAt).toLocaleString()} · Source: {report.source}
         </p>
+        {report.deviceName && (
+          <p className="text-sm text-slate-600">
+            Device: {report.deviceName}
+            {report.deviceId ? ` (ID ${report.deviceId})` : ""}
+          </p>
+        )}
         {report.fiscalDayNo != null && (
           <p className="text-sm text-slate-600">Fiscal day no.: {report.fiscalDayNo}</p>
         )}

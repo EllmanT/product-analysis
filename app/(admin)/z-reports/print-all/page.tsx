@@ -9,6 +9,7 @@ type Row = {
   source: string;
   closedAt: string;
   fiscalDayNo: number | null;
+  deviceName?: string;
   totalSalesUsd: number | null;
   totalSalesZwg: number | null;
 };
@@ -44,6 +45,8 @@ export default function ZReportsPrintAllPage() {
     void load();
   }, [load]);
 
+  const multiDevice = new Set(rows.map((r) => r.deviceName)).size > 1;
+
   return (
     <div className="min-h-screen bg-white p-8 text-slate-900 print:p-6">
       <div className="mb-6 flex justify-end print:hidden">
@@ -56,6 +59,12 @@ export default function ZReportsPrintAllPage() {
       <p className="mt-1 text-sm text-slate-600">
         Generated {new Date().toLocaleString()}
       </p>
+
+      {multiDevice && (
+        <p className="mt-2 text-sm text-slate-600">
+          Several devices: the totals below add every device together. Each device has its own fiscal day.
+        </p>
+      )}
 
       {totals && (
         <div className="mt-6 grid gap-4 border border-slate-200 p-4 sm:grid-cols-3">
@@ -78,6 +87,7 @@ export default function ZReportsPrintAllPage() {
         <thead>
           <tr className="border-b-2 border-slate-800">
             <th className="py-2 pr-4">Closed</th>
+            {multiDevice && <th className="py-2 pr-4">Device</th>}
             <th className="py-2 pr-4">Source</th>
             <th className="py-2 pr-4">Day</th>
             <th className="py-2 pr-4">USD</th>
@@ -88,6 +98,7 @@ export default function ZReportsPrintAllPage() {
           {rows.map((r) => (
             <tr key={r._id} className="border-b border-slate-200">
               <td className="py-2 pr-4">{new Date(r.closedAt).toLocaleString()}</td>
+              {multiDevice && <td className="py-2 pr-4">{r.deviceName}</td>}
               <td className="py-2 pr-4 capitalize">{r.source}</td>
               <td className="py-2 pr-4">{r.fiscalDayNo ?? "—"}</td>
               <td className="py-2 pr-4 font-mono">{fmtMoney(r.totalSalesUsd)}</td>

@@ -137,6 +137,12 @@ export const mainSidebarLinks = [
       hidden: true,
     },
     {
+      title: "Fiscal devices",
+      url: "/fiscal-devices",
+      icon: IconBuildingStore,
+      adminOnly: true,
+    },
+    {
       title: "Z-reports",
       url: "/z-reports",
       icon: FileText,

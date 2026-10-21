@@ -19,6 +19,17 @@ type Settings = {
   hasClientCert: boolean;
   hasClientKey: boolean;
   hasPfx: boolean;
+  certSubject: string | null;
+  certSerial: string | null;
+  certNotAfter: string | null;
+  certExpiryStatus: "ok" | "warning" | "critical" | "expired" | "unknown";
+  certDaysLeft: number | null;
+  secretsEncrypted: boolean;
+  encryptionConfigured: boolean;
+  autoRenewCertificate: boolean;
+  lastRenewalAt: string | null;
+  lastRenewalError: string | null;
+  renewalPending: boolean;
   autoScheduleEnabled: boolean;
   autoCloseEnabled: boolean;
   autoOpenEnabled: boolean;
@@ -53,6 +64,9 @@ export default function FiscalSettingsPage() {
   const [deviceSerial, setDeviceSerial] = useState("");
   const [hasPem, setHasPem] = useState(false);
   const [hasPfx, setHasPfx] = useState(false);
+  const [certInfo, setCertInfo] = useState<Pick<Settings, "certSubject" | "certSerial" | "certNotAfter" | "certExpiryStatus" | "certDaysLeft" | "secretsEncrypted" | "encryptionConfigured" | "autoRenewCertificate" | "lastRenewalAt" | "lastRenewalError" | "renewalPending"> | null>(null);
+  const [renewing, setRenewing] = useState(false);
+  const [confirmRenew, setConfirmRenew] = useState(false);
 
   const [autoSchedule, setAutoSchedule] = useState(false);
   const [autoClose, setAutoClose] = useState(false);
@@ -89,6 +103,19 @@ export default function FiscalSettingsPage() {
       setDeviceSerial(d.deviceSerialNumber ?? "");
       setHasPem(d.hasClientCert && d.hasClientKey);
       setHasPfx(d.hasPfx);
+      setCertInfo({
+        certSubject: d.certSubject,
+        certSerial: d.certSerial,
+        certNotAfter: d.certNotAfter,
+        certExpiryStatus: d.certExpiryStatus,
+        certDaysLeft: d.certDaysLeft,
+        secretsEncrypted: d.secretsEncrypted,
+        encryptionConfigured: d.encryptionConfigured,
+        autoRenewCertificate: d.autoRenewCertificate,
+        lastRenewalAt: d.lastRenewalAt,
+        lastRenewalError: d.lastRenewalError,
+        renewalPending: d.renewalPending,
+      });
       setAutoSchedule(d.autoScheduleEnabled);
       setAutoClose(d.autoCloseEnabled);
       setAutoOpen(d.autoOpenEnabled);
@@ -139,6 +166,35 @@ export default function FiscalSettingsPage() {
     } finally {
       setSyncingDevice(false);
     }
+  }
+
+  async function renewNow() {
+    setRenewing(true);
+    setConfirmRenew(false);
+    setError(null);
+    setOk(null);
+    try {
+      const res = await fetch("/api/admin/fiscal-settings/renew", { method: "POST" });
+      const json = (await res.json()) as { success: boolean; message?: string };
+      if (!res.ok || !json.success) setError(json.message ?? "Renewal failed");
+      else setOk("Certificate renewed.");
+    } catch {
+      setError("Renewal failed");
+    } finally {
+      setRenewing(false);
+      await load();
+    }
+  }
+
+  async function setAutoRenew(v: boolean) {
+    setError(null);
+    const res = await fetch("/api/admin/fiscal-settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ autoRenewCertificate: v }),
+    });
+    if (!res.ok) setError("Could not change the setting");
+    await load();
   }
 
   async function saveGeneral() {
@@ -487,6 +543,87 @@ export default function FiscalSettingsPage() {
         <p className="mt-2 text-xs text-slate-500">
           PEM stored: {hasPem ? "yes" : "no"} · PFX stored: {hasPfx ? "yes" : "no"}
         </p>
+
+        {certInfo && (hasPem || hasPfx) && (
+          <dl
+            className={`mt-3 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 rounded-lg border p-3 text-sm ${
+              certInfo.certExpiryStatus === "expired" || certInfo.certExpiryStatus === "critical"
+                ? "border-red-300 bg-red-50 text-red-900"
+                : certInfo.certExpiryStatus === "warning"
+                  ? "border-amber-300 bg-amber-50 text-amber-900"
+                  : "border-slate-200 bg-slate-50 text-slate-700"
+            }`}
+          >
+            <dt className="font-medium">Expires</dt>
+            <dd>
+              {certInfo.certNotAfter ? certInfo.certNotAfter.slice(0, 10) : "unknown"}
+              {certInfo.certDaysLeft !== null &&
+                (certInfo.certDaysLeft < 0
+                  ? " (expired)"
+                  : ` (${certInfo.certDaysLeft} day${certInfo.certDaysLeft === 1 ? "" : "s"} left)`)}
+            </dd>
+            <dt className="font-medium">Subject</dt>
+            <dd className="break-all">{certInfo.certSubject ?? "unknown"}</dd>
+            <dt className="font-medium">Serial</dt>
+            <dd className="break-all font-mono text-xs">{certInfo.certSerial ?? "unknown"}</dd>
+            <dt className="font-medium">Private key</dt>
+            <dd>
+              {certInfo.secretsEncrypted
+                ? "stored encrypted"
+                : certInfo.encryptionConfigured
+                  ? "stored UNENCRYPTED. Run npm run fiscal:encrypt -- --apply"
+                  : "stored UNENCRYPTED. Set FISCAL_ENCRYPTION_KEY first"}
+            </dd>
+          </dl>
+        )}
+
+        {certInfo && hasPem && (
+          <div className="mt-3 space-y-3 rounded-lg border border-slate-200 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-slate-800">Renew automatically</p>
+                <p className="text-xs text-slate-500">
+                  30 days before it expires the system asks ZIMRA for a new certificate, tests it, and only then switches over.
+                  ZIMRA cancels the old certificate the moment it issues the new one, so turn this on only if nothing else (such as the Virtual Device) keeps its own copy.
+                </p>
+              </div>
+              <Switch
+                checked={certInfo.autoRenewCertificate}
+                onCheckedChange={(v) => void setAutoRenew(v)}
+                aria-label="Renew automatically"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (confirmRenew) void renewNow();
+                  else setConfirmRenew(true);
+                }}
+                disabled={renewing || !certInfo.encryptionConfigured}
+              >
+                {renewing ? "Renewing…" : confirmRenew ? "Yes, renew now" : certInfo.renewalPending ? "Finish pending renewal" : "Renew now"}
+              </Button>
+              {confirmRenew && !renewing && (
+                <>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmRenew(false)}>
+                    Cancel
+                  </Button>
+                  <span className="text-xs text-amber-800">The current certificate stops working immediately. Anything else using it must be given the new one.</span>
+                </>
+              )}
+              {certInfo.lastRenewalAt && <span className="text-xs text-slate-500">Last renewed {certInfo.lastRenewalAt.slice(0, 10)}</span>}
+            </div>
+            {certInfo.renewalPending && (
+              <p className="text-xs text-amber-800">ZIMRA has issued a new certificate that is waiting to be tested. The current one stays in use until then.</p>
+            )}
+            {certInfo.lastRenewalError && (
+              <p className="text-xs text-red-700" role="alert">Last renewal attempt failed: {certInfo.lastRenewalError}</p>
+            )}
+          </div>
+        )}
 
         <Separator className="my-4" />
 

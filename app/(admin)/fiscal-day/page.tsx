@@ -2,11 +2,21 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CENTRAL, DeviceSelect, useFiscalDevices } from "@/components/fiscal/DeviceSelect";
 import { Button } from "@/components/ui/button";
+
+type DeviceHealth = {
+  reachable: boolean;
+  dayOpen: boolean | null;
+  fiscalDayNo: number | null;
+  uploadBacklog: number | null;
+  message?: string;
+};
 
 type FiscalDayState = {
   isOpen: boolean;
   status: string;
+  device?: DeviceHealth;
 };
 
 export default function FiscalDayPage() {
@@ -18,15 +28,19 @@ export default function FiscalDayPage() {
   const [confirmAction, setConfirmAction] = useState<"open" | "close" | null>(null);
   const [posPending, setPosPending] = useState<string | null>(null);
   const [lastZReportId, setLastZReportId] = useState<string | null>(null);
+  // Each branch device has its own fiscal day; "central" is the shared one.
+  const [deviceKey, setDeviceKey] = useState<string>(CENTRAL);
+  const { devices } = useFiscalDevices();
+  const deviceName = deviceKey === CENTRAL ? "Central device" : (devices.find((d) => d.id === deviceKey)?.name ?? "Device");
 
-  async function loadStatus() {
+  async function loadStatus(key: string = deviceKey) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/fiscal-day/status");
-      const json = await res.json() as { success: boolean; isOpen: boolean; status: string; message?: string };
+      const res = await fetch(`/api/admin/fiscal-day/status?deviceKey=${encodeURIComponent(key)}`);
+      const json = await res.json() as { success: boolean; isOpen: boolean; status: string; device?: DeviceHealth; message?: string };
       if (res.ok && json.success) {
-        setState({ isOpen: json.isOpen, status: json.status });
+        setState({ isOpen: json.isOpen, status: json.status, device: json.device });
       } else {
         setError(json.message ?? "Failed to fetch fiscal day status");
       }
@@ -38,8 +52,9 @@ export default function FiscalDayPage() {
   }
 
   useEffect(() => {
-    void loadStatus();
-  }, []);
+    void loadStatus(deviceKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceKey]);
 
   async function executeAction(action: "open" | "close", force = false) {
     setConfirmAction(null);
@@ -51,7 +66,7 @@ export default function FiscalDayPage() {
       const res = await fetch(`/api/admin/fiscal-day/${action}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(force ? { force: true } : {}),
+        body: JSON.stringify({ deviceKey, ...(force ? { force: true } : {}) }),
       });
       const json = await res.json() as {
         success: boolean;
@@ -66,7 +81,7 @@ export default function FiscalDayPage() {
       }
       if (res.ok && json.success) {
         setLastZReportId(action === "close" && json.report?._id ? json.report._id : null);
-        setSuccessMsg(action === "open" ? "Fiscal day opened successfully." : "Fiscal day closed successfully.");
+        setSuccessMsg(action === "open" ? `Fiscal day opened on ${deviceName}.` : `Fiscal day closed on ${deviceName}.`);
         await loadStatus();
       } else {
         setError(json.message ?? `Failed to ${action} fiscal day`);
@@ -98,6 +113,22 @@ export default function FiscalDayPage() {
         </div>
       </div>
 
+      {devices.length > 0 && (
+        <div className="mt-6">
+          <DeviceSelect
+            value={deviceKey}
+            onChange={(k) => {
+              setSuccessMsg(null);
+              setPosPending(null);
+              setLastZReportId(null);
+              setDeviceKey(k);
+            }}
+            label="Fiscal device"
+          />
+          <p className="mt-1.5 text-xs text-slate-500">Each device has its own fiscal day. Branches on the central device share one.</p>
+        </div>
+      )}
+
       {/* Warning */}
       <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         ⚠ <strong>Important:</strong> You must open the fiscal day each morning before processing any invoices.
@@ -106,7 +137,7 @@ export default function FiscalDayPage() {
 
       {/* Status card */}
       <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-700">Current Status</h2>
+        <h2 className="text-base font-semibold text-slate-700">Current Status{devices.length > 0 ? ` · ${deviceName}` : ""}</h2>
 
         {loading ? (
           <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
@@ -132,6 +163,40 @@ export default function FiscalDayPage() {
             <span className="text-sm text-slate-500">ZIMRA status: <strong>{state.status || "Unknown"}</strong></span>
           </div>
         ) : null}
+
+        {!loading && state?.device && (
+          <div
+            role="status"
+            className={`mt-4 rounded-md border px-4 py-3 text-sm ${
+              !state.device.reachable || state.device.uploadBacklog === null || state.device.uploadBacklog > 0
+                ? "border-amber-200 bg-amber-50 text-amber-900"
+                : "border-emerald-200 bg-emerald-50 text-emerald-900"
+            }`}
+          >
+            {!state.device.reachable ? (
+              <>
+                <strong>Fiscal device not reachable.</strong> Sales are saved and will be fiscalised when it is back.
+                {state.device.message ? ` (${state.device.message})` : ""}
+              </>
+            ) : state.device.uploadBacklog === null ? (
+              <>
+                <strong>Could not read the device&apos;s upload queue.</strong> Closing the day is held until it can be confirmed.
+              </>
+            ) : state.device.uploadBacklog > 0 ? (
+              <>
+                <strong>Device catching up: {state.device.uploadBacklog} receipt{state.device.uploadBacklog === 1 ? "" : "s"} not yet uploaded to ZIMRA.</strong>{" "}
+                Invoices are valid, but scanning their QR may say &quot;not found&quot; until this reaches 0. Wait before closing the day.
+              </>
+            ) : (
+              <>
+                <strong>All receipts uploaded to ZIMRA.</strong> Safe to close the day when sales are finished.
+              </>
+            )}
+            <button type="button" onClick={() => void loadStatus()} className="ml-3 underline underline-offset-4">
+              Refresh
+            </button>
+          </div>
+        )}
 
         {error && (
           <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
@@ -209,7 +274,7 @@ export default function FiscalDayPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <h2 className="text-lg font-bold text-slate-900">
-              {confirmAction === "open" ? "Open Fiscal Day?" : "Close Fiscal Day?"}
+              {confirmAction === "open" ? "Open Fiscal Day?" : "Close Fiscal Day?"}{devices.length > 0 ? ` (${deviceName})` : ""}
             </h2>
             <p className="mt-2 text-sm text-slate-600">
               {confirmAction === "open"

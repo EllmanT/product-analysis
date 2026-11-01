@@ -108,6 +108,25 @@ export async function resolveDeviceByKey(key?: string | null): Promise<ResolvedD
   return resolveFromDoc(doc);
 }
 
+/**
+ * The device's id inside the fiscal service (FISCAL_BACKEND=service). The central device uses an env setting,
+ * branch devices store theirs on the record. Never falls back to another device.
+ */
+export async function resolveServiceDeviceId(key?: string | null): Promise<string> {
+  if (!key || key === CENTRAL_KEY) {
+    const id = process.env.FISCAL_SERVICE_CENTRAL_DEVICE_ID?.trim();
+    if (!id) throw new DeviceConfigError("The central device has no fiscal-service id (FISCAL_SERVICE_CENTRAL_DEVICE_ID)");
+    return id;
+  }
+  if (!Types.ObjectId.isValid(key)) throw new DeviceConfigError("Unknown fiscal device");
+  await dbConnect();
+  const doc = await FiscalDevice.findById(key).select("name active serviceDeviceId").lean<{ name: string; active: boolean; serviceDeviceId?: string }>();
+  if (!doc) throw new DeviceConfigError("The branch's fiscal device no longer exists");
+  if (!doc.active) throw new DeviceConfigError(`Fiscal device "${doc.name}" is switched off`);
+  if (!doc.serviceDeviceId) throw new DeviceConfigError(`Fiscal device "${doc.name}" has not been added to the fiscal service yet`);
+  return doc.serviceDeviceId;
+}
+
 type BranchDeviceRef = { pos?: { fiscalDeviceId?: Types.ObjectId | string | null } } | null | undefined;
 
 /** Key to snapshot on a new sale: the branch's own device, otherwise central. No lookup, no failure. */
@@ -159,6 +178,8 @@ export interface FiscalDeviceSafe {
   renewalPending: boolean;
   deviceModelName: string | null;
   deviceModelVersion: string | null;
+  /** The device's id inside the fiscal service (FISCAL_BACKEND=service). */
+  serviceDeviceId: string | null;
   vdEmail: string | null;
   hasVdPassword: boolean;
   autoScheduleEnabled: boolean;
@@ -198,6 +219,7 @@ function toSafe(doc: IFiscalDeviceDoc, branches: { id: string; name: string }[])
     lastRenewalAt: doc.lastRenewalAt ? doc.lastRenewalAt.toISOString() : null,
     lastRenewalError: doc.lastRenewalError?.trim() || null,
     renewalPending: Boolean(doc.pendingKeyPem?.trim()),
+    serviceDeviceId: doc.serviceDeviceId?.trim() || null,
     deviceModelName: doc.deviceModelName?.trim() || null,
     deviceModelVersion: doc.deviceModelVersion?.trim() || null,
     vdEmail: doc.vdEmail?.trim() || null,
@@ -280,6 +302,7 @@ export interface FiscalDeviceInput {
   deviceId?: string | null;
   deviceSerialNumber?: string | null;
   autoRenewCertificate?: boolean;
+  serviceDeviceId?: string | null;
   deviceModelName?: string | null;
   deviceModelVersion?: string | null;
   vdEmail?: string | null;
@@ -304,6 +327,7 @@ function applyInput(doc: IFiscalDeviceDoc, input: FiscalDeviceInput) {
   if (input.deviceId !== undefined) doc.deviceId = input.deviceId?.trim() ?? "";
   if (input.deviceSerialNumber !== undefined) doc.deviceSerialNumber = input.deviceSerialNumber?.trim() ?? "";
   if (input.autoRenewCertificate !== undefined) doc.autoRenewCertificate = input.autoRenewCertificate;
+  if (input.serviceDeviceId !== undefined) doc.serviceDeviceId = input.serviceDeviceId?.trim() ?? "";
   if (input.deviceModelName !== undefined) doc.deviceModelName = input.deviceModelName?.trim() ?? "";
   if (input.deviceModelVersion !== undefined) doc.deviceModelVersion = input.deviceModelVersion?.trim() ?? "";
   if (input.vdEmail !== undefined) doc.vdEmail = input.vdEmail?.trim() ?? "";

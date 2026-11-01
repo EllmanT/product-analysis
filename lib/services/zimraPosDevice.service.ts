@@ -3,6 +3,15 @@ import type { ResolvedDevice } from "@/lib/services/fiscalDevice.service";
 import { getZimraContext } from "@/lib/services/zimraFiscal.service";
 import { getFdmsAuthorizationHeader } from "@/lib/zimraFdmsAuth";
 import { zimraRequest } from "@/lib/zimraHttp";
+import {
+  acceptsReceipts,
+  deviceInvoiceNoMatches,
+    parseDayStatus,
+  type CloseErrorCode,
+  type FiscalDayStatusName,
+} from "@/lib/zimraDayStatus";
+import { engineStatus, fiscalBackend } from "@/lib/fiscal/client";
+import { resolveServiceDeviceId } from "@/lib/services/fiscalDevice.service";
 import logger from "@/lib/logger";
 
 /** A POS sale can wait this long for the device (6 branches at once queue ~7 s on the test device). */
@@ -224,7 +233,13 @@ export async function getDeviceInvoice(
     device
   );
   if (!res.json) throw new Error(`GetInvoice: unreadable reply (HTTP ${res.statusCode})`);
-  if (isCodeOne(res.json)) return { found: true, fiscal: mapFiscal(res.json) };
+  if (isCodeOne(res.json)) {
+    const fiscal = mapFiscal(res.json);
+    // The device's lookup can match loosely (a different receipt whose number merely ends the same way).
+    // Only a receipt carrying exactly our number counts as ours.
+    if (!deviceInvoiceNoMatches(fiscal.deviceInvoiceNo ?? "", invoiceNumber)) return { found: false };
+    return { found: true, fiscal };
+  }
   const message = str(res.json["Message"]);
   if (/not found/i.test(message)) return { found: false };
   throw new Error(`GetInvoice: ${message || "unexpected reply"}`);
@@ -232,42 +247,64 @@ export async function getDeviceInvoice(
 
 export interface PosDeviceStatus {
   reachable: boolean;
+  /** True while receipts can be sold into the day (opened, or a failed close that still takes receipts). */
   dayOpen: boolean | null;
+  /** Raw fiscal day state reported by the device ("" when unknown). */
+  dayStatus: FiscalDayStatusName;
+  /** Set when the last close attempt failed (CountersMismatch, ReceiptsWithValidationErrors, ...). */
+  closingErrorCode?: CloseErrorCode;
   fiscalDayNo: number | null;
   lastReceiptGlobalNo: number | null;
   message?: string;
 }
 
+const UNREACHABLE = {
+  reachable: false,
+  dayOpen: null,
+  dayStatus: "" as FiscalDayStatusName,
+  fiscalDayNo: null,
+  lastReceiptGlobalNo: null,
+};
+
 export async function getPosDeviceStatus(device?: ResolvedDevice): Promise<PosDeviceStatus> {
+  if (fiscalBackend() === "service") {
+    // The fiscal service owns the device: ask it, not ZIMRA.
+    try {
+      const st = await engineStatus(await resolveServiceDeviceId(device?.key));
+      const open = st.dayOpen && !st.closing;
+      return {
+        reachable: true,
+        dayOpen: open,
+        dayStatus: st.closing ? "FiscalDayCloseInitiated" : st.dayOpen ? "FiscalDayOpened" : "FiscalDayClosed",
+        fiscalDayNo: st.fiscalDayNo ?? null,
+        lastReceiptGlobalNo: null,
+        ...(st.paused || st.lastError ? { message: st.paused ? `Paused: ${st.paused}` : st.lastError } : {}),
+      };
+    } catch (e) {
+      return { ...UNREACHABLE, message: e instanceof Error ? e.message : String(e) };
+    }
+  }
   try {
     const res = await deviceRequest("/api/VirtualDevice/GetStatus", "GET", undefined, STATUS_TIMEOUT_MS, device);
-    if (!res.json || !isCodeOne(res.json)) {
+    // A device in FiscalDayCloseFailed answers Code "0" with the state inside Message; it is still reachable.
+    const parsed = parseDayStatus(res.json);
+    if (!parsed.ok) {
       return {
-        reachable: false,
-        dayOpen: null,
-        fiscalDayNo: null,
-        lastReceiptGlobalNo: null,
+        ...UNREACHABLE,
         message: res.json ? str(res.json["Message"]) : `HTTP ${res.statusCode}`,
       };
     }
-    const data = (res.json["Data"] ?? {}) as Record<string, unknown>;
-    const status = str(data["fiscalDayStatus"] ?? data["FiscalDayStatus"]);
-    const fd = Number(res.json["FiscalDayNo"]);
-    const last = Number(data["lastReceiptGlobalNo"]);
     return {
       reachable: true,
-      dayOpen: status !== "" && status !== "FiscalDayClosed",
-      fiscalDayNo: Number.isFinite(fd) ? fd : null,
-      lastReceiptGlobalNo: Number.isFinite(last) ? last : null,
+      // CloseInitiated takes no receipts: report it as not open so tills and the queue hold their sales.
+      dayOpen: acceptsReceipts(parsed.status),
+      dayStatus: parsed.status,
+      closingErrorCode: parsed.closingErrorCode,
+      fiscalDayNo: parsed.fiscalDayNo,
+      lastReceiptGlobalNo: parsed.lastReceiptGlobalNo,
     };
   } catch (e) {
-    return {
-      reachable: false,
-      dayOpen: null,
-      fiscalDayNo: null,
-      lastReceiptGlobalNo: null,
-      message: e instanceof Error ? e.message : String(e),
-    };
+    return { ...UNREACHABLE, message: e instanceof Error ? e.message : String(e) };
   }
 }
 
@@ -279,8 +316,9 @@ export async function getPosDeviceStatus(device?: ResolvedDevice): Promise<PosDe
 export async function getDeviceUploadBacklog(device?: ResolvedDevice): Promise<{ ok: true; pending: number; fiscalDayNo: number } | { ok: false; message: string }> {
   try {
     const status = await deviceRequest("/api/VirtualDevice/GetStatus", "GET", undefined, STATUS_TIMEOUT_MS, device);
-    const day = Number(status.json?.["FiscalDayNo"]);
-    if (!status.json || !isCodeOne(status.json) || !Number.isFinite(day)) {
+    const parsed = parseDayStatus(status.json);
+    const day = parsed.fiscalDayNo;
+    if (!parsed.ok || day == null) {
       return { ok: false, message: "Fiscal device did not report its fiscal day" };
     }
     const res = await deviceRequest(`/api/VirtualDevice/GetUnProcessedInvoicesSummary?fiscalDayNumber=${day}`, "GET", undefined, STATUS_TIMEOUT_MS, device);
@@ -297,6 +335,8 @@ export async function getDeviceUploadBacklog(device?: ResolvedDevice): Promise<{
 export interface DeviceHealth {
   reachable: boolean;
   dayOpen: boolean | null;
+  dayStatus?: FiscalDayStatusName;
+  closingErrorCode?: CloseErrorCode;
   fiscalDayNo: number | null;
   /** Receipts signed by the device but not yet uploaded to ZIMRA; null when it could not be read. */
   uploadBacklog: number | null;
@@ -313,6 +353,8 @@ export async function getDeviceHealth(device?: ResolvedDevice): Promise<DeviceHe
   return {
     reachable: true,
     dayOpen: status.dayOpen,
+    dayStatus: status.dayStatus,
+    closingErrorCode: status.closingErrorCode,
     fiscalDayNo: status.fiscalDayNo,
     uploadBacklog: backlog.ok ? backlog.pending : null,
     message: backlog.ok ? undefined : backlog.message,

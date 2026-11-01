@@ -17,6 +17,8 @@ export interface IFiscalDevice {
   zimraUseProductionUrl?: boolean;
   deviceId?: string;
   deviceSerialNumber?: string;
+  /** This device's id inside the fiscal service (FISCAL_BACKEND=service). Set once the certificate is uploaded there. */
+  serviceDeviceId?: string;
 
   clientCertPem?: string;
   clientKeyPem?: string;
@@ -75,6 +77,7 @@ const FiscalDeviceSchema = new Schema<IFiscalDevice>(
     zimraUseProductionUrl: { type: Boolean, default: false },
     deviceId: { type: String, trim: true },
     deviceSerialNumber: { type: String, trim: true },
+    serviceDeviceId: { type: String, trim: true },
 
     clientCertPem: { type: String },
     clientKeyPem: { type: String },

@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, LogOut, Printer, ReceiptText, Trash2, TriangleAlert } from "lucide-react";
+import { FileImage, Loader2, LogOut, Printer, ReceiptText, Smartphone, Trash2, TriangleAlert } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -17,11 +17,15 @@ import {
   type Currency,
   type TerminalProduct,
 } from "@/components/pos/cart";
+import DespatchImportDialog, { type DespatchImport } from "@/components/pos/DespatchImportDialog";
+import PhoneScanDialog from "@/components/pos/PhoneScanDialog";
 import SalesSheet, { type SaleRow } from "@/components/pos/SalesSheet";
 import { useOfflineQueue } from "@/components/pos/useOfflineQueue";
 import { clearAll, fallbackNumber, kvGet, kvSet, takeProvisionalNumber } from "@/lib/pos/offlineStore";
 import { printSlip } from "@/lib/pos/print";
+import { getSelectedTillId, setSelectedTillId } from "@/lib/pos/tillSelection";
 import { money } from "@/lib/pos/slip";
+import type { DespatchScanDto } from "@/lib/services/despatchScan.service";
 import type { PosBranchDto } from "@/lib/services/posBranch.service";
 import { cn } from "@/lib/utils";
 
@@ -86,6 +90,57 @@ const newKey = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? 
 const isTyping = (el: EventTarget | null) =>
   el instanceof HTMLElement && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT");
 
+interface Buyer {
+  registerName: string;
+  tradeName: string;
+  tin: string;
+  vatNumber: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+}
+const EMPTY_BUYER: Buyer = { registerName: "", tradeName: "", tin: "", vatNumber: "", email: "", phone: "", address: "", city: "" };
+
+interface PosCustomerLite {
+  _id: string;
+  name: string;
+  tradeName?: string;
+  tin?: string;
+  vatNumber?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+}
+
+/** Only fields with a value are sent; an email the server would reject is dropped rather than failing the sale. */
+function buyerPayload(b: Buyer) {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(b)) {
+    const t = v.trim();
+    if (t && !(k === "email" && !/^\S+@\S+\.\S+$/.test(t))) out[k] = t;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+function searchCustomers(list: PosCustomerLite[], query: string, limit = 7): PosCustomerLite[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const words = q.split(/\s+/);
+  const scored: { c: PosCustomerLite; s: number }[] = [];
+  for (const c of list) {
+    const name = c.name.toLowerCase();
+    const hay = `${name} ${(c.tradeName ?? "").toLowerCase()} ${(c.tin ?? "").toLowerCase()}`;
+    let s = 0;
+    if (name === q) s = 90;
+    else if (name.startsWith(q)) s = 60;
+    else if (words.every((w) => hay.includes(w))) s = 30;
+    if (s) scored.push({ c, s });
+  }
+  return scored.sort((a, b) => b.s - a.s || a.c.name.localeCompare(b.c.name)).slice(0, limit).map((x) => x.c);
+}
+
 export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCredit }: Props) {
   const { pos } = branch;
   const taxPercent = pos.taxPercent;
@@ -104,7 +159,10 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
   const [highlight, setHighlight] = useState(0);
   const [entryError, setEntryError] = useState("");
 
-  const [buyer, setBuyer] = useState({ registerName: "", tin: "", email: "" });
+  const [buyer, setBuyer] = useState<Buyer>(EMPTY_BUYER);
+  const [customers, setCustomers] = useState<PosCustomerLite[]>([]);
+  const [custOpen, setCustOpen] = useState(false);
+  const [custHighlight, setCustHighlight] = useState(0);
   const [payment, setPayment] = useState<PaymentMethod>("CASH");
 
   const [submitting, setSubmitting] = useState(false);
@@ -113,7 +171,18 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
   const [summary, setSummary] = useState<Summary | null>(null);
   const [now, setNow] = useState(0);
   const [salesOpen, setSalesOpen] = useState(false);
+  const [phoneScanOpen, setPhoneScanOpen] = useState(false);
+  // Slips photographed on a phone and waiting at this till, and the one whose lines are in the cart now.
+  const [scans, setScans] = useState<DespatchScanDto[]>([]);
+  const [scanImportOpen, setScanImportOpen] = useState(false);
+  const [importedScan, setImportedScan] = useState<{ id: string; slipNumber: string | null } | null>(null);
+  const announcedScans = useRef<Set<string>>(new Set());
+  // Email the A4 tax invoice PDF to the customer once the sale is fiscalised.
+  const [emailInvoice, setEmailInvoice] = useState(false);
   const [escArmed, setEscArmed] = useState(false);
+  // The branch's tills (cash desks) and which one this browser is. Empty list = the branch uses no tills.
+  const [tills, setTills] = useState<{ id: string; code: string; name: string }[]>([]);
+  const [tillId, setTillId] = useState<string | null>(null);
 
   const productRef = useRef<HTMLInputElement>(null);
   const qtyRef = useRef<HTMLInputElement>(null);
@@ -134,6 +203,36 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
 
   useEffect(() => {
     let cancelled = false;
+    (async () => {
+      const cacheKey = `tills:${branch.id}`;
+      let list: { id: string; code: string; name: string }[] | null = null;
+      try {
+        const r = await fetch(`/api/pos/branches/${branch.id}/tills`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
+        const j = await r.json().catch(() => null);
+        if (r.ok && j?.success) {
+          list = j.data;
+          await kvSet(cacheKey, list);
+        }
+      } catch {
+        /* offline: use the list saved last time */
+      }
+      if (!list) list = (await kvGet<{ id: string; code: string; name: string }[]>(cacheKey)) ?? [];
+      if (cancelled) return;
+      setTills(list);
+      const saved = getSelectedTillId(branch.id);
+      if (saved && list.some((t) => t.id === saved)) setTillId(saved);
+      else if (list.length === 1) {
+        setSelectedTillId(branch.id, list[0].id);
+        setTillId(list[0].id);
+      } else setTillId(null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [branch.id]);
+
+  useEffect(() => {
+    let cancelled = false;
     const cacheKey = `products:${branch.id}`;
     (async () => {
       try {
@@ -151,6 +250,42 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
       cancelled = true;
     };
   }, [branch.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/pos/customers", { cache: "no-store", signal: AbortSignal.timeout(15_000) });
+        const j = await r.json();
+        if (!j.success) throw new Error("customers");
+        if (!cancelled) setCustomers(j.data);
+        void kvSet("customers", j.data);
+      } catch {
+        const cached = await kvGet<PosCustomerLite[]>("customers");
+        if (!cancelled) setCustomers(cached ?? []);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const custMatches = useMemo(() => searchCustomers(customers, buyer.registerName), [customers, buyer.registerName]);
+
+  const pickCustomer = useCallback((c: PosCustomerLite) => {
+    setBuyer({
+      registerName: c.name,
+      tradeName: c.tradeName ?? "",
+      tin: c.tin ?? "",
+      vatNumber: c.vatNumber ?? "",
+      email: c.email ?? "",
+      phone: c.phone ?? "",
+      address: c.address ?? "",
+      city: c.city ?? "",
+    });
+    setCustOpen(false);
+    productRef.current?.focus();
+  }, []);
 
   const markReachableRef = useRef<(ok: boolean) => Promise<void>>(async () => {});
 
@@ -188,6 +323,41 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
       clearInterval(t);
     };
   }, [branch.id]);
+
+  // The slip inbox: scans from paired phones appear here a few seconds after the photo is taken.
+  const loadScans = useCallback(async () => {
+    try {
+      const q = new URLSearchParams({ branchId: branch.id, status: "processing,ready,failed" });
+      if (tillId) q.set("tillId", tillId);
+      const r = await fetch(`/api/pos/despatch-scans?${q}`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
+      const j = await r.json().catch(() => null);
+      if (r.ok && j?.success) setScans(j.data as DespatchScanDto[]);
+    } catch {
+      /* offline or slow: keep what is on screen */
+    }
+  }, [branch.id, tillId]);
+
+  useEffect(() => {
+    const first = setTimeout(() => void loadScans(), 0);
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") void loadScans();
+    }, 3000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(t);
+    };
+  }, [loadScans]);
+
+  // Tell the cashier once when a slip is ready, without taking over the screen mid-sale.
+  useEffect(() => {
+    for (const s of scans) {
+      if (s.status !== "ready" || announcedScans.current.has(s.id)) continue;
+      announcedScans.current.add(s.id);
+      toast.info(s.slipNumber ? `Slip ${s.slipNumber} is ready` : "A slip is ready", {
+        action: { label: "Review", onClick: () => setScanImportOpen(true) },
+      });
+    }
+  }, [scans]);
 
   // A slow clock for the "offline for N minutes" text.
   useEffect(() => {
@@ -319,9 +489,43 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
   };
 
   const removeAt = (i: number) => {
+    if (lines.length <= 1) setImportedScan(null);
     setLines((prev) => prev.filter((_, idx) => idx !== i));
     setSelected((s) => Math.max(-1, Math.min(s, lines.length - 2)));
   };
+
+  // ---- slip import --------------------------------------------------------
+
+  const importScan = useCallback(
+    ({ scan, lines: incoming }: DespatchImport) => {
+      setLines((prev) => incoming.reduce((acc, l) => addLine(acc, l), prev));
+      setImportedScan({ id: scan.id, slipNumber: scan.slipNumber });
+      setEmailInvoice(true);
+      attempt.current = null;
+      // Fill the customer from the slip, but never over one the cashier already entered.
+      setBuyer((cur) => {
+        if (cur.registerName || cur.tin || cur.email) return cur;
+        const tin = scan.customerTin?.trim().toLowerCase();
+        const saved = tin ? customers.find((c) => c.tin && c.tin.trim().toLowerCase() === tin) : undefined;
+        if (saved) {
+          return {
+            registerName: saved.name,
+            tradeName: saved.tradeName ?? "",
+            tin: saved.tin ?? "",
+            vatNumber: saved.vatNumber ?? "",
+            email: saved.email ?? scan.customerEmail ?? "",
+            phone: saved.phone ?? "",
+            address: saved.address ?? "",
+            city: saved.city ?? "",
+          };
+        }
+        return { ...EMPTY_BUYER, registerName: scan.customerName ?? "", tin: scan.customerTin ?? "", email: scan.customerEmail ?? "" };
+      });
+      toast.success(`${incoming.length} line${incoming.length === 1 ? "" : "s"} added from the slip. Check the customer, then Fiscalise.`);
+      requestAnimationFrame(() => productRef.current?.focus());
+    },
+    [customers]
+  );
 
   // ---- currency -----------------------------------------------------------
 
@@ -354,14 +558,16 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
   );
 
   const afterSale = useCallback(
-    (row: SaleRow) => {
+    (row: SaleRow, opts: { print?: boolean } = {}) => {
       attempt.current = null;
+      setImportedScan(null);
+      setEmailInvoice(false);
       setLines([]);
       setSelected(-1);
-      setBuyer({ registerName: "", tin: "", email: "" });
+      setBuyer(EMPTY_BUYER);
       setPayment("CASH");
       setLast(row);
-      void doPrint(row);
+      if (opts.print !== false) void doPrint(row);
       resetEntry();
     },
     [doPrint, resetEntry]
@@ -427,11 +633,21 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
       productRef.current?.focus();
       return;
     }
+    if (tills.length > 0 && !tillId) {
+      setSubmitError("Choose which till this is (top of the screen) before selling.");
+      return;
+    }
+    const emailTo = emailInvoice && /^\S+@\S+\.\S+$/.test(buyer.email.trim()) ? buyer.email.trim() : null;
+    if (emailTo && !buyer.registerName.trim()) {
+      setSubmitError("Enter the customer's name: it is required on an emailed tax invoice.");
+      return;
+    }
     setSubmitError("");
     setSubmitting(true);
 
     const payload = {
       branchId: branch.id,
+      ...(tillId ? { tillId } : {}),
       currency,
       paymentMethod: payment,
       lines: lines.map((l) => ({
@@ -441,18 +657,16 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
         quantity: l.quantity,
         unitPrice: unitPrice(l, currency, rate),
       })),
-      buyer: {
-        ...(buyer.registerName.trim() ? { registerName: buyer.registerName.trim() } : {}),
-        ...(buyer.tin.trim() ? { tin: buyer.tin.trim() } : {}),
-        ...(buyer.email.trim() ? { email: buyer.email.trim() } : {}),
-      },
+      buyer: buyerPayload(buyer),
+      ...(importedScan ? { source: { scanId: importedScan.id } } : {}),
+      ...(emailTo ? { emailInvoice: true } : {}),
       soldAt: new Date().toISOString(),
     };
     // Same sale content = same key, so a retry after a lost reply can never create a second sale.
     const sig = JSON.stringify({ ...payload, soldAt: undefined });
     if (!attempt.current || attempt.current.body !== sig) attempt.current = { body: sig, key: newKey() + newKey() };
     const key = attempt.current.key;
-    const body = { ...payload, buyer: Object.keys(payload.buyer).length ? payload.buyer : undefined };
+    const body = payload;
     const totalsNow = cartTotals(lines, currency, rate, taxPercent, taxInclusive);
 
     try {
@@ -487,7 +701,9 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
         attempt.current = null;
         return;
       }
-      afterSale(sale);
+      // A sale built from a photographed slip goes to the customer by email, not on the thermal printer.
+      afterSale(sale, { print: !(emailTo && importedScan) });
+      if (emailTo) toast.info(`Tax invoice will be emailed to ${emailTo}`, { description: "It is sent as soon as the sale is fiscalised." });
       void refreshSummary();
       if (sale.status !== "FISCALISED") {
         toast.warning("Provisional receipt issued", {
@@ -497,12 +713,14 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
     } finally {
       setSubmitting(false);
     }
-  }, [submitting, lines, branch.id, currency, payment, rate, buyer, refreshSummary, taxPercent, taxInclusive, off, sellOffline, afterSale]);
+  }, [submitting, lines, importedScan, emailInvoice, tills.length, tillId, branch.id, currency, payment, rate, buyer, refreshSummary, taxPercent, taxInclusive, off, sellOffline, afterSale]);
 
   const clearSale = useCallback(() => {
+    setImportedScan(null);
+    setEmailInvoice(false);
     setLines([]);
     setSelected(-1);
-    setBuyer({ registerName: "", tin: "", email: "" });
+    setBuyer(EMPTY_BUYER);
     setSubmitError("");
     attempt.current = null;
     resetEntry();
@@ -512,7 +730,7 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
 
   const onGlobalKey = useCallback(
     (e: KeyboardEvent) => {
-      if (salesOpen) return;
+      if (salesOpen || phoneScanOpen || scanImportOpen) return;
       const fn = ["F2", "F3", "F4", "F8", "F9", "F12"];
       if (fn.includes(e.key)) {
         e.preventDefault();
@@ -545,7 +763,7 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
         productRef.current?.focus(); // typing anywhere starts a product search
       }
     },
-    [salesOpen, fiscalise, switchCurrency, currency, last, doPrint, open, picked, query, resetEntry, lines.length, clearSale, results.length]
+    [salesOpen, phoneScanOpen, scanImportOpen, fiscalise, switchCurrency, currency, last, doPrint, open, picked, query, resetEntry, lines.length, clearSale, results.length]
   );
 
   useEffect(() => {
@@ -572,6 +790,33 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
             {isAdmin ? " · administrator" : ""}
           </div>
         </div>
+
+        {tills.length > 0 && (
+          <label className="inline-flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">Till</span>
+            <select
+              value={tillId ?? ""}
+              onChange={(e) => {
+                const v = e.target.value || null;
+                setTillId(v);
+                setSelectedTillId(branch.id, v);
+                setSubmitError("");
+              }}
+              className={cn(
+                "h-8 rounded-md border bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40",
+                !tillId && "border-amber-400"
+              )}
+              aria-label="Which till is this"
+            >
+              <option value="">Choose…</option>
+              {tills.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <div
           className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
@@ -617,9 +862,36 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
 
         <button
           type="button"
+          onClick={() => setPhoneScanOpen(true)}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-transform duration-150 hover:bg-accent active:scale-[0.97]"
+        >
+          <Smartphone className="size-3.5" aria-hidden />
+          Scan slip with phone
+        </button>
+
+        {scans.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setScanImportOpen(true)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-transform duration-150 hover:bg-accent active:scale-[0.97]",
+              scans.some((s) => s.status === "ready") && "border-primary bg-primary/10 font-medium"
+            )}
+          >
+            <FileImage className="size-3.5" aria-hidden />
+            {scans.some((s) => s.status === "ready")
+              ? `${scans.filter((s) => s.status === "ready").length} slip${scans.filter((s) => s.status === "ready").length === 1 ? "" : "s"} ready`
+              : scans.some((s) => s.status === "processing")
+                ? "Reading slip…"
+                : "Slip could not be read"}
+          </button>
+        )}
+
+        <button
+          type="button"
           onClick={() => setSalesOpen(true)}
           className={cn(
-            "ml-auto inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-transform duration-150 hover:bg-accent active:scale-[0.97]",
+            "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-transform duration-150 hover:bg-accent active:scale-[0.97]",
             ((summary && summary.unfiscalised > 0) || off.queue.length > 0) && "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
           )}
         >
@@ -908,6 +1180,9 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
 
             <div className="mt-1.5 text-sm empty:hidden" role="alert" aria-live="assertive">
               {submitError && <span className="text-destructive">{submitError}</span>}
+              {!submitError && importedScan && lines.length > 0 && (
+                <span className="text-muted-foreground">From slip{importedScan.slipNumber ? ` ${importedScan.slipNumber}` : ""}</span>
+              )}
               {!submitError && escArmed && <span className="text-muted-foreground">Press Esc again to clear this sale</span>}
             </div>
           </div>
@@ -918,15 +1193,55 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
               <kbd className="rounded border px-1 font-sans text-[10px] text-muted-foreground">F4</kbd>
             </div>
             <div className="space-y-1.5">
-              <input
-                ref={customerRef}
-                value={buyer.registerName}
-                onChange={(e) => setBuyer((b) => ({ ...b, registerName: e.target.value }))}
-                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), productRef.current?.focus())}
-                placeholder="Cash sale (no name)"
-                aria-label="Customer name"
-                className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"
-              />
+              <div className="relative">
+                <input
+                  ref={customerRef}
+                  value={buyer.registerName}
+                  onChange={(e) => {
+                    // Typing a different name means the saved details no longer apply.
+                    setBuyer({ ...EMPTY_BUYER, registerName: e.target.value, tin: buyer.tin, email: buyer.email });
+                    setCustOpen(true);
+                    setCustHighlight(0);
+                  }}
+                  onFocus={() => setCustOpen(true)}
+                  onBlur={() => setTimeout(() => setCustOpen(false), 120)}
+                  onKeyDown={(e) => {
+                    const list = custOpen ? custMatches : [];
+                    if (e.key === "ArrowDown" && list.length) (e.preventDefault(), setCustHighlight((h) => Math.min(h + 1, list.length - 1)));
+                    else if (e.key === "ArrowUp" && list.length) (e.preventDefault(), setCustHighlight((h) => Math.max(h - 1, 0)));
+                    else if (e.key === "Escape" && list.length) (e.preventDefault(), e.stopPropagation(), setCustOpen(false));
+                    else if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (list.length) pickCustomer(list[Math.min(custHighlight, list.length - 1)]);
+                      else productRef.current?.focus();
+                    }
+                  }}
+                  placeholder="Cash sale (type a customer name)"
+                  aria-label="Customer name"
+                  role="combobox"
+                  aria-expanded={custOpen && custMatches.length > 0}
+                  aria-autocomplete="list"
+                  autoComplete="off"
+                  className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"
+                />
+                {custOpen && custMatches.length > 0 && (
+                  <ul role="listbox" className="absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-auto rounded-md border bg-popover p-1 shadow-md">
+                    {custMatches.map((c, i) => (
+                      <li
+                        key={c._id}
+                        role="option"
+                        aria-selected={i === custHighlight}
+                        onMouseDown={(e) => (e.preventDefault(), pickCustomer(c))}
+                        onMouseEnter={() => setCustHighlight(i)}
+                        className={cn("cursor-pointer rounded px-2 py-1.5 text-sm", i === custHighlight && "bg-accent")}
+                      >
+                        <div className="font-medium">{c.name}</div>
+                        <div className="truncate text-xs text-muted-foreground">{[c.tin && `TIN ${c.tin}`, c.email].filter(Boolean).join(" · ") || "No details saved"}</div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-1.5">
                 <input
                   value={buyer.tin}
@@ -944,6 +1259,20 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
                   className="h-9 rounded-md border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"
                 />
               </div>
+              {/^\S+@\S+\.\S+$/.test(buyer.email.trim()) && (
+                <label className="mt-2 flex items-start gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={emailInvoice}
+                    onChange={(e) => setEmailInvoice(e.target.checked)}
+                    className="mt-0.5 size-3.5"
+                  />
+                  <span>
+                    Email the A4 tax invoice (PDF) to this customer
+                    <span className="block text-muted-foreground">Sent once the sale is fiscalised. Needs the customer name.</span>
+                  </span>
+                </label>
+              )}
             </div>
           </div>
 
@@ -998,6 +1327,35 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
           </span>
         ))}
       </footer>
+
+      <DespatchImportDialog
+        open={scanImportOpen}
+        onClose={() => {
+          setScanImportOpen(false);
+          requestAnimationFrame(() => productRef.current?.focus());
+        }}
+        scans={scans}
+        products={products}
+        currency={currency}
+        rate={rate}
+        taxPercent={taxPercent}
+        taxInclusive={taxInclusive}
+        onSwitchCurrency={switchCurrency}
+        onImport={importScan}
+        onChanged={() => void loadScans()}
+      />
+
+      {phoneScanOpen && (
+        <PhoneScanDialog
+          open
+          onClose={() => {
+            setPhoneScanOpen(false);
+            requestAnimationFrame(() => productRef.current?.focus());
+          }}
+          branchId={branch.id}
+          tillId={tillId}
+        />
+      )}
 
       <SalesSheet
         open={salesOpen}

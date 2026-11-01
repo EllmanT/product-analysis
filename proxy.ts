@@ -1,8 +1,9 @@
+import { clerkMiddleware } from "@clerk/nextjs/server";
 import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-export async function proxy(request: NextRequest) {
+export default clerkMiddleware(async (_auth, request: NextRequest) => {
   const path = request.nextUrl.pathname;
 
   if (path.startsWith("/api/auth")) {
@@ -17,7 +18,7 @@ export async function proxy(request: NextRequest) {
     });
     // Cashiers are confined to the POS: every other page or API is closed to them.
     if (token?.role === "cashier") {
-      const allowed = ["/pos", "/api/pos", "/sign-in", "/unauthorized"];
+      const allowed = ["/pos", "/api/pos", "/scan", "/api/scan", "/sign-in", "/unauthorized"];
       const ok = allowed.some((p) => path === p || path.startsWith(`${p}/`));
       if (!ok) {
         if (path.startsWith("/api/")) {
@@ -28,14 +29,14 @@ export async function proxy(request: NextRequest) {
     }
     if (
       token?.role === "branch_user" &&
-      (path.startsWith("/users") || path.startsWith("/branches"))
+      (path.startsWith("/users") || path.startsWith("/branches") || path.startsWith("/pos-settings"))
     ) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [

@@ -2,6 +2,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { Types } from "mongoose";
 
 import Branch, { type IBranch } from "@/database/branch.model";
+import DespatchScan from "@/database/despatchScan.model";
 import InvoiceCounter from "@/database/invoiceCounter.model";
 import ExchangeRate from "@/database/exchangeRate.model";
 import PosSale, {
@@ -12,6 +13,8 @@ import PosSale, {
   type PosCurrency,
   type PosPaymentMethod,
 } from "@/database/posSale.model";
+import { FiscalServiceUnavailable, engineStatus, fiscalBackend, getReceipt, submitReceipt } from "@/lib/fiscal/client";
+import { buildServiceRequest, isRetryableProblem, toPosFiscal } from "@/lib/fiscal/serviceMapping";
 import logger from "@/lib/logger";
 import { checkFiscalMatchesSale, type MatchableSale } from "@/lib/pos/fiscalMatch";
 import dbConnect from "@/lib/mongoose";
@@ -22,6 +25,7 @@ import {
   resolveDeviceByKey,
   saleDeviceFilter,
   type ResolvedDevice,
+  resolveServiceDeviceId,
 } from "@/lib/services/fiscalDevice.service";
 import {
   allocateNumber,
@@ -31,6 +35,10 @@ import {
   releaseNumber,
   seriesFor,
 } from "@/lib/services/posNumbering.service";
+import { sendPendingInvoiceEmails } from "@/lib/services/posInvoiceEmail.service";
+import { resolveSaleTill, TillError } from "@/lib/services/posTill.service";
+import { isFenced } from "@/lib/services/fiscalDayControl.service";
+import { sendFiscalAlertOnce } from "@/lib/services/fiscalAlerts.service";
 import {
   getDeviceInvoice,
   getPosDeviceStatus,
@@ -109,6 +117,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export interface CreatePosSaleInput {
   branchId: string;
   cashierId: string;
+  /** Which till made the sale (optional). Must belong to the branch. */
+  tillId?: string;
   idempotencyKey: string;
   currency: PosCurrency;
   paymentMethod?: PosPaymentMethod;
@@ -128,6 +138,10 @@ export interface CreatePosSaleInput {
   provisionalNumber?: string;
   offline?: boolean;
   isTest?: boolean;
+  /** Build-from-photo: the scan these lines came from. The slip number is taken from the scan, never from the caller. */
+  source?: { scanId: string };
+  /** Email the A4 tax invoice (PDF) to the buyer once fiscalised. Needs the buyer's name and email. */
+  emailInvoice?: boolean;
 }
 
 /**
@@ -187,6 +201,71 @@ function validateLines(lines: CreatePosSaleInput["lines"]) {
  * lost response, offline sync) returns the original sale and never creates a second one.
  * The caller is responsible for authorising `branchId` (see lib/auth/pos-scope.ts).
  */
+/**
+ * Check a slip scan may become a sale: it is this branch's, it has been read, and no live sale
+ * already came from it or from a slip with the same number. Voided and failed sales do not count.
+ */
+async function resolveSlipSource(branchId: string, scanId: string): Promise<NonNullable<IPosSale["source"]>> {
+  if (!Types.ObjectId.isValid(scanId)) throw new PosError("That slip scan was not found", 422, "BAD_SOURCE");
+  const scan = await DespatchScan.findOne({ _id: new Types.ObjectId(scanId), branchId: new Types.ObjectId(branchId) })
+    .select("status slipNumber slipNumberKey")
+    .lean<{ _id: Types.ObjectId; status: string; slipNumber?: string; slipNumberKey?: string }>();
+  if (!scan) throw new PosError("That slip scan was not found", 422, "BAD_SOURCE");
+  if (scan.status === "applied") {
+    throw new PosError(`This slip${scan.slipNumber ? ` (${scan.slipNumber})` : ""} has already been invoiced.`, 409, "DUPLICATE_SLIP");
+  }
+  if (scan.status !== "ready") throw new PosError("That slip scan is no longer available. Scan it again.", 422, "BAD_SOURCE");
+  const dup = await PosSale.findOne({
+    branchId: new Types.ObjectId(branchId),
+    status: { $nin: ["VOIDED", "FAILED"] },
+    $or: [{ "source.scanId": scan._id }, ...(scan.slipNumberKey ? [{ "source.slipNumberKey": scan.slipNumberKey }] : [])],
+  })
+    .select("invoiceNumber provisionalNumber")
+    .lean<{ invoiceNumber?: string; provisionalNumber?: string }>();
+  if (dup) {
+    const ref = dup.invoiceNumber ?? dup.provisionalNumber;
+    throw new PosError(
+      `This slip${scan.slipNumber ? ` (${scan.slipNumber})` : ""} has already been invoiced${ref ? ` as ${ref}` : ""}.`,
+      409,
+      "DUPLICATE_SLIP"
+    );
+  }
+  return { kind: "despatch_scan", scanId: scan._id, slipNumber: scan.slipNumber, slipNumberKey: scan.slipNumberKey };
+}
+
+/**
+ * Take the scan before the sale is created. Only one request can win this update, so two tills
+ * (or a double click) can never both invoice the same slip.
+ */
+async function claimScan(scanId: Types.ObjectId, cashierId: string): Promise<void> {
+  const r = await DespatchScan.updateOne(
+    { _id: scanId, status: "ready" },
+    { $set: { status: "applied", appliedAt: new Date(), appliedBy: new Types.ObjectId(cashierId) } }
+  );
+  if (r.modifiedCount === 0) throw new PosError("This slip has already been invoiced.", 409, "DUPLICATE_SLIP");
+}
+
+/** The sale could not be created: put the slip back in the inbox. */
+async function releaseScan(scanId: Types.ObjectId): Promise<void> {
+  try {
+    await DespatchScan.updateOne(
+      { _id: scanId, status: "applied", saleId: { $exists: false } },
+      { $set: { status: "ready" }, $unset: { appliedAt: "", appliedBy: "" } }
+    );
+  } catch (e) {
+    logger.error({ err: e, scanId: String(scanId) }, "Could not release despatch scan");
+  }
+}
+
+/** Record which sale a claimed scan became. Best effort: the sale is already saved. */
+async function linkScanToSale(scanId: Types.ObjectId, saleId: unknown): Promise<void> {
+  try {
+    await DespatchScan.updateOne({ _id: scanId, status: "applied" }, { $set: { saleId } });
+  } catch (e) {
+    logger.error({ err: e, scanId: String(scanId) }, "Could not link despatch scan to its sale");
+  }
+}
+
 export async function createPosSale(input: CreatePosSaleInput): Promise<IPosSaleDoc> {
   await dbConnect();
 
@@ -200,6 +279,10 @@ export async function createPosSale(input: CreatePosSaleInput): Promise<IPosSale
 
   const branch = await loadPosBranch(input.branchId);
   validateLines(input.lines);
+  const source = input.source ? await resolveSlipSource(input.branchId, input.source.scanId) : undefined;
+  if (input.emailInvoice && (!input.buyer?.registerName?.trim() || !/^\S+@\S+\.\S+$/.test(input.buyer?.email?.trim() ?? ""))) {
+    throw new PosError("To email the invoice, enter the customer's name and a valid email address.", 422, "EMAIL_NEEDS_CUSTOMER");
+  }
 
   const taxPercent = branch.pos.taxPercent;
   const taxCode = branch.pos.taxCode;
@@ -226,6 +309,14 @@ export async function createPosSale(input: CreatePosSaleInput): Promise<IPosSale
     throw new PosError("Sale is too old to sync; contact an administrator", 422, "TOO_OLD");
   }
 
+  let till: Awaited<ReturnType<typeof resolveSaleTill>>;
+  try {
+    till = await resolveSaleTill(input.branchId, input.tillId);
+  } catch (e) {
+    if (e instanceof TillError) throw new PosError(e.message, e.status, "BAD_TILL");
+    throw e;
+  }
+
   const rate = input.currency === "ZWG" ? await currentUsdToZwgRate() : 1;
   const provisionalNumber = await acceptableProvisional(
     new Types.ObjectId(input.branchId),
@@ -239,6 +330,7 @@ export async function createPosSale(input: CreatePosSaleInput): Promise<IPosSale
     fiscalDeviceKey: deviceKeyForBranch(branch),
     branchId: new Types.ObjectId(input.branchId),
     cashierId: new Types.ObjectId(input.cashierId),
+    ...(till ? { tillId: till.tillId, tillCode: till.tillCode } : {}),
     idempotencyKey: input.idempotencyKey,
     currency: input.currency,
     exchangeRate: rate,
@@ -271,11 +363,18 @@ export async function createPosSale(input: CreatePosSaleInput): Promise<IPosSale
     offline: input.offline ?? false,
     ...(provisionalNumber ? { provisionalNumber } : {}),
     slipPrintCount: 0,
+    ...(source ? { source } : {}),
+    ...(input.emailInvoice
+      ? { emailRequest: { to: input.buyer!.email!.trim(), status: "pending" as const, requestedAt: now, attempts: 0 } }
+      : {}),
   };
+
+  if (source) await claimScan(source.scanId, input.cashierId);
 
   let sale: IPosSaleDoc;
   try {
     sale = await PosSale.create(doc);
+    if (source) await linkScanToSale(source.scanId, sale._id);
   } catch (e) {
     if ((e as { code?: number }).code === 11000) {
       const again = await PosSale.findOne({ idempotencyKey: input.idempotencyKey });
@@ -284,9 +383,11 @@ export async function createPosSale(input: CreatePosSaleInput): Promise<IPosSale
         // The till's provisional number is already taken by another sale: let the server assign one.
         delete doc.provisionalNumber;
         sale = await PosSale.create(doc);
+        if (source) await linkScanToSale(source.scanId, sale._id);
         return fiscalisePosSale(String(sale._id), { reason: "till" });
       }
     }
+    if (source) await releaseScan(source.scanId);
     throw e;
   }
 
@@ -336,8 +437,8 @@ async function markFiscalised(id: Types.ObjectId, fiscal: NonNullable<IPosSale["
   return PosSale.findByIdAndUpdate(
     id,
     {
-      $set: { status: "FISCALISED", fiscal, fiscalisedAt: new Date(), needsApproval: false },
-      $unset: { lastError: "", submittingAt: "" },
+      $set: { status: "FISCALISED", fiscal, fiscalisedAt: new Date(), needsApproval: false, needsReview: false },
+      $unset: { lastError: "", submittingAt: "", reviewNote: "" },
     },
     { new: true }
   );
@@ -370,6 +471,99 @@ async function settle(
 }
 
 /**
+ * FISCAL_BACKEND=service: hand the claimed sale to the fiscal service. The service numbers, orders, retries and
+ * stores it, and answers the same way to the same invoice number, so a retry is just the same call again:
+ * there is no GetInvoice dance and no breaker here. Never throws for service problems; the outcome is in `status`.
+ */
+async function fiscaliseViaService(claimed: IPosSaleDoc, prefix: string, deviceKey: string): Promise<IPosSaleDoc> {
+  let serviceDeviceId: string;
+  try {
+    serviceDeviceId = await resolveServiceDeviceId(deviceKey);
+  } catch (e) {
+    if (!(e instanceof DeviceConfigError)) throw e;
+    return settle(claimed, prefix, "UNFISCALISED", `Fiscal device not available: ${e.message}`, false);
+  }
+
+  if (claimed.kind === "CREDIT_NOTE" && !claimed.originalNumber) {
+    return settle(claimed, prefix, "FAILED", "The original receipt has no invoice number to credit", false);
+  }
+  if (!claimed.invoiceNumber) {
+    const credit = claimed.kind === "CREDIT_NOTE";
+    const n = await allocateNumber(claimed.branchId, seriesFor(claimed.currency, false, credit));
+    claimed.invoiceNumber = credit ? formatCreditNumber(prefix, claimed.currency, n) : formatInvoiceNumber(prefix, claimed.currency, n, false);
+    await PosSale.updateOne({ _id: claimed._id }, { $set: { invoiceNumber: claimed.invoiceNumber } });
+  }
+
+  let result;
+  try {
+    result = await submitReceipt(serviceDeviceId, buildServiceRequest(claimed, process.env.INVOICE_DEFAULT_HS_CODE ?? "00000000"));
+  } catch (e) {
+    if (!(e instanceof FiscalServiceUnavailable)) throw e;
+    // The request may or may not have arrived; sending it again is safe (same invoice number, same answer).
+    return settle(claimed, prefix, "UNFISCALISED", `Fiscal service unavailable: ${e.message}`, false);
+  }
+
+  if (result.status === "fiscalised") {
+    try {
+      return (await markFiscalised(claimed._id, toPosFiscal(result, claimed)))!;
+    } catch (e) {
+      if (!(e instanceof FiscalMismatchError)) throw e;
+      return settle(claimed, prefix, "FAILED", `Fiscal receipt mismatch: ${e.message}. Do not hand out a slip; contact support.`, false);
+    }
+  }
+
+  if (result.status === "queued") {
+    // Numbered and signed already; ZIMRA has not answered yet. The slip is valid, delivery continues in the service.
+    return settle(claimed, prefix, "UNFISCALISED", result.reason || "Receipt queued in the fiscal service", false);
+  }
+
+  const problem = result.problems?.[0] ?? { code: "REFUSED", message: "The fiscal service refused the receipt" };
+  if (isRetryableProblem(problem.code)) {
+    return settle(claimed, prefix, "UNFISCALISED", problem.message, false);
+  }
+  // The service refused it before it used a receipt number, because it would break a ZIMRA rule. A person must look.
+  await PosSale.updateOne({ _id: claimed._id }, { $set: { needsReview: true, reviewNote: `${problem.code}: ${problem.message}`.slice(0, 500) } });
+  void sendFiscalAlertOnce(
+    `receipt-refused:${String(claimed._id)}`,
+    "A receipt was refused by the fiscal service",
+    `Sale ${claimed.invoiceNumber} was refused (${problem.code}) and needs review.\n\nReason: ${problem.message}\n\nThe scheduled fiscal day close is held back until an administrator reviews it (Admin > POS sales).`
+  );
+  // The service holds a receipt under this number, so the number is not ours to give back to the counter.
+  return settle(claimed, prefix, "FAILED", problem.message, problem.code !== "INVOICE_NO_REUSED");
+}
+
+/** Queued sales are delivered by the service; ask it which ones have been accepted and finish those here. */
+async function collectServiceResults(deviceKey: string, limit: number): Promise<number> {
+  let serviceDeviceId: string;
+  try {
+    serviceDeviceId = await resolveServiceDeviceId(deviceKey);
+  } catch {
+    return 0;
+  }
+  const waiting = await PosSale.find({ ...saleDeviceFilter(deviceKey), status: { $in: OPEN_STATES }, invoiceNumber: { $exists: true } })
+    .sort({ soldAt: 1 })
+    .limit(limit);
+  let done = 0;
+  for (const sale of waiting) {
+    try {
+      const r = await getReceipt(serviceDeviceId, sale.invoiceNumber!);
+      if (r?.status === "fiscalised") {
+        await markFiscalised(sale._id, toPosFiscal(r, sale));
+        done++;
+      } else if (!r) {
+        // The service never received it (the call failed before it arrived): send it now.
+        const after = await fiscalisePosSale(String(sale._id), { reason: "auto-retry", force: true });
+        if (after.status === "FISCALISED") done++;
+      }
+    } catch (e) {
+      if (e instanceof FiscalServiceUnavailable) break;
+      logger.warn({ saleId: String(sale._id), err: e instanceof Error ? e.message : String(e) }, "Could not collect service result");
+    }
+  }
+  return done;
+}
+
+/**
  * Try to turn a sale into a fiscal receipt. Safe to call concurrently for the same sale:
  * only one caller wins the atomic claim, the rest get the current state back.
  * Never throws for device problems; the outcome is in `status`.
@@ -396,6 +590,15 @@ export async function fiscalisePosSale(saleId: string, opts: FiscaliseOptions): 
   // The sale's own device, fixed when it was created. Older sales have none and used the central device.
   const deviceKey = seen.fiscalDeviceKey || CENTRAL_KEY;
 
+  // A fiscal day close is about to run on this device: hold receipts back for those few seconds so the
+  // device's counters cannot move under the close. They are retried by the queue straight afterwards.
+  if (await isFenced(deviceKey)) {
+    if (seen.status === "PENDING") {
+      return settle(seen, prefix, "UNFISCALISED", "Fiscal day is being closed; queued for retry", false);
+    }
+    return (await PosSale.findById(saleId))!;
+  }
+
   // Fast path while the device is known to be down: hand the till a provisional slip at once.
   if (breakerOpen(deviceKey) && !opts.force && seen.status === "PENDING") {
     return settle(seen, prefix, "UNFISCALISED", "Fiscal device unavailable; queued for retry", false);
@@ -414,6 +617,17 @@ export async function fiscalisePosSale(saleId: string, opts: FiscaliseOptions): 
     { new: true }
   );
   if (!claimed) return (await PosSale.findById(saleId))!; // another worker has it
+
+  if (fiscalBackend() === "service") {
+    try {
+      return await fiscaliseViaService(claimed, prefix, deviceKey);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      logger.error({ saleId, err: msg }, "POS fiscalise (service) crashed");
+      const fresh = (await PosSale.findById(saleId))!;
+      return settle(fresh, prefix, fresh.invoiceNumber ? "UNKNOWN" : "UNFISCALISED", msg, false);
+    }
+  }
 
   try {
     let device: ResolvedDevice;
@@ -515,6 +729,35 @@ export async function fiscalisePosSale(saleId: string, opts: FiscaliseOptions): 
             return settle(claimed, prefix, "UNKNOWN", outcome.message, false);
           }
           if (outcome.reason === "validation") {
+            // The device refused the receipt, but a refusal is not proof it was not stored. Ask before the
+            // number is given up, otherwise a stored receipt would be orphaned and the number reused.
+            try {
+              const found = await getDeviceInvoice(invoiceNumber, device);
+              if (found.found) {
+                const m = checkFiscalMatchesSale(claimed, found.fiscal);
+                if (m.ok) return (await markFiscalised(claimed._id, found.fiscal))!;
+                await burnNumber(claimed, m.reason);
+                continue;
+              }
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e);
+              return settle(claimed, prefix, "UNKNOWN", `Device refused the receipt (${outcome.message}) and could not be asked: ${msg}`, false);
+            }
+            // Not on the device. Keep the sale visible for an administrator: a refused receipt means the
+            // sale data broke a ZIMRA rule, and it blocks the scheduled close until reviewed.
+            await PosSale.updateOne(
+              { _id: claimed._id },
+              { $set: { needsReview: true, reviewNote: outcome.message.slice(0, 500) } }
+            );
+            void sendFiscalAlertOnce(
+              `receipt-refused:${String(claimed._id)}`,
+              "A receipt was refused by the fiscal device",
+              `Sale ${claimed.invoiceNumber ?? String(claimed._id)} was refused by the fiscal device and needs review.
+
+Reason: ${outcome.message}
+
+The scheduled fiscal day close is held back until an administrator reviews it (Admin > POS sales).`
+            );
             return settle(claimed, prefix, "FAILED", outcome.message, true);
           }
           // day closed, or a refusal we do not recognise: never lose the sale
@@ -573,6 +816,32 @@ const OPEN_STATES = ["UNFISCALISED", "UNKNOWN"];
 async function runQueueForDevice(deviceKey: string, limit: number, today: string): Promise<PosQueueDeviceResult> {
   const filter = saleDeviceFilter(deviceKey);
   const pendingCount = () => PosSale.countDocuments({ ...filter, status: { $in: OPEN_STATES } });
+
+  if (fiscalBackend() === "service") {
+    // The service delivers by itself; here we only collect what it has accepted and send what never reached it.
+    const out: PosQueueDeviceResult = { key: deviceKey, name: deviceKey, reachable: false, dayOpen: null, attempted: 0, fiscalised: 0, stillPending: 0 };
+    try {
+      const st = await engineStatus(await resolveServiceDeviceId(deviceKey));
+      out.reachable = true;
+      out.dayOpen = st.dayOpen;
+      if (st.paused) out.message = `Paused: ${st.paused}`;
+    } catch (e) {
+      out.message = e instanceof Error ? e.message : String(e);
+      out.stillPending = await pendingCount();
+      return out;
+    }
+    out.fiscalised += await collectServiceResults(deviceKey, limit);
+    const unnumbered = await PosSale.find({ ...filter, status: "UNFISCALISED", soldDate: today, needsApproval: false, invoiceNumber: { $exists: false } })
+      .sort({ soldAt: 1 })
+      .limit(limit);
+    for (const sale of unnumbered) {
+      out.attempted++;
+      const after = await fiscalisePosSale(String(sale._id), { reason: "auto-retry", force: true });
+      if (after.status === "FISCALISED") out.fiscalised++;
+    }
+    out.stillPending = await pendingCount();
+    return out;
+  }
 
   let device: ResolvedDevice;
   try {
@@ -687,6 +956,15 @@ export async function runPosQueue(limit = 25, opts: { deviceKey?: string } = {})
         }
   );
 
+  // Invoices waiting to be emailed go out as soon as their sale is fiscalised. Never blocks the queue.
+  if (!opts.deviceKey) {
+    try {
+      await sendPendingInvoiceEmails();
+    } catch (e) {
+      logger.error({ err: e }, "Pending invoice emails failed");
+    }
+  }
+
   return {
     deviceReachable: devices.every((d) => d.reachable),
     dayOpen: (devices.find((d) => d.key === CENTRAL_KEY) ?? devices[0])?.dayOpen ?? null,
@@ -702,6 +980,14 @@ export async function runPosQueue(limit = 25, opts: { deviceKey?: string } = {})
 // ---------------------------------------------------------------------------
 // Admin actions
 // ---------------------------------------------------------------------------
+
+/** An administrator has looked at a refused receipt; it no longer holds back the scheduled close. */
+export async function clearSaleReview(saleId: string): Promise<IPosSaleDoc> {
+  await dbConnect();
+  const sale = await PosSale.findByIdAndUpdate(saleId, { $set: { needsReview: false } }, { new: true });
+  if (!sale) throw new PosError("Sale not found", 404, "NO_SALE");
+  return sale;
+}
 
 /** Cancel a sale that was never fiscalised. Fiscalised sales need a credit note instead. */
 export async function voidPosSale(saleId: string): Promise<IPosSaleDoc> {
@@ -727,7 +1013,14 @@ export async function voidPosSale(saleId: string): Promise<IPosSaleDoc> {
     }
     await dropFiscalNumber(sale);
   }
-  await PosSale.updateOne({ _id: sale._id }, { $set: { status: "VOIDED", needsApproval: false } });
+  await PosSale.updateOne({ _id: sale._id }, { $set: { status: "VOIDED", needsApproval: false, needsReview: false } });
+  // A voided sale gives its slip back, so the cashier can invoice it again.
+  if (sale.source?.scanId) {
+    await DespatchScan.updateOne(
+      { _id: sale.source.scanId, saleId: sale._id },
+      { $set: { status: "ready" }, $unset: { appliedAt: "", appliedBy: "", saleId: "" } }
+    );
+  }
   if (sale.kind === "CREDIT_NOTE" && sale.originalSaleId) {
     await PosSale.updateOne({ _id: sale.originalSaleId }, { $unset: { creditNoteId: "" } });
   }

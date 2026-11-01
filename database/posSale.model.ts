@@ -80,6 +80,10 @@ export interface IPosSale {
   creditNoteId?: Types.ObjectId;
   branchId: Types.ObjectId;
   cashierId: Types.ObjectId;
+  /** The till (cash desk) that made the sale. Optional: older sales and branches without tills have none. */
+  tillId?: Types.ObjectId;
+  /** Till code at the time of the sale ("T2"), kept so reports survive renames. */
+  tillCode?: string;
   /** Client generated; a retry of the same sale returns the original. */
   idempotencyKey: string;
   currency: PosCurrency;
@@ -111,6 +115,9 @@ export interface IPosSale {
   lastError?: string;
   /** Cross-day sale waiting for an admin to approve fiscalising it today. */
   needsApproval: boolean;
+  /** The device refused this receipt on validation grounds. An admin must look before the day is closed. */
+  needsReview?: boolean;
+  reviewNote?: string;
   approvedBy?: Types.ObjectId;
   /** Test sales created by the simulation tooling. */
   isTest: boolean;
@@ -118,6 +125,30 @@ export interface IPosSale {
   offline: boolean;
   slipPrintCount: number;
   emailedTo?: string[];
+  /** Where the lines came from when the sale was built from a photographed despatch slip. */
+  source?: IPosSaleSource;
+  /** Customer asked to receive the A4 tax invoice PDF by email once the sale is fiscalised. */
+  emailRequest?: IPosEmailRequest;
+}
+
+export interface IPosEmailRequest {
+  to: string;
+  status: "pending" | "sent" | "failed";
+  requestedAt: Date;
+  /** Set while a worker is sending, so two workers never send the same invoice. */
+  sendingAt?: Date;
+  sentAt?: Date;
+  attempts: number;
+  nextAttemptAt?: Date;
+  lastError?: string;
+}
+
+export interface IPosSaleSource {
+  kind: "despatch_scan";
+  scanId: Types.ObjectId;
+  /** As read from the slip, and the same with case and punctuation removed (duplicate detection). */
+  slipNumber?: string;
+  slipNumberKey?: string;
 }
 
 export interface IPosSaleDoc extends IPosSale, Document {}
@@ -148,6 +179,8 @@ const PosSaleSchema = new Schema<IPosSale>(
     creditNoteId: { type: Schema.Types.ObjectId, ref: "PosSale" },
     branchId: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
     cashierId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    tillId: { type: Schema.Types.ObjectId, ref: "Till" },
+    tillCode: String,
     idempotencyKey: { type: String, required: true },
     currency: { type: String, enum: ["USD", "ZWG"], required: true },
     exchangeRate: { type: Number, default: 1 },
@@ -198,11 +231,39 @@ const PosSaleSchema = new Schema<IPosSale>(
     attempts: { type: Number, default: 0 },
     lastError: String,
     needsApproval: { type: Boolean, default: false },
+    needsReview: { type: Boolean, default: false },
+    reviewNote: String,
     approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
     isTest: { type: Boolean, default: false },
     offline: { type: Boolean, default: false },
     slipPrintCount: { type: Number, default: 0 },
     emailedTo: { type: [String], default: [] },
+    emailRequest: {
+      type: new Schema(
+        {
+          to: { type: String, required: true },
+          status: { type: String, enum: ["pending", "sent", "failed"], default: "pending" },
+          requestedAt: { type: Date, required: true },
+          sendingAt: Date,
+          sentAt: Date,
+          attempts: { type: Number, default: 0 },
+          nextAttemptAt: Date,
+          lastError: String,
+        },
+        { _id: false }
+      ),
+    },
+    source: {
+      type: new Schema(
+        {
+          kind: { type: String, enum: ["despatch_scan"], required: true },
+          scanId: { type: Schema.Types.ObjectId, ref: "DespatchScan", required: true },
+          slipNumber: String,
+          slipNumberKey: String,
+        },
+        { _id: false }
+      ),
+    },
   },
   { timestamps: true }
 );
@@ -218,7 +279,13 @@ PosSaleSchema.index(
 );
 PosSaleSchema.index({ branchId: 1, soldDate: -1, status: 1 });
 PosSaleSchema.index({ status: 1, soldDate: 1 });
+PosSaleSchema.index({ branchId: 1, tillId: 1, soldDate: -1 });
 PosSaleSchema.index({ fiscalDeviceKey: 1, status: 1, soldDate: 1 });
+// One invoice per photographed slip.
+PosSaleSchema.index({ "source.scanId": 1 }, { sparse: true });
+// Invoices waiting to be emailed.
+PosSaleSchema.index({ "emailRequest.status": 1, "emailRequest.nextAttemptAt": 1 }, { sparse: true });
+PosSaleSchema.index({ branchId: 1, "source.slipNumberKey": 1 }, { sparse: true });
 
 const PosSale = models?.PosSale || model<IPosSale>("PosSale", PosSaleSchema);
 

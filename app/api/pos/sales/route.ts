@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { Types } from "mongoose";
 import { z } from "zod";
 
@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import PosSale from "@/database/posSale.model";
 import { resolvePosScope } from "@/lib/auth/pos-scope";
 import dbConnect from "@/lib/mongoose";
+import { processPendingInvoiceEmail } from "@/lib/services/posInvoiceEmail.service";
 import { createPosSale, PosError, todayInTz } from "@/lib/services/posSale.service";
 
 const BuyerSchema = z
@@ -25,6 +26,8 @@ const CreateSchema = z
   .object({
     /** Admins must say which branch; everyone else is pinned to their own. */
     branchId: z.string().optional(),
+    /** The till (cash desk) making the sale; must belong to the branch. */
+    tillId: z.string().regex(/^[a-f0-9]{24}$/).optional(),
     idempotencyKey: z.string().min(16).max(80),
     currency: z.enum(["USD", "ZWG"]),
     paymentMethod: z.enum(["CASH", "CARD", "TRANSFER", "OTHER"]).optional(),
@@ -49,6 +52,10 @@ const CreateSchema = z
     /** Offline sync: the provisional number the till already printed, and a flag saying so. */
     provisionalNumber: z.string().regex(/^[A-Z0-9]{2,12}$/).optional(),
     offline: z.boolean().optional(),
+    /** The photographed despatch slip these lines came from. */
+    source: z.object({ scanId: z.string().regex(/^[a-f0-9]{24}$/) }).strict().optional(),
+    /** Email the A4 tax invoice PDF to buyer.email once the sale is fiscalised. */
+    emailInvoice: z.boolean().optional(),
   })
   .strict();
 
@@ -77,6 +84,7 @@ export async function POST(request: Request) {
     const sale = await createPosSale({
       branchId: scope.branchId,
       cashierId: scope.userId,
+      tillId: body.tillId,
       idempotencyKey: body.idempotencyKey,
       currency: body.currency,
       paymentMethod: body.paymentMethod,
@@ -86,7 +94,16 @@ export async function POST(request: Request) {
       soldAt: body.soldAt ? new Date(body.soldAt) : undefined,
       provisionalNumber: body.provisionalNumber,
       offline: body.offline,
+      source: body.source,
+      emailInvoice: body.emailInvoice,
     });
+
+    // Sent in the background so the till is not held up by the PDF and SMTP; the queue retries failures.
+    if (sale.emailRequest?.status === "pending") {
+      after(async () => {
+        await processPendingInvoiceEmail(String(sale._id));
+      });
+    }
 
     return NextResponse.json({ success: true, data: sale.toObject() }, { status: 201 });
   } catch (error) {
@@ -116,6 +133,8 @@ export async function GET(request: Request) {
         ? { soldDate: { $gte: from, $lte: to } }
         : { soldDate: url.searchParams.get("date") || todayInTz() };
     if (scope.branchId) filter.branchId = new Types.ObjectId(scope.branchId);
+    const tillId = url.searchParams.get("tillId");
+    if (tillId && Types.ObjectId.isValid(tillId)) filter.tillId = new Types.ObjectId(tillId);
     const status = url.searchParams.get("status");
     if (status) filter.status = { $in: status.split(",") };
     if (url.searchParams.get("needsApproval") === "1") filter.needsApproval = true;

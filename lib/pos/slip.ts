@@ -17,6 +17,8 @@ export interface SlipBranch {
 }
 
 export interface SlipLine {
+  /** ZIMRA tax code of the line (A, B, ...). */
+  taxCode?: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -38,7 +40,16 @@ export interface SlipSale {
   subtotalExclTax: number;
   totalVat: number;
   totalAmount: number;
-  buyer?: { registerName?: string; tin?: string; vatNumber?: string; address?: string; phone?: string; email?: string };
+  buyer?: {
+    registerName?: string;
+    tradeName?: string;
+    tin?: string;
+    vatNumber?: string;
+    address?: string;
+    city?: string;
+    phone?: string;
+    email?: string;
+  };
   invoiceNumber?: string;
   provisionalNumber?: string;
   soldAt: string | Date;
@@ -48,6 +59,8 @@ export interface SlipSale {
     qrCodeUrl?: string;
     fiscalDayNo?: number | null;
     receiptGlobalNo?: string;
+    /** Receipt number within the fiscal day. */
+    receiptCounter?: number | null;
     deviceId?: string;
     deviceSerialNumber?: string;
     receiptDate?: string;
@@ -56,15 +69,15 @@ export interface SlipSale {
 
 const TZ = "Africa/Harare";
 
-const esc = (s: unknown) =>
+export const esc = (s: unknown) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 export const money = (n: number) =>
   Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const qty = (n: number) => (Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3))));
+export const qty = (n: number) => (Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3))));
 
-function formatDate(d: string | Date): string {
+export function formatDate(d: string | Date): string {
   const date = typeof d === "string" ? new Date(d) : d;
   if (Number.isNaN(date.getTime())) return String(d);
   const p = new Intl.DateTimeFormat("en-GB", {
@@ -82,7 +95,7 @@ function formatDate(d: string | Date): string {
 }
 
 /** The device returns a local timestamp without a zone ("2026-10-03T12:57:04"); show it as given. */
-function formatDeviceDate(s: string): string {
+export function formatDeviceDate(s: string): string {
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}:\d{2}:\d{2})/);
   return m ? `${m[3]}-${m[2]}-${m[1]} ${m[4]}` : s;
 }

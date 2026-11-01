@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:despatch-lines": "npx tsx scripts/test-despatch-lines.ts",
+    "test:despatch-pairing": "npx tsx scripts/test-despatch-pairing.ts",
+    "test:despatch-import": "npx tsx scripts/test-despatch-import.ts",
+    "test:a4-pdf": "npx tsx scripts/test-a4-pdf.ts",
+    "test:despatch-sale": "npx tsx scripts/test-despatch-sale.ts",
+    "despatch:fixtures": "npx tsx scripts/generate-despatch-fixtures.ts",
+    "despatch:eval": "npx tsx scripts/eval-despatch-extract.ts",
     "dev": "next dev",
     "dev:turbo": "next dev --turbopack",
     "build": "node scripts/debug-next-trace.mjs && next build",

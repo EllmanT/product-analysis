@@ -17,6 +17,7 @@ import FiscalSettings from "./fiscalSettings.model";
 import ZReport from "./zReport.model";
 import InvoiceCounter from "./invoiceCounter.model";
 import PosSale from "./posSale.model";
+import DespatchScan from "./despatchScan.model";
 
 export {
   Account,
@@ -37,4 +38,5 @@ export {
   ZReport,
   InvoiceCounter,
   PosSale,
+  DespatchScan,
 };

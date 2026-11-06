@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Granularity, Metric, TimeSeriesPoint } from "@/lib/analytics/types";
 import {
   GRANULARITY_LABELS,
+  METRIC_HELP,
   METRIC_LABELS,
   METRIC_Y_AXIS,
 } from "@/lib/analytics/defaults";
@@ -100,7 +101,7 @@ export function AnalyticsLineChart({
     title ?? `${METRIC_LABELS[metric]} by branch`;
   const chartDesc =
     description ??
-    `${METRIC_Y_AXIS[metric]} over time (${GRANULARITY_LABELS[granularity]} view)`;
+    `${METRIC_Y_AXIS[metric]} over time (${GRANULARITY_LABELS[granularity]} view). ${METRIC_HELP[metric]}`;
 
   return (
     <Card>

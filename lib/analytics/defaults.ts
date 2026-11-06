@@ -39,6 +39,13 @@ export const METRIC_LABELS: Record<Metric, string> = {
   stockValue: "Stock Value",
 };
 
+/** What each metric is really measuring, in plain words. */
+export const METRIC_HELP: Record<Metric, string> = {
+  sales: "Worked out from how much stock dropped between uploads, times price. Restocking between uploads can hide sales.",
+  units: "How many units left stock between uploads. Restocking between uploads can hide sales.",
+  stockValue: "Units in stock times price, as of each upload.",
+};
+
 export const METRIC_Y_AXIS: Record<Metric, string> = {
   sales: "Sales ($)",
   units: "Units",

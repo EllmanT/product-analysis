@@ -5,7 +5,7 @@ import { AnalyticsLineChart } from "@/components/analytics/AnalyticsLineChart";
 import GlobalSearch from "@/components/search/GlobalSearch";
 import { Separator } from "@/components/ui/separator";
 import { useAnalyticsChartData } from "@/hooks/useAnalyticsChartData";
-import { formatDateParam, getDefaultDateRange } from "@/lib/analytics/defaults";
+import { formatDateParam, getDefaultDateRange, METRIC_HELP } from "@/lib/analytics/defaults";
 import { Info } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -174,7 +174,7 @@ export default function Page() {
                 }
                 description={
                   activeProductId
-                    ? "Estimated sales by branch for the selected product"
+                    ? `Estimated sales by branch for this product. ${METRIC_HELP.sales}`
                     : "Select a product to view movement"
                 }
                 selectedBranch={selectedBranch}

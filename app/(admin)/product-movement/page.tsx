@@ -128,7 +128,7 @@ export default function Page() {
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
-        <h1 className="text-base font-medium">Product Movement</h1>
+        <h1 className="text-base font-medium">Product sales trend</h1>
       </div>
 
       <div className="mx-4 mt-4 flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-900 lg:mx-6">

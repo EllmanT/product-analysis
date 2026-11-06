@@ -18,9 +18,10 @@ export function SectionCards({ stats }: Props) {
   return (
     <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-4 @5xl/main:grid-cols-4">
       <StatisticsCard
-        label="Products"
+        label="Products in stock"
         value={intlCount.format(stats.productCount)}
-        secondaryLabel="Current stock qty"
+        description="From each branch's latest upload"
+        secondaryLabel="Units in stock"
         secondaryValue={intlCount.format(stats.currentStockQty)}
         bgColor="bg-blue-300"
         icon={IconTrendingUp}
@@ -28,23 +29,25 @@ export function SectionCards({ stats }: Props) {
       />
 
       <StatisticsCard
-        label="Estimated Stock Value"
+        label="Stock value"
         value={intlMoney.format(stats.estStockValue)}
+        description="Latest upload from each branch"
         bgColor="bg-purple-300"
         icon={IconTrendingUp}
         testId="stat-stock-value"
       />
 
       <StatisticsCard
-        label="Estimated Sales"
+        label="Estimated sales, all time"
         value={intlMoney.format(stats.totalEstimatedSales)}
+        description="From stock drops between uploads"
         bgColor="bg-green-300"
         icon={IconTrendingUp}
         testId="stat-estimated-sales"
       />
 
       <StatisticsCard
-        label="Total Branches"
+        label="Branches"
         value={intlCount.format(stats.totalBranches)}
         bgColor="bg-orange-300"
         icon={StoreIcon}

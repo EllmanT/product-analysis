@@ -7,7 +7,7 @@ import {
     IconBuildingStore,
     IconFileUpload,
     IconTrendingUp,
-    IconAlertTriangle,
+    IconChartLine,
     IconCurrencyDollar
   } from "@tabler/icons-react"
 import { Calendar, FileText, MessageCircle, Package, Receipt, ScanBarcode, Store, Tags, ReceiptText } from "lucide-react"
@@ -45,9 +45,9 @@ export const mainSidebarLinks = [
       icon: IconChartBar,
     },
     {
-      title: "Product Movement",
+      title: "Product sales trend",
       url: "/product-movement",
-      icon: IconAlertTriangle,
+      icon: IconChartLine,
     },
     {
       title: "Stock products",

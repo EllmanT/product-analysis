@@ -153,8 +153,9 @@ Use a test device. This checks `2ccde0e`.
 | 8.2 | Each page heading | Matches its menu entry (Upload history, Branch upload status, Fiscal day, Day-end reports (Z-reports), Central device settings). | | |
 | 8.3 | **Stock products** | Card reads "Out of stock" with "Products with no units left". Filter tab and badge read "Out of stock". | | |
 | 8.4 | Hover the filter tabs | Each shows its rule (Low Stock: fewer than 10 units, High Value: top 25%, Inactive: marked inactive). | | |
-| 8.5 | **Branch Analytics** and **Product Movement** charts | Subtitle explains that sales are estimated from the drop in stock between uploads and that restocking can hide sales. | | |
+| 8.5 | **Branch Analytics** and **Product sales trend** charts (menu entry was "Product Movement") | Subtitle explains that sales are estimated from the drop in stock between uploads and that restocking can hide sales. | | |
 | 8.6 | **Central device** vs the Add branch wizard | The same term is used in both. Nobody calls it "shared device". | | |
+| 8.7 | **Dashboard** cards | Read "Products in stock", "Stock value", "Estimated sales, all time", "Branches", each with a line saying where the number comes from. The menu entry and heading say "Product sales trend" for the old Product Movement page. | | |
 
 ## 9. Removed things stay removed
 

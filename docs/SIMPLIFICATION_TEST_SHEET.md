@@ -128,22 +128,87 @@ Use a test device. This checks `2ccde0e`.
 | 6.5 | Set the open time to a time later today and repeat 6.1 to 6.3. | The day does **not** open before that time. | | |
 | 6.6 | Uses the fiscal service backend (`FISCAL_BACKEND=service`)? | This change does nothing there by design. | | |
 
-## 7. Menu access (admin and branch manager)
+### 6b. Sales from an earlier day, and closing the day
+
+These need a test device and the cron (or call `/api/cron/pos-queue` and `/api/cron/fiscal-schedule` with the secret).
 
 | # | Step | Expected | P/F | Notes |
 |---|---|---|---|---|
-| 7.1 | As a **super admin**, look at the sidebar. | A **Menu access** entry appears at the bottom. | | |
-| 7.2 | As an admin who is **not** a super admin (only if `BOOTSTRAP_ADMIN_EMAILS` is set and does not include them). | No Menu access entry. Opening `/access` shows the screen read-only with a note. | | |
-| 7.3 | Open **Menu access**. | Shows Admin and Cashier as fixed, and a Branch manager card with a count such as "Sees N of N pages" (N is how many pages a branch manager can use). | | |
-| 7.4 | Click **Sales focus**. | Dashboard and the point of sale pages stay on, the rest turn off. The Sales focus button looks selected. The save bar slides up. | | |
-| 7.5 | Click **Discard**. | Back to the saved setup and the save bar slides away. | | |
-| 7.6 | Click **Sales focus** again then **Save changes**. | Toast confirms. Save bar goes away. | | |
-| 7.7 | Sign in as a **branch manager** in another browser. | Menu shows only the dashboard and point-of-sale pages. No "Uploads", "Insights" or other headings that are now empty. | | |
-| 7.8 | Click **Stock focus** as the super admin, save, refresh the branch manager's page. | Menu now shows the stock pages and no point-of-sale pages. | | |
-| 7.9 | Click **Everything** and save. Refresh as branch manager. | Full menu returns. | | |
-| 7.10 | Try to switch off a page individually and save. | Only that page disappears; count goes down by one. | | |
-| 7.11 | As branch manager, type a hidden page's address directly (for example `/products` after hiding it). | **Known limitation:** the page still opens. Record whether it does. The admin-only pages (`/fiscal-devices`, etc.) must still be refused. | | |
-| 7.12 | Fiscal, Users, Branches, POS settings. | Never appear in the branch manager's menu or in the Menu access list. | | |
+| 6.7 | Block ZIMRA (wrong device address), sell, then wait until the **next calendar day** (or set that sale's `soldDate` to an earlier day in the database for a faster test). Restore ZIMRA. | The queue fiscalises the sale by itself. It is **not** held for approval and nobody clicks anything. | | |
+| 6.8 | Look at that sale in **POS sales**. | It keeps the original sale date. The ZIMRA receipt is dated when it was actually fiscalised. | | |
+| 6.9 | Sales that were already held "for approval" before this change. | They are released on the next queue run and fiscalised. | | |
+| 6.10 | Set a **late** close time (for example 23:00), block ZIMRA before it, and leave it blocked past midnight. Restore ZIMRA at about 09:00 the next morning. | The day closes within about 10 minutes of ZIMRA coming back, even though it is long after midnight. (The old behaviour gave up at midnight.) | | |
+| 6.11 | With ZIMRA still blocked, watch the retries. | Every minute for the first 5 hours after the close time, then every 10 minutes. Each alert is sent once. | | |
+| 6.12 | Cause a close that ZIMRA refuses for good (a receipt with a validation error). | Auto-retry stops for that day and an alert says an administrator must act. | | |
+| 6.13 | Run `npx tsx scripts/test-close-schedule.ts`. | 10 checks pass. | | |
+| 6.14 | Run `npx tsx scripts/pos-simulate.ts` against the test device (it now asserts the earlier-day behaviour). | Passes. It has **not** been run yet. | | |
+
+**What cannot be promised:** ZIMRA stops accepting receipts after the device's maximum day length (24 hours on test devices) and may need the day closed on its own portal. The system retries as long as it takes and alerts you, but it cannot override ZIMRA.
+
+## 7. Roles and access
+
+Roles: **Admin** (everything, fixed), **Branch manager** and **Cashier** (editable by a super admin). A super admin is an admin whose email is in `BOOTSTRAP_ADMIN_EMAILS` (any admin if that list is empty).
+
+Use one browser per role: an admin, a branch manager (assigned to a branch) and a cashier.
+
+### 7a. The Menu access screen
+
+| # | Step | Expected | P/F | Notes |
+|---|---|---|---|---|
+| 7.1 | As a **super admin** open the sidebar. | A **Menu access** entry is at the bottom. | | |
+| 7.2 | As an admin who is **not** a super admin (only if `BOOTSTRAP_ADMIN_EMAILS` is set and excludes them). | No Menu access entry. Opening `/access` shows it read-only with a note. | | |
+| 7.3 | Open **Menu access**. | Admin is shown as fixed. Below it a role switcher (Branch manager, Cashier) and a count such as "Can use N of M pages and actions". | | |
+| 7.4 | With **Branch manager** selected, click **Sales focus**. | Dashboard and the point-of-sale pages stay on, the rest turn off. The preset button looks selected. The save bar slides up and the Branch manager tab shows an amber dot. | | |
+| 7.5 | Switch to **Cashier** without saving, change something, switch back. | Both roles keep their unsaved changes. The save bar names both roles. | | |
+| 7.6 | Click **Discard**. | Everything returns to the saved setup. | | |
+| 7.7 | Click **Everything** on Branch manager, then **Save changes**. | Toast confirms. The list now includes Fiscal, Users, POS settings, and Settings. | | |
+| 7.8 | On **Cashier** switch off **Open till**. | Warning appears: cashiers will not be able to sell. Switch it back on. | | |
+| 7.9 | Look for Menu access, Exchange rates, Quotations, Invoices in the list. | None of them can be switched on. A note says they are admin-only. | | |
+
+### 7b. Pages are refused, not just hidden
+
+| # | Step | Expected | P/F | Notes |
+|---|---|---|---|---|
+| 7.10 | Give Branch manager **Standard** and save. As the branch manager, type `/fiscal-devices` in the address bar. | You are sent to your dashboard. The page never shows. | | |
+| 7.11 | As the branch manager, type `/pos-settings`, `/users`, `/branches`, `/settings`, `/access`. | Each sends you to the dashboard. | | |
+| 7.12 | Hide **Stock products** from the branch manager and save. Wait up to a minute, then type `/products`. | Sent to the dashboard. (A page check can be up to a minute behind a change, because it reads the sign-in token. API calls are immediate.) | | |
+| 7.13 | As the cashier, type `/dashboard`, `/products`, `/pos-sales`. | Each sends you to `/pos`. | | |
+| 7.14 | As the cashier, type an API address such as `/api/analytics/time-series`. | Refused (403). | | |
+| 7.15 | Shop pages (`/browse`, `/cart`) as a branch manager. | Still open. | | |
+
+### 7c. Granting more than the preset
+
+| # | Step | Expected | P/F | Notes |
+|---|---|---|---|---|
+| 7.16 | Grant the branch manager **Fiscal day** only (on top of Standard) and save. | After a page reload the menu shows Fiscal day. The page opens and loads status. Fiscal devices and Central device stay refused. | | |
+| 7.17 | Grant the branch manager **POS settings**. Open it. | They can change their **own** branch's settings. | | |
+| 7.18 | As that branch manager, try to change another branch's settings (use the browser network tab to send a PATCH to `/api/pos/branches/<other branch id>`). | Refused (403). | | |
+| 7.19 | Same manager: try bulk device assignment including another branch. | Refused. | | |
+| 7.20 | Grant a cashier **POS sales** and save. | The cashier can open POS sales for their own branch; the menu appears on the admin pages. | | |
+| 7.21 | Set the cashier back to **Standard** (Open till only). | Back to the till only. | | |
+
+### 7d. Delegated user management
+
+Grant the branch manager **Users**.
+
+| # | Step | Expected | P/F | Notes |
+|---|---|---|---|---|
+| 7.22 | The manager opens **Users**. | Sees only people in their own branch, and no administrators. | | |
+| 7.23 | The manager adds a **cashier** to their own branch. | Works. | | |
+| 7.24 | The manager tries to add an **admin**. | Refused: only an administrator can make someone an administrator. | | |
+| 7.25 | The manager tries to change **their own role** to admin. | Refused. | | |
+| 7.26 | The manager tries to move a cashier to **another branch**. | Refused. | | |
+| 7.27 | The manager tries to edit or delete an **admin**. | Refused. | | |
+| 7.28 | **Important:** 7.24 to 7.27 only work in your working tree. The edits to `app/api/users/[id]/route.ts` and `lib/actions/user-admin.action.ts` were not committed because both files carry your other uncommitted work. Commit them together with that work before relying on these rules. | n/a | | |
+
+### 7e. Roles stay safe
+
+| # | Step | Expected | P/F | Notes |
+|---|---|---|---|---|
+| 7.29 | Admin never loses anything, whatever is saved. | Admin can open every page. | | |
+| 7.30 | Nobody but a super admin can save changes. | A normal admin gets a refusal if they send the save request. | | |
+| 7.31 | Run `npx tsx scripts/test-permissions.ts`. | 12 checks pass. | | |
+| 7.32 | Run `node scripts/check-api-guards.mjs`. | Passes. | | |
 
 ## 8. Names and labels
 
@@ -172,17 +237,19 @@ Use a test device. This checks `2ccde0e`.
 | 10.1 | `node scripts/check-api-guards.mjs` | Passes. | | |
 | 10.2 | `npx playwright test tests/e2e/pos.spec.ts` | Passes with the new wording ("Invoice issued", "Invoice saved. The final copy follows automatically"). Needs a test device and the `.env.test` accounts. | | |
 | 10.3 | `npx playwright test tests/e2e/pos-supervisor.spec.ts` | Passes; the sales row says "Issued". | | |
+| 10.4 | `npx tsx scripts/test-permissions.ts` | 12 checks pass. No device or database needed. | | |
+| 10.5 | `npx tsx scripts/test-close-schedule.ts` | 10 checks pass. No device or database needed. | | |
+| 10.6 | `npx tsx scripts/pos-simulate.ts` | Passes against a ZIMRA test device. Not run yet. | | |
 
-## 11. Things you decide
+## 11. Your decisions (answered) and what is still open
 
-Record your answer here so the next round can act on it.
-
-| # | Question | Your answer |
+| # | Question | Answer |
 |---|---|---|
-| 11.1 | **Cross-day sales.** Auto-approve a sale from an earlier day when it is within the offline limit? This moves its revenue into the current fiscal day. Nothing is built yet. | |
-| 11.2 | **Per-branch open/close times.** Today the schedule belongs to the device, so two branches on the central device share times. Should each branch get its own times? | |
-| 11.3 | **Hidden pages by address.** Should a hidden page also refuse a branch manager who types its address? | |
-| 11.4 | Did the wizards feel quicker than the old screens? What slowed you down? | |
+| 11.1 | Cross-day sales | **Done.** Pushed to the fiscal day that is open when the system recovers. No approval. |
+| 11.2 | Per-branch open and close times | **Kept with the device.** The device's schedule decides. The close now keeps retrying until it succeeds (section 6b). |
+| 11.3 | Hidden pages opened by address | **Done.** The proxy refuses them (section 7b). |
+| 11.4 | Full role-based access | **Done.** Any page or action can be granted to Branch manager or Cashier. Admin is fixed. A delegated user manager is limited to their own branch and cannot create or touch admins. |
+| 11.5 | Did the wizards feel quicker than the old screens? What slowed you down? | |
 
 ## Not covered by this sheet
 

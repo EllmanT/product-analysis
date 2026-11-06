@@ -73,6 +73,47 @@ export interface ScheduleTickResult {
   messages: string[];
 }
 
+export interface CloseDue {
+  /** The calendar day whose close is owed (yesterday when the close time has not come round yet today). */
+  dueDate: string;
+  /** Minutes since that close time. */
+  minutesSince: number;
+}
+
+/**
+ * Is a scheduled close owed right now? It stays owed, across midnight, until a close has been recorded for
+ * its day, so a day left open by an outage is still closed as soon as ZIMRA is reachable again.
+ * Returns null when nothing is owed (not a close weekday, or this day's close is already recorded).
+ */
+export function closeDue(
+  now: Date,
+  p: { tz: string; closeTime: string; weekdays: number[]; lastAutoCloseDate?: string | null }
+): CloseDue | null {
+  const hm = formatInTimeZone(now, p.tz, "HH:mm");
+  const today = formatInTimeZone(now, p.tz, "yyyy-MM-dd");
+  const isoDow = Number(formatInTimeZone(now, p.tz, "i"));
+  const closeMin = toMinutes(p.closeTime);
+  const nowMin = toMinutes(hm);
+
+  let dueDate = today;
+  let dueDow = isoDow;
+  let minutesSince = nowMin - closeMin;
+  if (nowMin < closeMin) {
+    dueDate = formatInTimeZone(new Date(now.getTime() - 86_400_000), p.tz, "yyyy-MM-dd");
+    dueDow = ((isoDow + 5) % 7) + 1;
+    minutesSince = nowMin + 1440 - closeMin;
+  }
+  if (!weekdayMatches(dueDow, p.weekdays)) return null;
+  if ((p.lastAutoCloseDate ?? "") >= dueDate) return null;
+  return { dueDate, minutesSince };
+}
+
+/** Every minute while the close is fresh; every ten minutes once it has been owed longer than the retry window. */
+export function shouldAttemptClose(minutesSince: number, minuteOfHour: number): boolean {
+  if (minutesSince <= CLOSE_DEFER_MAX_MIN + FORCED_RETRY_MAX_MIN) return true;
+  return minuteOfHour % 10 === 0;
+}
+
 /** Open/close one device's fiscal day when its own schedule says so. */
 async function runScheduleForTarget(t: ScheduleTarget, now: Date): Promise<ScheduleTickResult> {
   const messages: string[] = [];
@@ -98,31 +139,29 @@ async function runScheduleForTarget(t: ScheduleTarget, now: Date): Promise<Sched
   let closed = false;
   let opened = false;
 
-  if (
-    doc.autoCloseEnabled &&
-    doc.closeTime &&
-    weekdayMatches(isoDow, closeWeekdays) &&
-    // At the close time, and on every later minute of the deferral window until it succeeds.
-    toMinutes(hm) >= toMinutes(doc.closeTime) &&
-    toMinutes(hm) - toMinutes(doc.closeTime) <= CLOSE_DEFER_MAX_MIN + FORCED_RETRY_MAX_MIN &&
-    doc.lastAutoCloseDate !== today
-  ) {
+  const due =
+    doc.autoCloseEnabled && doc.closeTime
+      ? closeDue(now, { tz, closeTime: doc.closeTime, weekdays: closeWeekdays, lastAutoCloseDate: doc.lastAutoCloseDate })
+      : null;
+  if (due && shouldAttemptClose(due.minutesSince, Number(hm.slice(3, 5)))) {
+    // The close is owed for `due.dueDate`. It is retried until it is recorded, even past midnight.
+    const dueDate = due.dueDate;
     try {
       // After the deferral window the day is closed regardless; unfiscalised sales then wait for admin approval.
       // An admin may already have closed it by hand: record that and stop trying.
       const status = await checkFiscalDayStatus(await resolveDeviceByKey(t.key));
       if (!status.isOpen) {
-        await t.markClosed(today);
-        messages.push(`Fiscal day was already closed (${today} ${hm} ${tz})`);
+        await t.markClosed(dueDate);
+        messages.push(`Fiscal day was already closed (${dueDate} ${hm} ${tz})`);
       } else {
-        const overdue = toMinutes(hm) - toMinutes(doc.closeTime) >= CLOSE_DEFER_MAX_MIN;
+        const overdue = due.minutesSince >= CLOSE_DEFER_MAX_MIN;
         await closeFiscalDayWithReport("scheduled", { force: overdue, deviceKey: t.key });
-        await t.markClosed(today);
+        await t.markClosed(dueDate);
         closed = true;
-        messages.push(`Scheduled fiscal day close OK (${today} ${hm} ${tz})`);
+        messages.push(`Scheduled fiscal day close OK (${dueDate} ${hm} ${tz})`);
       }
     } catch (e) {
-      const waited = toMinutes(hm) - toMinutes(doc.closeTime);
+      const waited = due.minutesSince;
       const detail = e instanceof Error ? e.message : String(e);
       if (e instanceof CloseInProgressError) {
         messages.push(`Scheduled close skipped: ${detail}`);
@@ -132,9 +171,9 @@ async function runScheduleForTarget(t: ScheduleTarget, now: Date): Promise<Sched
         // Not a device problem: someone must look at the refused receipts. Retrying only re-checks the count.
         messages.push(`Scheduled close held: ${detail}`);
         await sendFiscalAlertOnce(
-          alertKey("close-needs-review", today),
+          alertKey("close-needs-review", dueDate),
           `${label} close is waiting for a review`,
-          `The scheduled close${central ? "" : ` of "${t.name}"`} for ${today} has not run.
+          `The scheduled close${central ? "" : ` of "${t.name}"`} for ${dueDate} has not run.
 
 ${detail}
 
@@ -146,9 +185,9 @@ Once the receipts are reviewed the close runs by itself within the minute.`
         const code = e.errorCode ?? "unknown reason";
         messages.push(`Scheduled close refused by ZIMRA (${code}): ${detail}`);
         await sendFiscalAlertOnce(
-          alertKey(e.permanent ? `close-refused-permanent-${code}` : `close-refused-${code}`, today),
+          alertKey(e.permanent ? `close-refused-permanent-${code}` : `close-refused-${code}`, dueDate),
           e.permanent ? `${label} cannot be closed automatically (${code})` : `${label} close was refused (${code})`,
-          `ZIMRA refused to close ${central ? "the fiscal day" : `the fiscal day on "${t.name}"`} for ${today}.
+          `ZIMRA refused to close ${central ? "the fiscal day" : `the fiscal day on "${t.name}"`} for ${dueDate}.
 
 Reason: ${code}
 ${detail}
@@ -159,7 +198,11 @@ ${
               : "The system will try again. Check Admin > Fiscal Day if this repeats."
           }`
         );
-        if (e.permanent) return { closed, opened, messages };
+        if (e.permanent) {
+          // Retrying cannot fix it. Stop for this day; the alert tells an administrator what to do.
+          await t.markClosed(dueDate);
+          return { closed, opened, messages };
+        }
       }
       const blocked = e instanceof PendingPosSalesError;
       messages.push(
@@ -170,19 +213,19 @@ ${
       if (waited >= CLOSE_DEFER_MAX_MIN && !blocked) {
         // The forced close itself was refused (for example ZIMRA rejected it): someone must act.
         await sendFiscalAlertOnce(
-          alertKey("close-forced-failed", today),
+          alertKey("close-forced-failed", dueDate),
           `${label} could not be closed`,
-          `The scheduled close of ${central ? "the fiscal day" : `the fiscal day on "${t.name}"`} for ${today} was forced ${CLOSE_DEFER_MAX_MIN} minutes after ${doc.closeTime} and still failed.
+          `The scheduled close of ${central ? "the fiscal day" : `the fiscal day on "${t.name}"`} for ${dueDate} was forced ${CLOSE_DEFER_MAX_MIN} minutes after ${doc.closeTime} and still failed.
 
 Reason: ${detail}
 
-The system keeps retrying for another ${FORCED_RETRY_MAX_MIN} minutes. If it does not close, check Admin > Fiscal Day (receipts waiting to upload) and close the day by hand.`
+The system keeps retrying (every minute for ${FORCED_RETRY_MAX_MIN} more minutes, then every 10 minutes) until it closes. If it does not, check Admin > Fiscal Day (receipts waiting to upload) and close the day by hand.`
         );
       } else if (blocked && waited >= ALERT_AFTER_MIN) {
         await sendFiscalAlertOnce(
-          alertKey("close-deferred", today),
+          alertKey("close-deferred", dueDate),
           `${label} close is being held back`,
-          `The scheduled close${central ? "" : ` of "${t.name}"`} for ${today} (${doc.closeTime}) has been held back for ${waited} minutes.
+          `The scheduled close${central ? "" : ` of "${t.name}"`} for ${dueDate} (${doc.closeTime}) has been held back for ${waited} minutes.
 
 ${detail}
 

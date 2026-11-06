@@ -1,4 +1,5 @@
 import { formatInTimeZone } from "date-fns-tz";
+import { correctedNow, currentSkew, describeSkew, SKEW_WARN_MS } from "@/lib/clockSkew";
 import { fiscalBackend } from "@/lib/fiscal/client";
 
 import {
@@ -266,7 +267,7 @@ It keeps retrying every minute and will be forced after ${CLOSE_DEFER_MAX_MIN} m
  * Only acts for a device that is set to open its day automatically, on one of its open weekdays and after
  * its opening time. Returns true when it opened the day. Never throws.
  */
-export async function openDayForWaitingSales(deviceKey: string, now = new Date()): Promise<boolean> {
+export async function openDayForWaitingSales(deviceKey: string, now = correctedNow()): Promise<boolean> {
   if (fiscalBackend() === "service") return false;
   try {
     const doc: ScheduleState | undefined =
@@ -301,7 +302,8 @@ export async function openDayForWaitingSales(deviceKey: string, now = new Date()
 export async function runFiscalScheduleTick(): Promise<ScheduleTickResult> {
   // With the fiscal service in charge it opens and closes days on its own schedule; two schedulers would fight.
   if (fiscalBackend() === "service") return { closed: false, opened: false, messages: ["Fiscal days are opened and closed by the fiscal service"] };
-  const now = new Date();
+  // ZIMRA's time, not ours, decides when a day opens or closes: a drifting server clock must not cause close errors.
+  const now = correctedNow();
 
   const targets: ScheduleTarget[] = [
     {
@@ -343,6 +345,18 @@ export async function runFiscalScheduleTick(): Promise<ScheduleTickResult> {
       messages.push(`${prefix}Schedule failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
     }
   });
+  const skew = currentSkew();
+  if (skew && Math.abs(skew.skewMs) >= SKEW_WARN_MS) {
+    const text = describeSkew(skew.skewMs);
+    messages.push(`Clock check: ${text}`);
+    await sendFiscalAlertOnce(
+      `clock-skew:${formatInTimeZone(now, "Africa/Harare", "yyyy-MM-dd")}`,
+      "The server clock does not match ZIMRA's",
+      `${text[0].toUpperCase()}${text.slice(1)}.
+
+The fiscal day is opened and closed by ZIMRA's time, so the schedule still runs on time, but a wrong clock can cause receipts to be refused. Check that the server's time is set automatically (NTP) and correct.`
+    );
+  }
   if (!messages.length) messages.push("No schedule action for this minute");
   return { closed, opened, messages };
 }

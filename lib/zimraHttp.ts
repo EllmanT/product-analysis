@@ -2,6 +2,8 @@ import http from "node:http";
 import https from "node:https";
 import { URL } from "node:url";
 
+import { learnServerClock } from "@/lib/clockSkew";
+
 export type ZimraTlsConfig = {
   certPem?: string;
   keyPem?: string;
@@ -58,8 +60,11 @@ export async function zimraRequest(
     ...tlsOpts,
   };
 
+  const sentAt = Date.now();
   return new Promise((resolve, reject) => {
     const req = lib.request(options, (res) => {
+      // Every reply carries ZIMRA's clock: learn how far ours is from it (see lib/clockSkew.ts).
+      learnServerClock(res.headers["date"], sentAt, Date.now());
       const chunks: Buffer[] = [];
       res.on("data", (c) => chunks.push(Buffer.from(c)));
       res.on("end", () => {

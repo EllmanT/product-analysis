@@ -6,6 +6,7 @@ import handleError from "@/lib/handlers/error";
 import { NotFoundError, RequestError, UnauthorisedError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
 import { initiatePayment } from "@/lib/services/ecocash.service";
+import { isShopCheckoutEnabled } from "@/lib/shop/checkout-enabled";
 import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 import { NextResponse } from "next/server";
 
@@ -17,6 +18,9 @@ const InitiateSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    if (!isShopCheckoutEnabled()) {
+      throw new RequestError(503, "Checkout is temporarily unavailable. Please check back soon.");
+    }
     await dbConnect();
 
     const customerId = await getShopCustomerIdForRequest();

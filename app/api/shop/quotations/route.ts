@@ -11,6 +11,7 @@ import {
   ValidationError,
 } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
+import { isShopCheckoutEnabled } from "@/lib/shop/checkout-enabled";
 import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 import {
   getEmailSettingsDoc,
@@ -90,6 +91,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    if (!isShopCheckoutEnabled()) {
+      throw new RequestError(503, "Checkout is temporarily unavailable. Please check back soon.");
+    }
     await dbConnect();
     const customerId = await getShopCustomerIdForRequest();
     if (!customerId) {

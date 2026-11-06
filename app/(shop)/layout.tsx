@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
@@ -36,8 +35,6 @@ export const metadata: Metadata = {
 };
 
 export default async function ShopLayout({ children }: { children: ReactNode }) {
-  redirect("/sign-in");
-
   let customer: { firstName: string; id: string } | null = null;
 
   try {

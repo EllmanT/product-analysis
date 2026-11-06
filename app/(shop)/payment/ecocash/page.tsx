@@ -8,6 +8,9 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
 import { ArrowLeft, CheckCircle, Smartphone, XCircle } from "lucide-react";
 
+import { CheckoutComingSoon } from "@/components/shop/CheckoutComingSoon";
+import { isShopCheckoutEnabled } from "@/lib/shop/checkout-enabled";
+
 function BackToQuotationLink({ quotationId }: { quotationId: string }) {
   return (
     <div className="mb-4">
@@ -321,6 +324,9 @@ function EcoCashPaymentContent() {
 }
 
 export default function EcoCashPaymentPage() {
+  if (!isShopCheckoutEnabled()) {
+    return <CheckoutComingSoon />;
+  }
   return (
     <Suspense
       fallback={

@@ -6,6 +6,8 @@ import { ShoppingBag } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useCart } from "@/app/(shop)/context/CartContext";
+import { CheckoutComingSoon } from "@/components/shop/CheckoutComingSoon";
+import { isShopCheckoutEnabled } from "@/lib/shop/checkout-enabled";
 
 type MeData = {
   tradeName: string;
@@ -35,6 +37,13 @@ const sectionLabelClass =
   "text-xs font-medium uppercase tracking-wider text-slate-500";
 
 export default function CheckoutPage() {
+  if (!isShopCheckoutEnabled()) {
+    return <CheckoutComingSoon />;
+  }
+  return <CheckoutPageContent />;
+}
+
+function CheckoutPageContent() {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const { items, clearCart } = useCart();

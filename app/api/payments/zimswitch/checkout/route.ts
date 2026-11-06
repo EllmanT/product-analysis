@@ -9,6 +9,7 @@ import { NotFoundError, RequestError, UnauthorisedError } from "@/lib/http-error
 import dbConnect from "@/lib/mongoose";
 import { isValidPaymentOption, ZIMSWITCH_PAYMENT_OPTIONS } from "@/lib/config/zimswitchOptions";
 import { createCheckout } from "@/lib/services/zimswitch.service";
+import { isShopCheckoutEnabled } from "@/lib/shop/checkout-enabled";
 import { getShopCustomerIdForRequest } from "@/lib/shop/customer-auth";
 
 const CheckoutSchema = z.object({
@@ -18,6 +19,9 @@ const CheckoutSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    if (!isShopCheckoutEnabled()) {
+      throw new RequestError(503, "Checkout is temporarily unavailable. Please check back soon.");
+    }
     await dbConnect();
 
     const customerId = await getShopCustomerIdForRequest();

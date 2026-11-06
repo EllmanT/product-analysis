@@ -7,6 +7,9 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { ArrowLeft, CreditCard, ShieldCheck } from "lucide-react";
 
+import { CheckoutComingSoon } from "@/components/shop/CheckoutComingSoon";
+import { isShopCheckoutEnabled } from "@/lib/shop/checkout-enabled";
+
 function BackToQuotationLink({ quotationId }: { quotationId: string }) {
   return (
     <div className="mb-4">
@@ -204,6 +207,9 @@ function CardPaymentContent() {
 }
 
 export default function CardPaymentPage() {
+  if (!isShopCheckoutEnabled()) {
+    return <CheckoutComingSoon />;
+  }
   return (
     <Suspense
       fallback={

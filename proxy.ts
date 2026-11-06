@@ -3,6 +3,8 @@ import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { apiAllowed, defaultPermissions, landingFor, pageKeyForPath } from "@/lib/auth/permissions";
+
 export default clerkMiddleware(async (_auth, request: NextRequest) => {
   const path = request.nextUrl.pathname;
 
@@ -16,22 +18,27 @@ export default clerkMiddleware(async (_auth, request: NextRequest) => {
       req: request,
       secret,
     });
-    // Cashiers are confined to the POS: every other page or API is closed to them.
-    if (token?.role === "cashier") {
-      const allowed = ["/pos", "/api/pos", "/scan", "/api/scan", "/sign-in", "/unauthorized"];
-      const ok = allowed.some((p) => path === p || path.startsWith(`${p}/`));
-      if (!ok) {
-        if (path.startsWith("/api/")) {
+    const role = token?.role;
+    if (role === "branch_user" || role === "cashier") {
+      // Admins may open everything. Everyone else only what a super admin has granted their role.
+      const perms = token?.perms ?? defaultPermissions(role);
+      const isApi = path.startsWith("/api/");
+
+      if (isApi) {
+        // Cashiers are confined to the till's own API unless they were granted more. Other roles are checked by each route.
+        if (role === "cashier" && !apiAllowed(path, perms)) {
           return NextResponse.json({ success: false }, { status: 403 });
         }
-        return NextResponse.redirect(new URL("/pos", request.url));
+      } else {
+        const key = pageKeyForPath(path);
+        const openPage = ["/scan", "/sign-in", "/unauthorized"].some((p) => path === p || path.startsWith(`${p}/`));
+        // A cashier sees nothing outside the till except what was granted. Other roles keep the shop and account pages.
+        const blocked = key ? !perms.includes(key) : role === "cashier" && !openPage;
+        if (blocked) {
+          const target = landingFor(perms);
+          if (target !== path) return NextResponse.redirect(new URL(target, request.url));
+        }
       }
-    }
-    if (
-      token?.role === "branch_user" &&
-      (path.startsWith("/users") || path.startsWith("/branches") || path.startsWith("/pos-settings") || path.startsWith("/access"))
-    ) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
 

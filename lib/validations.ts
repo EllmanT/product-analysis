@@ -173,23 +173,21 @@ export const uploadProductsSchema = z.object({
 export const AddBranchSchema = z.object({
   name: z
     .string()
-    .min(3, { message: "Branch name must be at least 3 characters long." })
-    .max(30, { message: "Branch name cannot exceed 30 characters." })
-    .regex(/^[a-zA-Z\s]+$/, {
-      message: "Branch name can only contain letters and spaces.",
+    .trim()
+    .min(2, { message: "Give the branch a name of at least 2 characters." })
+    .max(40, { message: "Keep the name under 40 characters." })
+    .regex(/^[\p{L}\p{N}\s\-'&.]+$/u, {
+      message: "Use letters, numbers, spaces, - ' & or . only.",
     }),
 
   location: z
     .string()
-    .min(1, { message: "Location is required." })
-    .max(50, { message: "Location cannot exceed 50 characters." })
-    .regex(/^[a-zA-Z\s]+$/, {
-      message: "Location can only contain letters and spaces.",
+    .trim()
+    .min(1, { message: "Add the town or suburb." })
+    .max(60, { message: "Keep the location under 60 characters." })
+    .regex(/^[\p{L}\p{N}\s\-'&.,]+$/u, {
+      message: "Use letters, numbers, spaces, - ' & . or , only.",
     }),
-
-
-
-
 });
 
 export const GetBranchesByStoreSchema = z.object({

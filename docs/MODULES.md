@@ -21,7 +21,7 @@ It describes how the code is **today**. Nothing enforces these boundaries yet; m
 Worst first. These come from the audit and have not all been re-verified line by line.
 
 1. ~~**shop to fiscal, directly.**~~ **Fixed 2026-11-06.** The payment path now goes through `lib/fiscal/issue.ts`; a ZIMRA or device problem queues the invoice and the cron retries it. See `docs/FISCAL_OUTAGE_RECOVERY.md`.
-2. **Two credit-note implementations.** The admin invoices route and the POS credit-note route each build credit notes. They should share one fiscal service.
+2. ~~**Two credit-note implementations.**~~ **Not true (checked 2026-11-06).** Credit notes exist only at the till (`issueCreditNote`). The shop has only a `receiptType` label with no link to an original invoice; `fiscalizeInvoice` now refuses anything but a plain invoice, so one cannot reach ZIMRA and upset a day close.
 3. **Analytics sees only POS data.** Shop invoices are probably left out of the totals. Not confirmed.
 4. **Stock is shared three ways.** The POS catalogue, the shop product list and despatch scans all read stock tables.
 5. **Exchange rates** feed prices in both the shop and the fiscal/POS side.
@@ -36,7 +36,7 @@ Worst first. These come from the audit and have not all been re-verified line by
 ## Suggested order for tightening this (not started)
 
 1. ~~Put fiscal issuing behind one entry point that pos and shop both call, so a failed device means "queued" rather than "failed" in both.~~ **Done** (`lib/fiscal/issue.ts`).
-2. Merge the two credit-note paths into that entry point. **Not done.** Shop credit notes through the fiscal service go to `REVIEW` with a clear message; the admin invoices route still builds its own.
+2. ~~Merge the two credit-note paths.~~ Nothing to merge: only the till has credit notes. If the shop ever needs them, build one that records the original invoice, then issue it through `lib/fiscal/issue.ts`.
 3. Collapse the shop's overlapping API trees.
 4. Add one `/admin/sales` view over quotations, invoices and POS sales, so there is one place to find a sale.
 5. Only then move folders, and add a lint rule that stops a module importing another's internals.

@@ -174,6 +174,16 @@ export async function fiscalizeInvoice(invoiceId: string) {
     throw new Error("Invoice has no fiscal line items. Regenerate the invoice from the quotation.");
   }
 
+  // A credit or debit note must name the invoice it corrects, and the shop has no way to record that. Sent without it
+  // ZIMRA flags the receipt as bad, and a bad receipt can stop the fiscal day from closing. Credit notes are issued at
+  // the till, where the original is known.
+  if (invoice.receiptType !== "FiscalInvoice") {
+    throw new ShopFiscalError(
+      `A ${invoice.receiptType === "CreditNote" ? "credit" : "debit"} note cannot be issued from the shop: it does not say which invoice it corrects. Issue it from the till instead.`,
+      "review"
+    );
+  }
+
   const fiscalResult = fiscalBackend() === "service" ? await submitInvoiceViaService(invoice) : await submitReceipt(invoice);
 
   invoice.fiscalData = fiscalResult;

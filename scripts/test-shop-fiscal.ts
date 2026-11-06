@@ -115,6 +115,22 @@ async function main() {
   const r5 = await issueShopInvoice(String(tired._id), { fiscalize: async () => { throw new Error("ZIMRA request timeout"); }, now: () => t0 });
   check(r5.status === "REVIEW", "after too many failures a person is asked to look", r5);
 
+  console.log("3b. A credit note is refused before it can reach ZIMRA");
+  const { fiscalizeInvoice } = await import("@/lib/services/invoice.service");
+  const cn = await make({ receiptType: "CreditNote" });
+  let cnKind = "";
+  let cnMsg = "";
+  try {
+    await fiscalizeInvoice(String(cn._id));
+  } catch (e) {
+    cnKind = e instanceof ShopFiscalError ? e.kind : "other";
+    cnMsg = e instanceof Error ? e.message : "";
+  }
+  check(cnKind === "review" && /till/.test(cnMsg), "fiscalizeInvoice refuses a credit note and says to use the till", { cnKind, cnMsg });
+  const cnOut = await issueShopInvoice(String(cn._id), { now: () => t0 });
+  const cnDoc = await fresh(cn._id);
+  check(cnOut.status === "REVIEW" && cnDoc.fiscalNeedsReview === true && cnDoc.isFiscalized === false, "so the facade sends it to review, with nothing sent anywhere");
+
   console.log("4. The queue");
   // `down` is due at t0 + 1 min.
   let calls = 0;

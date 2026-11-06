@@ -66,8 +66,9 @@ open and open the day when it is set to. Only invoices the payment flow handed o
 are never touched. With `FISCAL_BACKEND=service` shop invoices go through the service on the central device
 (`FISCAL_SERVICE_CENTRAL_DEVICE_ID`). The central device's close preview counts them.
 
-Not covered yet: credit and debit notes for shop invoices through the service (they go to `REVIEW` with a clear
-message) and the duplicate credit-note logic in the admin invoices route.
+Credit and debit notes exist only at the till. The shop cannot record which invoice a note corrects, so
+`fiscalizeInvoice` refuses anything but a plain invoice on both backends (it goes to `REVIEW` with a message to use
+the till). Sending one anyway would make ZIMRA flag a bad receipt, which can stop the fiscal day from closing.
 
 ## What was checked, and where
 

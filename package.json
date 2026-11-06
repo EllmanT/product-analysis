@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:day-status": "npx tsx scripts/test-day-status.ts",
+    "test:close-guard": "npx tsx scripts/test-close-guard.ts",
+    "test:tills": "npx tsx scripts/test-tills.ts",
+    "test:service-backend": "npx tsx scripts/test-service-backend.ts",
+    "stress:app": "npx tsx scripts/stress-app.ts",
+    "test:fiscal-alerts": "npx tsx scripts/test-fiscal-alerts.ts",
+    "test:vat": "npx tsx scripts/test-vat.ts",
     "test:despatch-lines": "npx tsx scripts/test-despatch-lines.ts",
     "test:despatch-pairing": "npx tsx scripts/test-despatch-pairing.ts",
     "test:despatch-import": "npx tsx scripts/test-despatch-import.ts",

@@ -132,6 +132,22 @@ async function main() {
   const q2 = await PosSale.findById(q._id);
   check(q2?.status === "FISCALISED", "after ZIMRA is back the queue collects it as FISCALISED", { s: q2?.status, e: q2?.lastError });
 
+  console.log("3b. A sale from an earlier day is fiscalised by itself once the system is back (no approval)");
+  gw.faults.down = true;
+  const old = await pos.fiscalisePosSale(String((await sell())._id), { reason: "till" });
+  gw.faults.down = false;
+  // Pretend the outage lasted days: the sale belongs to a day that is long over.
+  await PosSale.updateOne({ _id: old._id }, { $set: { soldDate: "2020-01-01", needsApproval: true } });
+  let oldDone = false;
+  for (let i = 0; i < 40 && !oldDone; i++) {
+    await sleep(250);
+    await pos.runPosQueue(25, { deviceKey: String(appDevice._id) });
+    oldDone = (await PosSale.findById(old._id))?.status === "FISCALISED";
+  }
+  const old2 = await PosSale.findById(old._id);
+  check(old2?.status === "FISCALISED" && !old2.needsApproval, "the old sale is FISCALISED and was not held for approval", { s: old2?.status, a: old2?.needsApproval, e: old2?.lastError });
+  check(old2?.soldDate === "2020-01-01", "our record keeps the day it was actually sold");
+
   console.log("4. The fiscal service itself is unreachable");
   process.env.FISCAL_SERVICE_URL = "http://127.0.0.1:1";
   const u = await pos.fiscalisePosSale(String((await sell())._id), { reason: "till" });

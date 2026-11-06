@@ -1,6 +1,8 @@
 import type { Session } from "next-auth";
 import { NextResponse } from "next/server";
 
+import { hasPermission } from "@/lib/auth/permissions";
+
 export type AppRole = "admin" | "branch_user" | "cashier";
 
 export function normalizeRole(
@@ -19,6 +21,16 @@ export function getSessionUserRole(session: Session | null): AppRole | null {
 export function requireAuth(session: Session | null) {
   if (!session?.user?.id) {
     return NextResponse.json({ success: false }, { status: 404 });
+  }
+  return null;
+}
+
+/** Signed in and allowed to use this page or action. Admins always are; others need it in their permissions. */
+export function requirePermission(session: Session | null, key: string) {
+  const unauth = requireAuth(session);
+  if (unauth) return unauth;
+  if (!hasPermission(normalizeRole(session!.user.role), session!.user.perms, key)) {
+    return NextResponse.json({ success: false }, { status: 403 });
   }
   return null;
 }

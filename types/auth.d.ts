@@ -5,6 +5,8 @@ declare module "next-auth" {
     user: DefaultSession["user"] & {
       id: string;
       role: "admin" | "branch_user" | "cashier";
+      /** What a non-admin may open and do. Undefined for admins (they may do everything). */
+      perms?: string[];
     };
   }
 
@@ -16,5 +18,6 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     role?: "admin" | "branch_user" | "cashier";
+    perms?: string[];
   }
 }

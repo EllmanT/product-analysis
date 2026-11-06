@@ -9,6 +9,7 @@ import { authorizeCredentialsOrThrow } from "./lib/auth/authenticate-credentials
 import { getStaffAllowedEmailSet } from "./lib/auth/staff-allowlist";
 import { normalizeRole } from "./lib/auth/role";
 import { api } from "./lib/api";
+import { getRolePermissions } from "./lib/services/permissions.service";
 import dbConnect from "./lib/mongoose";
 import { SignInSchema } from "./lib/validations";
 
@@ -34,6 +35,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.id = token.sub as string;
       session.user.role = normalizeRole(token.role as string | undefined);
       return session;
+      session.user.perms = token.perms;
     },
     async jwt({ token, user, account }) {
       if (account) {
@@ -95,6 +97,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.role = role;
         }
       }
+      // What this role may open and do travels in the token: the proxy refuses pages with it, and routes check it
+      // without another lookup. Rebuilt on every call, so a change a super admin makes reaches API calls at once.
+      const roleNow = normalizeRole(token.role as string | undefined);
+      token.perms = roleNow === "admin" ? undefined : await getRolePermissions(roleNow);
+
 
       return token;
     },

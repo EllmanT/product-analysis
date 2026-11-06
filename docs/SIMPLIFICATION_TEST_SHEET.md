@@ -217,6 +217,31 @@ Grant the branch manager **Users**.
 | 7.31 | Run `npx tsx scripts/test-permissions.ts`. | 12 checks pass. | | |
 | 7.32 | Run `node scripts/check-api-guards.mjs`. | Passes. | | |
 
+## 7f. Quick browser check of everything above
+
+| # | Step | Expected | P/F | Notes |
+|---|---|---|---|---|
+| 7.33 | Start the app (`npm run dev`), then `node scripts/verify-ui.cjs` (add `BASE_URL=...` if it is not on port 3000). | 29 checks pass for admin, branch manager and cashier. Screenshots are saved under `test-output/ui-verify`. | | |
+
+## 7g. Central device and branch devices share one screen
+
+| # | Step | Expected | P/F | Notes |
+|---|---|---|---|---|
+| 7.34 | Open **Central device**. | The same layout as a branch device: connection, automatic open and close with weekday buttons, certificate. No name, on/off switch, login or service id. A list shows the branches on the central device. | | |
+| 7.35 | Change the open time and the weekdays, Save settings. | Saved; the page reloads with the new values. | | |
+| 7.36 | Certificate section: choose **Folder of certificate files**, pick `certificates_<id>`, click **Check the files first**. | A report lists the files that will be used, anything missing, and warnings. Then **Upload certificate** stores it. | | |
+| 7.37 | Open a branch device with **Settings**. | It has the same weekday buttons and the folder option. | | |
+
+## 7h. Shop invoices and outages
+
+| # | Step | Expected | P/F | Notes |
+|---|---|---|---|---|
+| 7.38 | Pay a shop quotation while ZIMRA is blocked. | The payment is recorded. The invoice exists, unfiscalised, with an attempt count and a reason. | | |
+| 7.39 | Unblock ZIMRA, wait for the cron (`/api/cron/pos-queue`). | The invoice is fiscalised by itself. Its retry marks are cleared. | | |
+| 7.40 | Create an invoice with no lines, or a bad HS code, and pay it. | It goes to review (no endless retrying) and an alert is sent. | | |
+| 7.41 | Run `npx tsx scripts/test-shop-fiscal.ts`. | 33 checks pass. | | |
+| 7.42 | Read `docs/FISCAL_OUTAGE_RECOVERY.md` and run `cd fiscal-service && npx tsx scripts/recover-live.ts "<certs root>" <id> --yes` on a closed test device. | PASS (stale day closed, new day opened, receipt fiscalised, device left closed). | | |
+
 ## 8. Names and labels
 
 | # | Where | Expected | P/F | Notes |
@@ -256,7 +281,8 @@ Grant the branch manager **Users**.
 | 11.2 | Per-branch open and close times | **Kept with the device.** The device's schedule decides. The close now keeps retrying until it succeeds (section 6b). |
 | 11.3 | Hidden pages opened by address | **Done.** The proxy refuses them (section 7b). |
 | 11.4 | Full role-based access | **Done.** Any page or action can be granted to Branch manager or Cashier. Admin is fixed. A delegated user manager is limited to their own branch and cannot create or touch admins. |
-| 11.5 | Did the wizards feel quicker than the old screens? What slowed you down? | |
+| 11.5 | One door to the fiscal layer, shop invoices queued, central device on the shared screen | **Done** (sections 7g and 7h). Still open: shop credit notes through the service. |
+| 11.6 | Did the wizards feel quicker than the old screens? What slowed you down? | |
 
 ## Not covered by this sheet
 

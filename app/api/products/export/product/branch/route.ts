@@ -1,3 +1,4 @@
+import { guardBranch } from "@/lib/auth/route-guards";
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { Branch, Store, WeeklyProductSummaries } from "@/database";
@@ -12,6 +13,8 @@ export async function GET(req: NextRequest) {
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
   const branchId = searchParams.get("branchId");
+  const denied = await guardBranch(branchId);
+  if (denied) return denied;
   const productId = searchParams.get("productId");
 // Convert to Date object if needed
 const start = new Date(startDate as string);

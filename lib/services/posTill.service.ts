@@ -98,6 +98,7 @@ export async function resolveSaleTill(
   await dbConnect();
   const t = await Till.findById(tillId).lean<(ITill & { _id: Types.ObjectId }) | null>();
   if (!t || String(t.branchId) !== branchId) throw new TillError("That till does not belong to this branch", 400);
+  if (t.enabled === false) throw new TillError("This till is switched off. Choose another till or ask an administrator.", 400);
   return { tillId: t._id, tillCode: t.code };
 }
 

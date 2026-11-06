@@ -1,3 +1,4 @@
+import { guardStore } from "@/lib/auth/route-guards";
 import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { Store, WeeklyProductSummaries } from "@/database";
@@ -12,6 +13,8 @@ export async function GET(req: NextRequest) {
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
   const storeId = searchParams.get("storeId");
+  const denied = await guardStore(storeId);
+  if (denied) return denied;
 // Convert to Date object if needed
 const start = new Date(startDate as string);
 const end = new Date(endDate as string);

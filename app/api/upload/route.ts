@@ -1,3 +1,4 @@
+import { guardSignedIn, guardStore } from "@/lib/auth/route-guards";
 import { NextRequest, NextResponse } from "next/server";
 import * as path from "path";
 import ExcelJS from "exceljs";
@@ -77,6 +78,8 @@ async function appendToTextFile(lines: string[]) {
 }
 
 export async function POST(req: NextRequest) {
+  const unauth = await guardSignedIn();
+  if (unauth) return unauth;
   try {
     // Step 1: Parse the uploaded CSV file
     const formData = await req.formData();
@@ -174,6 +177,8 @@ export async function GET(req: NextRequest) {
   // const year = searchParams.get("year");
 
   const storeId = searchParams.get("storeId");
+  const denied = await guardStore(storeId);
+  if (denied) return denied;
 
     console.log("📥 Incoming export request...");
 

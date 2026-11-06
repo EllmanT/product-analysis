@@ -1,3 +1,5 @@
+import { auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth/role";
 import { NextResponse } from "next/server";
 
 import User from "@/database/user.model";
@@ -11,6 +13,8 @@ export async function GET(
   _id: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = requireAdmin(await auth());
+  if (denied) return denied;
   const { id } = await params;
   if (!id) throw new NotFoundError("User not found");
 
@@ -30,6 +34,8 @@ export async function DELETE(
   _: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = requireAdmin(await auth());
+  if (denied) return denied;
   const { id } = await params;
   if (!id) throw new NotFoundError("User not found");
 
@@ -49,6 +55,8 @@ export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = requireAdmin(await auth());
+  if (denied) return denied;
   const { id } = await params;
   if (!id) throw new NotFoundError("User not found");
 

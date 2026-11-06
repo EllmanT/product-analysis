@@ -1,3 +1,5 @@
+import { auth } from "@/auth";
+import { requireAdmin } from "@/lib/auth/role";
 import { User } from "@/database";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError, ValidationError } from "@/lib/http-errors";
@@ -6,6 +8,8 @@ import { UserSchema } from "@/lib/validations";
 import { NextResponse } from "next/server";
 
 export async function POST(request:Request){
+  const denied = requireAdmin(await auth());
+  if (denied) return denied;
     const {email} = await request.json();
 
     try {

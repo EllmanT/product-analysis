@@ -212,7 +212,7 @@ async function main() {
   await control.raiseFence("central", "fence-test");
   const during = await sell();
   check(during.status === "UNFISCALISED" && /closed|closing/i.test(during.lastError ?? ""), "a sale made during the fence is queued, not sent", { s: during.status, e: during.lastError });
-  check(fake.receipts.length === 0 || !fake.receipts.some((r) => r.invoiceNo === during.invoiceNo), "nothing reached the device while fenced");
+  check(fake.receipts.length === 0 || !fake.receipts.some((r) => r.invoiceNo === during.invoiceNumber), "nothing reached the device while fenced");
   await control.releaseCloseLock("central", "fence-test");
   await PosSale.collection.updateMany({}, { $set: { updatedAt: new Date(Date.now() - 3_600_000) } });
   await pos.runPosQueue(25, { deviceKey: "central" });

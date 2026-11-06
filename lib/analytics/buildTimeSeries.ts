@@ -318,7 +318,7 @@ export async function buildTopProduct(params: {
     storeId: new Types.ObjectId(params.storeId),
     productId: new Types.ObjectId(topId),
   };
-  const meta = await UploadProduct.findOne(match).select("code name").lean();
+  const meta = (await UploadProduct.findOne(match).select("code name").lean()) as { code?: string; name?: string } | null;
 
   const totals = byProduct.get(topId)!;
   return {

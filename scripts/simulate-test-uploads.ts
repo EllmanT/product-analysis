@@ -76,7 +76,7 @@ async function resolveIds(args: CliArgs): Promise<{
   let userId = args.userId;
 
   if (args.email) {
-    const user = await User.findOne({ email: args.email }).lean();
+    const user = (await User.findOne({ email: args.email }).lean()) as { _id: unknown; storeId?: unknown } | null;
     if (!user) {
       throw new Error(`No user found for email: ${args.email}`);
     }
@@ -93,7 +93,7 @@ async function resolveIds(args: CliArgs): Promise<{
   }
 
   if (!userId) {
-    const admin = await User.findOne({ storeId, role: "admin" }).lean();
+    const admin = (await User.findOne({ storeId, role: "admin" }).lean()) as { _id: unknown } | null;
     if (!admin) {
       throw new Error(
         "userId is required (use --userId=... or --email=...) — no admin found for store"

@@ -41,7 +41,7 @@ export async function GET() {
         Upload.countDocuments({ storeId, branchId }),
       ]);
 
-      const lastUploadDate = lastUpload?.upload_date ?? null;
+      const lastUploadDate = (lastUpload as { upload_date?: Date } | null)?.upload_date ?? null;
       const daysSinceLastUpload = lastUploadDate
         ? Math.floor(
             (now.getTime() - new Date(lastUploadDate).getTime()) / 86_400_000

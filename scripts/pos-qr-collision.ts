@@ -37,10 +37,10 @@ async function main() {
   const run = Date.now().toString(36).toUpperCase().slice(-2);
   let store = await Store.findOne();
   if (!store) store = await Store.create({ name: "SIM Store", location: "SIM" } as never);
-  const branch = await Branch.create({
+  const branch = (await Branch.create({
     name: `QRTEST ${run}`, location: "SIM", storeId: store._id,
     pos: { enabled: true, invoicePrefix: `Q${run}`, taxPercent: 15.5, taxCode: "A", taxInclusive: true, defaultCurrency: "USD", receipt: { companyName: "SIM" } },
-  } as never);
+  } as never)) as unknown as { _id: Types.ObjectId };
   const mk = (amount: number, lines = 1) =>
     createPosSale({
       branchId: String(branch._id), cashierId: String(new Types.ObjectId()), idempotencyKey: randomUUID(), currency: "USD",

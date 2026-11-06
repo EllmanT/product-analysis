@@ -1,3 +1,5 @@
+> **New here?** Read [`docs/AGENT_HANDOFF.md`](docs/AGENT_HANDOFF.md) first: what the system is, how to run and test it, what was decided and what is unfinished. Testers: [`docs/STOCKFLOW_TEST_PLAN_v2.0.docx`](docs/STOCKFLOW_TEST_PLAN_v2.0.docx). Go-live rehearsal on real ZIMRA test devices: [`docs/REHEARSAL_RUNBOOK.md`](docs/REHEARSAL_RUNBOOK.md).
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

@@ -23,9 +23,9 @@ export interface SchedulerDeps {
   now?: () => Date;
   /** Minimum time between attempts of the same step on the same device. */
   retryEveryMs?: number;
-  /** Hours after which a still-open day raises an alert (ZIMRA's limit is usually 24). */
+  /** Hours after which a still-open day raises an alert. Default: 2 hours under the device's own limit (ZIMRA reports it). */
   dayLengthWarnHrs?: number;
-  /** Hours after which a still-open day is closed and replaced, whatever the schedule says. Must stay under ZIMRA's limit. */
+  /** Hours after which a still-open day is closed and replaced, whatever the schedule says. Default: 1 hour under the device's own limit. */
   recoverAfterHrs?: number;
 }
 
@@ -114,7 +114,12 @@ export class Scheduler {
     const engine = await this.deps.manager.get(d.id);
     let st = await engine.status();
 
-    const staleAfterMs = (this.deps.recoverAfterHrs ?? 23) * 3_600_000;
+    // ZIMRA tells each device how long a day may last (taxPayerDayMaxHrs, usually 24); stay safely inside it.
+    const dayMax = (await this.deps.registry.engineConfig(d.id).catch(() => undefined))?.config?.taxPayerDayMaxHrs;
+    const limit = typeof dayMax === "number" && dayMax > 0 ? dayMax : 24;
+    const recoverAfterHrs = this.deps.recoverAfterHrs ?? Math.max(limit - 1, limit / 2);
+    const warnAfterHrs = this.deps.dayLengthWarnHrs ?? Math.max(limit - 2, limit / 2);
+    const staleAfterMs = recoverAfterHrs * 3_600_000;
     const stale = st.dayOpen && !!st.dayOpenedAt && now.getTime() - st.dayOpenedAt > staleAfterMs;
     const openToday = !s.weekdays.length || s.weekdays.includes(dow);
 
@@ -183,7 +188,7 @@ export class Scheduler {
             deviceId: d.deviceId,
             step: "recover",
             ok: false,
-            message: `Could not close fiscal day ${st.fiscalDayNo}, open for over ${this.deps.recoverAfterHrs ?? 23} hours (${r.reason}: ${r.message}). If ZIMRA refuses it because the day is too old, close it on the ZIMRA portal; a new day opens by itself afterwards.`,
+            message: `Could not close fiscal day ${st.fiscalDayNo}, open for over ${recoverAfterHrs} hours (${r.reason}: ${r.message}). If ZIMRA refuses it because the day is too old, close it on the ZIMRA portal; a new day opens by itself afterwards.`,
           });
         }
       }
@@ -203,10 +208,10 @@ export class Scheduler {
     }
 
     // A day left open too long: ZIMRA stops accepting receipts at its limit.
-    const warnAfter = (this.deps.dayLengthWarnHrs ?? 22) * 3_600_000;
+    const warnAfter = warnAfterHrs * 3_600_000;
     if (st.dayOpenedAt && st.dayOpen && now.getTime() - st.dayOpenedAt > warnAfter && !this.warned.has(`${d.id}:${st.fiscalDayNo}`)) {
       this.warned.add(`${d.id}:${st.fiscalDayNo}`);
-      events.push({ deviceId: d.deviceId, step: "warn", ok: false, message: `Fiscal day ${st.fiscalDayNo} has been open for over ${this.deps.dayLengthWarnHrs ?? 22} hours` });
+      events.push({ deviceId: d.deviceId, step: "warn", ok: false, message: `Fiscal day ${st.fiscalDayNo} has been open for over ${warnAfterHrs} hours` });
     }
     return events;
   }

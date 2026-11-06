@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { User } from "@/database";
-import { requirePermission } from "@/lib/auth/role";
+import { requireAdmin } from "@/lib/auth/role";
 import handleError from "@/lib/handlers/error";
 import { ValidationError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
@@ -10,7 +10,7 @@ import { NextResponse } from "next/server";
 export async function GET() {
   try {
     const session = await auth();
-    const denied = requirePermission(session, "/users");
+    const denied = requireAdmin(session);
     if (denied) return denied;
 
     await dbConnect();
@@ -25,7 +25,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    const denied = requirePermission(session, "/users");
+    const denied = requireAdmin(session);
     if (denied) return denied;
 
     await dbConnect();

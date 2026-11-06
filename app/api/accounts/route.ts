@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { requirePermission } from "@/lib/auth/role";
+import { requireAdmin } from "@/lib/auth/role";
 import { NextResponse } from "next/server";
 
 import Account from "@/database/account.model";
@@ -9,7 +9,7 @@ import dbConnect from "@/lib/mongoose";
 import { AccountSchema } from "@/lib/validations";
 
 export async function GET() {
-  const denied = requirePermission(await auth(), "/users");
+  const denied = requireAdmin(await auth());
   if (denied) return denied;
   try {
     await dbConnect();
@@ -26,7 +26,7 @@ export async function GET() {
 
 //Create a new user
 export async function POST(request: Request) {
-  const denied = requirePermission(await auth(), "/users");
+  const denied = requireAdmin(await auth());
   if (denied) return denied;
   try {
     await dbConnect();

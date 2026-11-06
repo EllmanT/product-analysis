@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { auth } from "@/auth";
 import Branch from "@/database/branch.model";
+import { resolvePosScope } from "@/lib/auth/pos-scope";
 import { requirePermission } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import { assignBranchDevice, DeviceConfigError } from "@/lib/services/fiscalDevice.service";
@@ -49,6 +50,8 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
     }
+    const scoped = await resolvePosScope(await auth(), id);
+    if (!scoped.ok) return scoped.response;
     const parsed = PatchSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json(

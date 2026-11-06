@@ -32,6 +32,10 @@ The till prints through the browser, so each till PC needs Chrome (or Edge) set 
 
 The sale is never blocked. The till prints a **PROVISIONAL RECEIPT** (own number series, e.g. `HUP0001`, "not a fiscal tax invoice") and the sale is fiscalised automatically once the device is back, same fiscal day only. Sales from an earlier day need an administrator to fiscalise them. Set `CRON_SECRET` and call `GET /api/cron/pos-queue` every minute (Authorization: `Bearer <CRON_SECRET>`) to run the automatic retry.
 
+## Tills and devices
+
+Each branch has tills (named, switched on or off in POS settings). Pick your till once on each PC; it is remembered and also works offline, and every sale and offline number block is traced to it. Which fiscal device a branch uses is a setting (POS settings > Fiscal devices by branch), so tills in the same branch always share one device and branches can share a device or have their own. One device sustains about one receipt per second; if a branch's tills often see "device busy", give that branch its own device.
+
 ## Email
 
 Customer copies are sent through the existing SMTP settings (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`). Use the envelope button in the sales drawer (F8).

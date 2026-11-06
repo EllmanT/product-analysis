@@ -58,6 +58,21 @@ Things to know:
 - Renewing a certificate (by hand with "Renew now", or automatically if switched on) makes ZIMRA cancel the old one at once. Only renew where this app is the certificate's only holder, or hand the new one to whatever else uses it (for example a Virtual Device that keeps its own copy) straight away. Automatic renewal is off until an admin turns it on.
 - A new device (or one whose certificate expired) is onboarded with "Register with ZIMRA" on its device page or on Fiscal settings: enter the device ID, serial number and activation key from the ZIMRA portal, check the taxpayer ZIMRA shows, then register. The activation key is used once and never saved.
 
+## 4c. The fiscal service (recommended for several tills, branches or devices)
+
+The app can hand fiscalisation to the separate `fiscal-service/` instead of talking to the device itself. It owns numbering, strict send order, retries after outages and lost replies, and the guarded fiscal-day close. Default is the old path (`FISCAL_BACKEND=legacy`).
+
+| Variable (app) | Why |
+|---|---|
+| `FISCAL_BACKEND=service` | switches the app to the service; `legacy` is the rollback |
+| `FISCAL_SERVICE_URL`, `FISCAL_SERVICE_TOKEN` | where the service is and its shared secret (16+ characters) |
+| `FISCAL_SERVICE_CENTRAL_DEVICE_ID` | the service's id of the central device |
+| `FISCAL_ALERT_EMAILS` (optional) | extra alert recipients; the recipients setting on Fiscal Day is the main control |
+
+Per device: upload its certificate and key to the service, then put the service's device id in the app's device record (`serviceDeviceId`). Run **one** service instance on an always-on host (VPS/Docker) with its own MongoDB; back up that database and `FISCAL_ENCRYPTION_KEY` separately. Follow `FISCAL_RUNBOOK.md` section 9 for the cut-over and rollback, and run the acceptance in section 5 once per device through the service.
+
+Alerts: the pos-queue job (every minute) also reads the service's open alerts and emails them once per day. Set who gets them on Admin > Fiscal Day.
+
 ## 5. Acceptance run on the real device before opening
 
 - Sell one cheap item in USD and in ZWG: slips print with QR and the numbers look right (`HU0001`, `HZ0001`).
@@ -85,3 +100,5 @@ Test receipts reach the device and cannot be deleted: do the acceptance run on t
 | Sale "Rejected" with a message | The device refused it (validation); fix the cause and re-ring the sale |
 | Day will not close: "N POS sales are not fiscalised yet" | Fiscalise them from POS sales, or "Close anyway" (they then need admin approval later) |
 | Device clock/day limit | A fiscal day may not stay open past the device's limit (24 h on the test device); keep the close schedule |
+
+For every fiscal problem (close failures by ZIMRA error code, Red receipts, certificates, outages, stuck days and the ZIMRA operations portal) see `FISCAL_RUNBOOK.md`.

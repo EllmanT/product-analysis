@@ -81,7 +81,8 @@ function SummaryCards({ summary }: { summary: Summary | null }) {
       accent: "bg-purple-100 text-purple-600",
     },
     {
-      label: "Dead Stock Items",
+      label: "Out of stock",
+      hint: "Products with no units left",
       value: summary ? fmtCount.format(summary.deadStock) : "—",
       icon: AlertTriangle,
       accent: "bg-red-100 text-red-600",
@@ -90,7 +91,7 @@ function SummaryCards({ summary }: { summary: Summary | null }) {
 
   return (
     <div className="grid grid-cols-1 gap-4 px-4 lg:px-6 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map(({ label, value, icon: Icon, accent }) => (
+      {cards.map(({ label, value, icon: Icon, accent, hint }) => (
         <Card key={label} className="shadow-xs">
           <CardHeader className="flex flex-row items-center gap-4 pb-2">
             <div
@@ -103,6 +104,7 @@ function SummaryCards({ summary }: { summary: Summary | null }) {
               <CardTitle className="text-xl font-semibold tabular-nums">
                 {value}
               </CardTitle>
+              {hint && <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>}
             </div>
           </CardHeader>
         </Card>
@@ -111,13 +113,13 @@ function SummaryCards({ summary }: { summary: Summary | null }) {
   );
 }
 
-const FILTER_TABS: { key: Filter; label: string }[] = [
-  { key: "all", label: "All Products" },
-  { key: "instock", label: "In Stock" },
-  { key: "deadstock", label: "Dead Stock" },
-  { key: "highvalue", label: "High Value" },
-  { key: "lowstock", label: "Low Stock" },
-  { key: "inactive", label: "Inactive" },
+const FILTER_TABS: { key: Filter; label: string; hint: string }[] = [
+  { key: "all", label: "All Products", hint: "Every active product" },
+  { key: "instock", label: "In Stock", hint: "At least 1 unit" },
+  { key: "deadstock", label: "Out of stock", hint: "No units left" },
+  { key: "highvalue", label: "High Value", hint: "Priced in the top 25% of products" },
+  { key: "lowstock", label: "Low Stock", hint: "Fewer than 10 units" },
+  { key: "inactive", label: "Inactive", hint: "Products marked inactive in the product list" },
 ];
 
 function StatusBadge({ status }: { status: ProductRow["status"] }) {
@@ -135,7 +137,7 @@ function StatusBadge({ status }: { status: ProductRow["status"] }) {
     );
   return (
     <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
-      Dead Stock
+      Out of stock
     </Badge>
   );
 }
@@ -335,9 +337,10 @@ export default function ProductsPage() {
         <div className="px-4 lg:px-6 flex flex-col gap-4">
           {/* Section 2 – Filter Tabs */}
           <div className="flex flex-wrap gap-2">
-            {FILTER_TABS.map(({ key, label }) => (
+            {FILTER_TABS.map(({ key, label, hint }) => (
               <button
                 key={key}
+                title={hint}
                 onClick={() => handleFilterChange(key)}
                 className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
                   activeFilter === key

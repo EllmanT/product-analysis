@@ -86,7 +86,7 @@ export default function ZReportsPage() {
     <div className="flex flex-1 flex-col gap-6 px-4 py-8 lg:px-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Z-reports</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Day-end reports (Z-reports)</h1>
           <p className="mt-1 text-sm text-slate-500">
             End-of-day totals captured when the fiscal day is closed (manual or scheduled).
           </p>

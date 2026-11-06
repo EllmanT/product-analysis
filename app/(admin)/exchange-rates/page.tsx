@@ -105,7 +105,7 @@ export default function ExchangeRatesPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Exchange Rates</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Exchange rates</h1>
         <p className="mt-1 text-sm text-slate-500">
           Manage the local currency exchange rates used for EcoCash payments.
         </p>

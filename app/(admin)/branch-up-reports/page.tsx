@@ -91,7 +91,7 @@ export default function Page() {
           orientation="vertical"
           className="mx-2 data-[orientation=vertical]:h-4"
         />
-        <h1 className="text-base font-medium">Branch Upload Reports</h1>
+        <h1 className="text-base font-medium">Branch upload status</h1>
       </div>
 
       <AnalyticsFilterBar

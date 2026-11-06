@@ -101,7 +101,7 @@ export default function FiscalDayPage() {
     <div className="flex flex-1 flex-col px-4 py-8 lg:px-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Fiscal Day Management</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Fiscal day</h1>
           <p className="mt-1 text-sm text-slate-500">
             Manage ZIMRA FDMS fiscal day. Opening and closing the fiscal day must be done at the
             start and end of each business day as required by ZIMRA regulations.

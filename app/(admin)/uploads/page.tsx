@@ -117,7 +117,7 @@ export default function Page() {
       orientation="vertical"
       className="mx-2 data-[orientation=vertical]:h-4"
     />
-    <h1 className="text-base font-medium">All Uploads</h1>
+    <h1 className="text-base font-medium">Upload history</h1>
   </div>
   </div>
                 <section className="ml-6 mr-4 mt-5 flex justify-between gap-1 max-sm:flex-col sm:items-center bg-white items-center rounded-md p-2">

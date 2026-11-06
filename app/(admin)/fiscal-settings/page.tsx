@@ -431,7 +431,7 @@ export default function FiscalSettingsPage() {
   return (
     <div className="flex flex-1 flex-col gap-8 px-4 py-8 lg:px-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Fiscalization settings</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Central device settings</h1>
         <p className="mt-1 text-sm text-slate-500">
           ZIMRA FDMS base URL, device identifiers, TLS client certificates, and automatic fiscal
           day schedule. Use a scheduler to call{" "}

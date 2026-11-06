@@ -72,6 +72,9 @@ const AuthForm = <T extends FieldValues>({
   return (
     <Form {...form}>
       <form
+        // If the page's script has not loaded yet the browser would submit this as a GET and put the password in the
+        // address bar, history and server logs. POST keeps it out of the URL (the script handles the real sign-in).
+        method="post"
         onSubmit={form.handleSubmit(handleSubmit)}
         className="mt-10 space-y-6 " 
       >

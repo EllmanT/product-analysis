@@ -59,10 +59,10 @@ const EMPTY: Form = {
   tin: "",
 };
 
-function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string | null; children: React.ReactNode }) {
+function Field({ label, htmlFor, hint, error, children }: { label: string; htmlFor?: string; hint?: string; error?: string | null; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
+      <Label htmlFor={htmlFor}>{label}</Label>
       {children}
       {error ? <p className="text-xs text-destructive">{error}</p> : hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
@@ -269,11 +269,11 @@ export default function AddBranchWizard({ onCreated }: { onCreated: () => void }
             <div key={step} className="min-h-52 space-y-4 animate-in fade-in-0 slide-in-from-right-2 duration-200 motion-reduce:animate-none">
               {step === 0 && (
                 <>
-                  <Field label="Branch name" error={fieldErrors.name} hint="For example: Harare CBD or Branch 2">
-                    <Input autoFocus value={form.name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && next()} />
+                  <Field label="Branch name" htmlFor="bw-name" error={fieldErrors.name} hint="For example: Harare CBD or Branch 2">
+                    <Input id="bw-name" autoFocus value={form.name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && next()} />
                   </Field>
-                  <Field label="Town or suburb" error={fieldErrors.location}>
-                    <Input value={form.location} onChange={(e) => setLocation(e.target.value)} onKeyDown={(e) => e.key === "Enter" && next()} />
+                  <Field label="Town or suburb" htmlFor="bw-location" error={fieldErrors.location}>
+                    <Input id="bw-location" value={form.location} onChange={(e) => setLocation(e.target.value)} onKeyDown={(e) => e.key === "Enter" && next()} />
                   </Field>
                 </>
               )}
@@ -362,28 +362,31 @@ export default function AddBranchWizard({ onCreated }: { onCreated: () => void }
               {step === 3 && (
                 <>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Business name" hint="Printed at the top of the receipt.">
-                      <Input value={form.companyName} onChange={(e) => set("companyName", e.target.value)} />
+                    <Field label="Business name" htmlFor="bw-company" hint="Printed at the top of the receipt.">
+                      <Input id="bw-company" value={form.companyName} onChange={(e) => set("companyName", e.target.value)} />
                     </Field>
-                    <Field label="Phone">
-                      <Input inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+                    <Field label="Phone" htmlFor="bw-phone">
+                      <Input id="bw-phone" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
                     </Field>
                   </div>
-                  <Field label="Address">
+                  <Field label="Address" htmlFor="bw-address">
                     <Input
+                      id="bw-address"
                       value={form.address}
                       onChange={(e) => setForm((f) => ({ ...f, address: e.target.value, addressEdited: true }))}
                     />
                   </Field>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="TIN">
-                      <Input value={form.tin} onChange={(e) => set("tin", e.target.value)} />
+                    <Field label="TIN" htmlFor="bw-tin">
+                      <Input id="bw-tin" value={form.tin} onChange={(e) => set("tin", e.target.value)} />
                     </Field>
                     <Field
                       label="Receipt code"
+                      htmlFor="bw-prefix"
                       hint={`Receipts will be numbered like ${form.prefix || "HC"}U0001. Each branch needs its own code.`}
                     >
                       <Input
+                        id="bw-prefix"
                         maxLength={4}
                         value={form.prefix}
                         onChange={(e) => setForm((f) => ({ ...f, prefix: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""), prefixEdited: true }))}

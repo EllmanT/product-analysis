@@ -17,6 +17,22 @@ export interface ComputedLine extends InvoiceLineInput {
 
 // Matches the PHP ZimraFiscalService VAT extraction exactly.
 // taxInclusiveLineAmountForFiscal: round(qty * unitPrice, 2)
+/**
+ * VAT on one line total, in exact integer cents rounded half away from zero, the way ZIMRA's receipt tax is worked
+ * out. Float arithmetic (e.g. 13.95 * 100) can land just under a half and round the wrong way by a cent, which the
+ * fiscal service then refuses as "payments do not equal the receipt total".
+ *   exclusive: tax = total * bp / 10000       inclusive: tax = total * bp / (10000 + bp)    (bp = percent x 100)
+ */
+export function vatOnLine(lineTotal: number, taxPercent: number, taxInclusive: boolean): number {
+  if (!(taxPercent > 0)) return 0;
+  const totalCents = Math.round(lineTotal * 100);
+  const bp = Math.round(taxPercent * 100);
+  const numerator = Math.abs(totalCents) * bp;
+  const denominator = taxInclusive ? 10000 + bp : 10000;
+  const cents = Math.floor((2 * numerator + denominator) / (2 * denominator));
+  return (totalCents < 0 ? -cents : cents) / 100;
+}
+
 export function computeLineTotals(
   lines: InvoiceLineInput[],
   taxInclusive: boolean
@@ -25,15 +41,7 @@ export function computeLineTotals(
     const lineTotal = Math.round(line.quantity * line.unitPrice * 100) / 100;
     const taxPercent = line.taxPercent ?? 0;
 
-    let vatAmount: number;
-    if (taxInclusive) {
-      vatAmount =
-        taxPercent > 0
-          ? Math.round((lineTotal - lineTotal / (1 + taxPercent / 100)) * 100) / 100
-          : 0;
-    } else {
-      vatAmount = Math.round(lineTotal * (taxPercent / 100) * 100) / 100;
-    }
+    const vatAmount = vatOnLine(lineTotal, taxPercent, taxInclusive);
 
     const lineTotalExcl = taxInclusive
       ? Math.round((lineTotal - vatAmount) * 100) / 100

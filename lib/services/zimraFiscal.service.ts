@@ -7,6 +7,7 @@ import {
 import type { ResolvedDevice } from "@/lib/services/fiscalDevice.service";
 import { getFdmsAuthorizationHeader, type VdCredentials } from "@/lib/zimraFdmsAuth";
 import { zimraRequest, type ZimraTlsConfig } from "@/lib/zimraHttp";
+import { isDayOpen, parseDayStatus, type CloseErrorCode } from "@/lib/zimraDayStatus";
 import logger from "@/lib/logger";
 import { isBareZimraPortalUrl } from "@/lib/utils/zimraInvoiceDisplay";
 
@@ -262,22 +263,21 @@ export async function getVirtualDeviceConfig(device?: ResolvedDevice): Promise<V
   };
 }
 
-export async function checkFiscalDayStatus(device?: ResolvedDevice): Promise<{ isOpen: boolean; status: string }> {
+export async function checkFiscalDayStatus(
+  device?: ResolvedDevice
+): Promise<{ isOpen: boolean; status: string; closingErrorCode?: CloseErrorCode }> {
   const data = await zimraCall("/api/VirtualDevice/GetStatus", { method: "GET" }, "GetStatus", device);
-  const code = String(data["Code"] ?? data["code"] ?? "");
 
-  if (code !== "1") {
+  // A device whose last close failed answers Code "0" with the state inside Message; that is still a state.
+  const parsed = parseDayStatus(data);
+  if (!parsed.ok) {
     throw new Error(`ZIMRA device not ready: ${String(data["Message"] ?? data["message"] ?? "Unknown error")}`);
   }
 
-  const inner = (data["Data"] ?? data["data"] ?? {}) as Record<string, unknown>;
-  const fiscalDayStatus = String(
-    inner["fiscalDayStatus"] ?? inner["FiscalDayStatus"] ?? data["fiscalDayStatus"] ?? data["FiscalDayStatus"] ?? ""
-  );
-
   return {
-    isOpen: fiscalDayStatus !== "FiscalDayClosed",
-    status: fiscalDayStatus,
+    isOpen: isDayOpen(parsed.status),
+    status: parsed.status,
+    closingErrorCode: parsed.closingErrorCode,
   };
 }
 

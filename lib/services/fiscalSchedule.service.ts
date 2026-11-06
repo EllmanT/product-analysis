@@ -1,4 +1,5 @@
 import { formatInTimeZone } from "date-fns-tz";
+import { fiscalBackend } from "@/lib/fiscal/client";
 
 import {
   CENTRAL_KEY,
@@ -14,7 +15,14 @@ import {
 } from "@/lib/services/fiscalSettings.service";
 import { sendFiscalAlertOnce } from "@/lib/services/fiscalAlerts.service";
 import { checkFiscalDayStatus } from "@/lib/services/zimraFiscal.service";
-import { closeFiscalDayWithReport, openFiscalDayOnly, PendingPosSalesError } from "@/lib/services/fiscalDayOps.service";
+import {
+  CloseInProgressError,
+  closeFiscalDayWithReport,
+  FiscalCloseError,
+  openFiscalDayOnly,
+  PendingPosSalesError,
+  ReviewRequiredError,
+} from "@/lib/services/fiscalDayOps.service";
 
 function timeMatches(stored: string, hm: string): boolean {
   return stored.trim() === hm;
@@ -116,6 +124,43 @@ async function runScheduleForTarget(t: ScheduleTarget, now: Date): Promise<Sched
     } catch (e) {
       const waited = toMinutes(hm) - toMinutes(doc.closeTime);
       const detail = e instanceof Error ? e.message : String(e);
+      if (e instanceof CloseInProgressError) {
+        messages.push(`Scheduled close skipped: ${detail}`);
+        return { closed, opened, messages };
+      }
+      if (e instanceof ReviewRequiredError) {
+        // Not a device problem: someone must look at the refused receipts. Retrying only re-checks the count.
+        messages.push(`Scheduled close held: ${detail}`);
+        await sendFiscalAlertOnce(
+          alertKey("close-needs-review", today),
+          `${label} close is waiting for a review`,
+          `The scheduled close${central ? "" : ` of "${t.name}"`} for ${today} has not run.
+
+${detail}
+
+Once the receipts are reviewed the close runs by itself within the minute.`
+        );
+        return { closed, opened, messages };
+      }
+      if (e instanceof FiscalCloseError) {
+        const code = e.errorCode ?? "unknown reason";
+        messages.push(`Scheduled close refused by ZIMRA (${code}): ${detail}`);
+        await sendFiscalAlertOnce(
+          alertKey(e.permanent ? `close-refused-permanent-${code}` : `close-refused-${code}`, today),
+          e.permanent ? `${label} cannot be closed automatically (${code})` : `${label} close was refused (${code})`,
+          `ZIMRA refused to close ${central ? "the fiscal day" : `the fiscal day on "${t.name}"`} for ${today}.
+
+Reason: ${code}
+${detail}
+
+${
+            e.permanent
+              ? "A receipt with validation errors cannot be fixed by retrying. Selling can continue, but ZIMRA (portal or an officer) must close this day. Do not keep retrying."
+              : "The system will try again. Check Admin > Fiscal Day if this repeats."
+          }`
+        );
+        if (e.permanent) return { closed, opened, messages };
+      }
       const blocked = e instanceof PendingPosSalesError;
       messages.push(
         blocked
@@ -178,6 +223,8 @@ It keeps retrying every minute and will be forced after ${CLOSE_DEFER_MAX_MIN} m
  * device is reported in the messages and never stops the others.
  */
 export async function runFiscalScheduleTick(): Promise<ScheduleTickResult> {
+  // With the fiscal service in charge it opens and closes days on its own schedule; two schedulers would fight.
+  if (fiscalBackend() === "service") return { closed: false, opened: false, messages: ["Fiscal days are opened and closed by the fiscal service"] };
   const now = new Date();
 
   const targets: ScheduleTarget[] = [

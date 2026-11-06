@@ -1,0 +1,49 @@
+{
+  "name": "offline-tills",
+  "description": "Many tills sell offline on leased provisional numbers and reconnect together in random order while others keep selling online; ZIMRA drops out around the reconnect.",
+  "seed": 77,
+  "devices": [
+    {
+      "id": "SHARED"
+    },
+    {
+      "id": "OWN"
+    }
+  ],
+  "branches": [
+    {
+      "name": "Harare",
+      "device": "SHARED",
+      "tills": 5
+    },
+    {
+      "name": "Gweru",
+      "device": "SHARED",
+      "tills": 3
+    },
+    {
+      "name": "Bulawayo",
+      "device": "OWN",
+      "tills": 4
+    }
+  ],
+  "sales": 240,
+  "concurrency": 30,
+  "currencies": {
+    "USD": 0.6,
+    "ZWG": 0.4
+  },
+  "creditNoteRate": 0.05,
+  "flakyTillRate": 0.2,
+  "offlineTillRate": 0.5,
+  "offlineSyncAtPct": 65,
+  "chaos": {
+    "globalOutage": {
+      "fromPct": 60,
+      "toPct": 75
+    },
+    "dropReplyRate": 0.04,
+    "serverErrors": 3,
+    "jitterMs": 20
+  }
+}

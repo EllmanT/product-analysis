@@ -50,3 +50,6 @@ certificates_*/
 *.key
 *.pfx
 certificates_*.zip
+
+# stress-run receipts
+/test-output/

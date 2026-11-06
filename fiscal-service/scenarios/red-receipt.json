@@ -1,0 +1,11 @@
+{
+  "name": "red-receipt",
+  "description": "A rule we do not know about flags 2 receipts Red on one device: that day must NOT be sent for closing, and the other device must close cleanly.",
+  "seed": 44,
+  "devices": [{ "id": "D1" }],
+  "branches": [{ "name": "Harare", "device": "D1", "tills": 4 }],
+  "sales": 150,
+  "concurrency": 20,
+  "currencies": { "USD": 1 },
+  "chaos": { "redReceipts": 2 }
+}

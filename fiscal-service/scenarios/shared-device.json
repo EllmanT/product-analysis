@@ -1,0 +1,18 @@
+{
+  "name": "shared-device",
+  "description": "Every branch posts to ONE device, 5 tills each, ZIMRA drops out for part of the run.",
+  "seed": 11,
+  "devices": [{ "id": "D1" }],
+  "branches": [
+    { "name": "Harare", "device": "D1", "tills": 5 },
+    { "name": "Bulawayo", "device": "D1", "tills": 5 },
+    { "name": "Mutare", "device": "D1", "tills": 4 },
+    { "name": "Gweru", "device": "D1", "tills": 4 }
+  ],
+  "sales": 400,
+  "concurrency": 40,
+  "currencies": { "USD": 0.7, "ZWG": 0.3 },
+  "creditNoteRate": 0.1,
+  "flakyTillRate": 0.25,
+  "chaos": { "globalOutage": { "fromPct": 30, "toPct": 55 }, "dropReplyRate": 0.03, "dropRequestRate": 0.02, "serverErrors": 3, "latencyMs": 5, "jitterMs": 15 }
+}

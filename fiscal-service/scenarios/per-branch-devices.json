@@ -1,0 +1,21 @@
+{
+  "name": "per-branch-devices",
+  "description": "Each branch has its OWN device, 5 tills each; two of the devices go down at different times.",
+  "seed": 22,
+  "devices": [{ "id": "D1" }, { "id": "D2", "keyType": "ec" }, { "id": "D3" }, { "id": "D4" }],
+  "branches": [
+    { "name": "Harare", "device": "D1", "tills": 5 },
+    { "name": "Bulawayo", "device": "D2", "tills": 5 },
+    { "name": "Mutare", "device": "D3", "tills": 4 },
+    { "name": "Gweru", "device": "D4", "tills": 4 }
+  ],
+  "sales": 400,
+  "concurrency": 40,
+  "currencies": { "USD": 0.7, "ZWG": 0.3 },
+  "creditNoteRate": 0.1,
+  "flakyTillRate": 0.25,
+  "chaos": {
+    "outages": [{ "device": "D2", "fromPct": 20, "toPct": 50 }, { "device": "D4", "fromPct": 40, "toPct": 70 }],
+    "dropReplyRate": 0.03, "dropRequestRate": 0.02, "serverErrors": 3, "latencyMs": 5, "jitterMs": 15
+  }
+}

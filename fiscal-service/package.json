@@ -1,0 +1,27 @@
+{
+  "name": "fiscal-service",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone ZIMRA fiscalisation service: one writer per device, counters, signing, queue and guarded fiscal-day close. Core adapted from zimra-fdms (MIT).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "probe": "tsx scripts/probe-device.ts",
+    "start": "tsx src/main.ts",
+    "renew": "tsx scripts/renew-device.ts",
+    "e2e": "tsx scripts/e2e-live.ts",
+    "stress": "tsx scripts/stress.ts"
+  },
+  "dependencies": {
+    "mongodb": "^6.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

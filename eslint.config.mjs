@@ -9,6 +9,8 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "build/**",
     "next-env.d.ts",
     "ref-codebases/**",
+    "zimra-fdms-main/**",
+    "fiscal-service/**",
   ],
 }];
 

@@ -1,0 +1,18 @@
+{
+  "name": "mixed",
+  "description": "Two branches share a device, two have their own; uneven tills; ZIMRA unreachable for everyone for a while.",
+  "seed": 33,
+  "devices": [{ "id": "SHARED" }, { "id": "BYO", "vatPayer": true }, { "id": "VIC" }],
+  "branches": [
+    { "name": "Harare", "device": "SHARED", "tills": 5 },
+    { "name": "Gweru", "device": "SHARED", "tills": 3 },
+    { "name": "Bulawayo", "device": "BYO", "tills": 5 },
+    { "name": "VicFalls", "device": "VIC", "tills": 2 }
+  ],
+  "sales": 400,
+  "concurrency": 50,
+  "currencies": { "USD": 0.6, "ZWG": 0.4 },
+  "creditNoteRate": 0.08,
+  "flakyTillRate": 0.4,
+  "chaos": { "globalOutage": { "fromPct": 45, "toPct": 60 }, "outages": [{ "device": "BYO", "fromPct": 10, "toPct": 30 }], "dropReplyRate": 0.05, "dropRequestRate": 0.03, "serverErrors": 5, "jitterMs": 25 }
+}

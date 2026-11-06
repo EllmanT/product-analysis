@@ -1,0 +1,16 @@
+{
+  "name": "app-flip-device",
+  "description": "Settings flip: Gweru moves from the shared device to its own part-way through. Old sales and their credit notes stay on the old device.",
+  "seed": 41,
+  "devices": [{ "id": "SHARED" }, { "id": "GWERU-OWN" }],
+  "branches": [
+    { "name": "Harare", "device": "SHARED", "tills": 5 },
+    { "name": "Gweru", "device": "SHARED", "tills": 4 }
+  ],
+  "sales": 150,
+  "concurrency": 20,
+  "currencies": { "USD": 0.7, "ZWG": 0.3 },
+  "creditNoteRate": 0.15,
+  "flip": { "branch": "Gweru", "toDevice": "GWERU-OWN", "atPct": 50 },
+  "chaos": { "dropReplyRate": 0.04, "jitterMs": 20 }
+}

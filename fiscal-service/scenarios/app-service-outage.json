@@ -1,0 +1,17 @@
+{
+  "name": "app-service-outage",
+  "description": "The app loses the fiscal service for a while, and ZIMRA is unreachable for part of that; tax-exclusive pricing in one branch.",
+  "seed": 52,
+  "devices": [{ "id": "A" }, { "id": "B" }],
+  "branches": [
+    { "name": "Harare", "device": "A", "tills": 5 },
+    { "name": "Bulawayo", "device": "B", "tills": 4, "taxInclusive": false },
+    { "name": "Mutare", "device": "B", "tills": 3 }
+  ],
+  "sales": 160,
+  "concurrency": 25,
+  "currencies": { "USD": 0.6, "ZWG": 0.4 },
+  "creditNoteRate": 0.1,
+  "flakyTillRate": 0.3,
+  "chaos": { "serviceOutage": { "fromPct": 25, "toPct": 45 }, "globalOutage": { "fromPct": 35, "toPct": 55 }, "dropReplyRate": 0.05, "serverErrors": 3, "jitterMs": 20 }
+}

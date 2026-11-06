@@ -39,7 +39,9 @@
     "pos:simulate:multi": "npx tsx scripts/pos-simulate-multi.ts",
     "pos:demo": "npx tsx scripts/pos-setup-demo.ts",
     "fiscal:encrypt": "npx tsx scripts/fiscal-encrypt-secrets.ts",
-    "pos:cron": "node --env-file=.env.local scripts/run-cron.mjs"
+    "pos:cron": "node --env-file=.env.local scripts/run-cron.mjs",
+    "test:receipt-evidence": "npx tsx scripts/test-receipt-evidence.ts",
+    "evidence:real": "npx tsx scripts/evidence/from-real-runs.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.97.1",
@@ -116,6 +118,7 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "jsqr": "^1.4.0",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.2.8",
     "typescript": "^5"

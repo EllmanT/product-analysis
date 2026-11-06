@@ -53,3 +53,6 @@ certificates_*.zip
 
 # stress-run receipts
 /test-output/
+
+# receipt evidence (real test-device data)
+/test-evidence/

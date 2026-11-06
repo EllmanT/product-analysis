@@ -83,7 +83,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const send = async (label: string, input: Parameters<FiscalDevice["submitReceipt"]>[0]) => {
   const r = await fd.submitReceipt(input);
   const errs = r.response.validationErrors ?? [];
-  save(label, { input, receiptID: r.response.receiptID, validationErrors: errs, state: fd.getState() });
+  save(label, { input, receiptID: r.response.receiptID, validationErrors: errs, qrData: r.qrData, state: fd.getState() });
   step(`${label}: receiptID ${r.response.receiptID}, validation errors ${errs.length ? JSON.stringify(errs) : "none"}`);
   if (errs.length) throw new Error(`${label} came back with validation errors; stopping.`);
   return fd.getState()!;

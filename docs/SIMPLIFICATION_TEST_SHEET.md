@@ -142,6 +142,13 @@ These need a test device and the cron (or call `/api/cron/pos-queue` and `/api/c
 | 6.12 | Cause a close that ZIMRA refuses for good (a receipt with a validation error). | Auto-retry stops for that day and an alert says an administrator must act. | | |
 | 6.13 | Run `npx tsx scripts/test-close-schedule.ts`. | 10 checks pass. | | |
 | 6.14 | Run `npx tsx scripts/pos-simulate.ts` against the test device (it now asserts the earlier-day behaviour). | Passes. It has **not** been run yet. | | |
+| 6.15 | **Fiscal service backend:** open a day, sell, block ZIMRA, sell again (the sale waits), let the day pass 23 hours (or lower `recoverAfterHrs` for a quick test), restore ZIMRA. | Within a few minutes the waiting receipt is delivered, the old day is **closed** and a **new day opens by itself**. The till's waiting sales then go through. | | |
+| 6.16 | Same, but ZIMRA refuses to close the old day (it is past its limit). | The event says to close it on the ZIMRA portal. Once it is closed there, a new day opens by itself. | | |
+| 6.17 | Service with a late close time (23:00): leave a close failing past midnight. | It keeps trying the next morning and closes when ZIMRA answers. A day opened that morning is **not** closed by the old missed close. | | |
+| 6.18 | Run `cd fiscal-service && npm test` (needs MongoDB and openssl). | All pass (140 at the time of writing), including the three-day outage scenario. | | |
+| 6.19 | **Clock:** set the server clock about 2 minutes wrong, restart, make one ZIMRA call (for example open the Fiscal day page). | Within the next schedule tick an alert says the server clock is about 2 minutes behind or ahead of ZIMRA's. One alert per day. | | |
+| 6.20 | With that clock wrong, set a close time a minute or two away. | The close happens at ZIMRA's time, not the server's wrong time. | | |
+| 6.21 | Run `npx tsx scripts/test-clock-skew.ts`. | 10 checks pass. | | |
 
 **What cannot be promised:** ZIMRA stops accepting receipts after the device's maximum day length (24 hours on test devices) and may need the day closed on its own portal. The system retries as long as it takes and alerts you, but it cannot override ZIMRA.
 

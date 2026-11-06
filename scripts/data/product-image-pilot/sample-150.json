@@ -1,0 +1,1602 @@
+[
+  {
+    "line": 1,
+    "code": "100CUF",
+    "description": "CAPACITOR 100UF",
+    "stockQty": "",
+    "price": "4",
+    "col5": "",
+    "flag": "0",
+    "category": "capacitor"
+  },
+  {
+    "line": 59,
+    "code": "250CUF",
+    "description": "CAPACITOR 250UF",
+    "stockQty": "",
+    "price": "4.57",
+    "col5": "",
+    "flag": "0",
+    "category": "capacitor"
+  },
+  {
+    "line": 646,
+    "code": "CB20UF",
+    "description": "RUNNING CAPACITOR 20UF",
+    "stockQty": "",
+    "price": "3",
+    "col5": "",
+    "flag": "0",
+    "category": "capacitor"
+  },
+  {
+    "line": 666,
+    "code": "CD100UF",
+    "description": "STARTING CAPACITOR 100UF",
+    "stockQty": "",
+    "price": "5",
+    "col5": "",
+    "flag": "0",
+    "category": "capacitor"
+  },
+  {
+    "line": 2,
+    "code": "10B",
+    "description": "10MM  BLACK CABLE",
+    "stockQty": "213",
+    "price": "2.3",
+    "col5": "",
+    "flag": "0",
+    "category": "cable"
+  },
+  {
+    "line": 162,
+    "code": "4SR",
+    "description": "4MM S/C RED",
+    "stockQty": "419",
+    "price": "0.95",
+    "col5": "",
+    "flag": "0",
+    "category": "cable"
+  },
+  {
+    "line": 868,
+    "code": "CT10",
+    "description": "CABLE TIES 9X500",
+    "stockQty": "16",
+    "price": "10",
+    "col5": "",
+    "flag": "0",
+    "category": "cable"
+  },
+  {
+    "line": 2026,
+    "code": "FT12C",
+    "description": "1.5 MM FLAT TWIN 2 CORE",
+    "stockQty": "",
+    "price": "1.27",
+    "col5": "",
+    "flag": "0",
+    "category": "cable"
+  },
+  {
+    "line": 5273,
+    "code": "WWBS",
+    "description": "WEMBLEY WIRE BRUSH SQUARE SHAP",
+    "stockQty": "19",
+    "price": "1.69",
+    "col5": "",
+    "flag": "0",
+    "category": "cable"
+  },
+  {
+    "line": 8,
+    "code": "10FR",
+    "description": "10MM C/FERULE",
+    "stockQty": "",
+    "price": "0.35",
+    "col5": "",
+    "flag": "0",
+    "category": "glands_ferrules"
+  },
+  {
+    "line": 39,
+    "code": "1CMG",
+    "description": "#1 COMPRESSION GLAND PG13.5",
+    "stockQty": "164",
+    "price": "0.2",
+    "col5": "",
+    "flag": "0",
+    "category": "glands_ferrules"
+  },
+  {
+    "line": 71,
+    "code": "2FR",
+    "description": "2.5MM C/FERULE",
+    "stockQty": "392",
+    "price": "0.2",
+    "col5": "",
+    "flag": "0",
+    "category": "glands_ferrules"
+  },
+  {
+    "line": 174,
+    "code": "50FR",
+    "description": "50MM C/FERULE",
+    "stockQty": "191",
+    "price": "0.8",
+    "col5": "",
+    "flag": "0",
+    "category": "glands_ferrules"
+  },
+  {
+    "line": 212,
+    "code": "95FR",
+    "description": "95MM C/FERULE",
+    "stockQty": "100",
+    "price": "1.5",
+    "col5": "",
+    "flag": "0",
+    "category": "glands_ferrules"
+  },
+  {
+    "line": 12,
+    "code": "10XBXSRT50",
+    "description": "BX 50W SOLAR STREET LIGHTS (10",
+    "stockQty": "",
+    "price": "120",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 320,
+    "code": "BLHGW",
+    "description": "BRASS LAMPHOLDER GOOD W/S (24",
+    "stockQty": "",
+    "price": "24",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 471,
+    "code": "BXFL10W",
+    "description": "BXTN 10W F/LIGHT W/S (50)",
+    "stockQty": "",
+    "price": "125",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 540,
+    "code": "BXP12V18W",
+    "description": "BXTN POOL LIGHT 12V 18W RGB",
+    "stockQty": "19",
+    "price": "75",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 639,
+    "code": "CAMPLY",
+    "description": "CAMP LAMP DARK YELLOW",
+    "stockQty": "19",
+    "price": "3",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 907,
+    "code": "CTCNE7",
+    "description": "E14 CANDLE BULB 7W COOL",
+    "stockQty": "",
+    "price": "1",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 957,
+    "code": "CTVE55",
+    "description": "E27 55W VENUS BULB",
+    "stockQty": "",
+    "price": "8",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 1142,
+    "code": "DXCOB9W",
+    "description": "9W CEILING LIGHT WH",
+    "stockQty": "34",
+    "price": "17.04",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 1178,
+    "code": "DXPL12WW",
+    "description": "PANEL DOWN LIGHT 12W WW",
+    "stockQty": "",
+    "price": "7.92",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 1676,
+    "code": "FLSRT30",
+    "description": "GREY 30W LED STREET",
+    "stockQty": "",
+    "price": "15",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 2366,
+    "code": "LDB16",
+    "description": "B22 16W LED E/SAVER",
+    "stockQty": "",
+    "price": "1.21",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 2418,
+    "code": "LDFGFR",
+    "description": "LED FRG FROSTED",
+    "stockQty": "87",
+    "price": "0.5",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 2476,
+    "code": "LDWK15C",
+    "description": "15W WALL LIGHT K TYPE COOL",
+    "stockQty": "39",
+    "price": "30.29",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 2516,
+    "code": "LEDC360G",
+    "description": "LED CONTROLLER 360W G",
+    "stockQty": "",
+    "price": "20.65",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 2557,
+    "code": "LEDLR9",
+    "description": "9W GARDEN LIGHT RED 220",
+    "stockQty": "",
+    "price": "10.91",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 2632,
+    "code": "LEDSTL50",
+    "description": "50W LED STREET LIGHT",
+    "stockQty": "",
+    "price": "84.95",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 2710,
+    "code": "LFS12V20",
+    "description": "12V 20W SMD FLOOD",
+    "stockQty": "9",
+    "price": "18.22",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 2785,
+    "code": "LWSL200W",
+    "description": "200W SOLAR F/LIGHT WW",
+    "stockQty": "",
+    "price": "35",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 3016,
+    "code": "ML11141A",
+    "description": "WALL LIGHT ACP",
+    "stockQty": "",
+    "price": "30.7",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 3057,
+    "code": "ML21458",
+    "description": "8 LIGHT CHANDELIER GD",
+    "stockQty": "",
+    "price": "230.47",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 3094,
+    "code": "ML65",
+    "description": "6 LIGHT CHANDELIER L6/5",
+    "stockQty": "",
+    "price": "119.96",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 3131,
+    "code": "MLB1904088B",
+    "description": "8 LIGHT CHANDELIER BK+CH",
+    "stockQty": "",
+    "price": "200.72",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 3168,
+    "code": "MLFT69864",
+    "description": "4 LIGHT CHANDELIER",
+    "stockQty": "",
+    "price": "90.88",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 3208,
+    "code": "MLW10811B",
+    "description": "WALL LIGHT BK+GD",
+    "stockQty": "",
+    "price": "62.45",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 3394,
+    "code": "PENP",
+    "description": "MONEY TEST PEN LIGHT",
+    "stockQty": "99",
+    "price": "2",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 3513,
+    "code": "QIH",
+    "description": "QI CHICKEN LIGHT",
+    "stockQty": "",
+    "price": "6.07",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 3616,
+    "code": "ROPFLW",
+    "description": "ROPE LIGHT WW",
+    "stockQty": "",
+    "price": "58.31",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 3657,
+    "code": "ROPLDWB",
+    "description": "LED ROPE LIGHT WHITE B",
+    "stockQty": "",
+    "price": "13.85",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 3923,
+    "code": "SCL907",
+    "description": "SOLAR CHARGING LAMP S907",
+    "stockQty": "31",
+    "price": "8",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 4079,
+    "code": "SLKG3U",
+    "description": "3 BULB SOLAR KIT 3 U",
+    "stockQty": "",
+    "price": "19.44",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 4388,
+    "code": "SYLPL4FT",
+    "description": "SYLVANIA 4FT PANEL LIGHT 32W",
+    "stockQty": "34",
+    "price": "7",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 4680,
+    "code": "TRLB18W",
+    "description": "TRACK LAMP BEADS 18W 35ZD18",
+    "stockQty": "10",
+    "price": "19",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 5160,
+    "code": "WLX450",
+    "description": "WELLUX 450W SOLAR FLOOD",
+    "stockQty": "",
+    "price": "85",
+    "col5": "",
+    "flag": "0",
+    "category": "lighting"
+  },
+  {
+    "line": 14,
+    "code": "12V120RGB",
+    "description": "120W RGB RECHARGABLE",
+    "stockQty": "",
+    "price": "95.87",
+    "col5": "",
+    "flag": "0",
+    "category": "solar"
+  },
+  {
+    "line": 606,
+    "code": "BXTS100",
+    "description": "BAXTON 100W SOLAR + SENSOR",
+    "stockQty": "36",
+    "price": "15",
+    "col5": "",
+    "flag": "0",
+    "category": "solar"
+  },
+  {
+    "line": 3644,
+    "code": "ROPLDC",
+    "description": "CONTROLLER RGB",
+    "stockQty": "",
+    "price": "6.5",
+    "col5": "",
+    "flag": "0",
+    "category": "solar"
+  },
+  {
+    "line": 4103,
+    "code": "SLP315",
+    "description": "SOLAR PANEL 315W",
+    "stockQty": "",
+    "price": "78",
+    "col5": "",
+    "flag": "0",
+    "category": "solar"
+  },
+  {
+    "line": 4140,
+    "code": "SLSRT40",
+    "description": "40W SOLAR STREET&PANEL",
+    "stockQty": "",
+    "price": "111.64",
+    "col5": "",
+    "flag": "0",
+    "category": "solar"
+  },
+  {
+    "line": 4269,
+    "code": "SWL2",
+    "description": "SOLAR WALL 2LIGHT",
+    "stockQty": "16",
+    "price": "6",
+    "col5": "",
+    "flag": "0",
+    "category": "solar"
+  },
+  {
+    "line": 22,
+    "code": "13A15ML",
+    "description": "13-15 MULTI ADAPTOR",
+    "stockQty": "37",
+    "price": "2",
+    "col5": "",
+    "flag": "0",
+    "category": "plug_socket"
+  },
+  {
+    "line": 1214,
+    "code": "EBD",
+    "description": "13A DOUBLE SOCKET BRASS",
+    "stockQty": "",
+    "price": "6.75",
+    "col5": "",
+    "flag": "0",
+    "category": "plug_socket"
+  },
+  {
+    "line": 1366,
+    "code": "ELTSBKD",
+    "description": "13A DOUBLE  BLK SOCKET",
+    "stockQty": "1",
+    "price": "4",
+    "col5": "",
+    "flag": "0",
+    "category": "plug_socket"
+  },
+  {
+    "line": 2219,
+    "code": "HDPFS32-1",
+    "description": "POLY 32X1\" FEMALE SOCKET",
+    "stockQty": "1",
+    "price": "0.61",
+    "col5": "",
+    "flag": "0",
+    "category": "plug_socket"
+  },
+  {
+    "line": 2971,
+    "code": "MKPB",
+    "description": "MK PLUG TOP B",
+    "stockQty": "",
+    "price": "4.5",
+    "col5": "",
+    "flag": "0",
+    "category": "plug_socket"
+  },
+  {
+    "line": 3833,
+    "code": "SCH15WE",
+    "description": "SCHNEIDER 13A SNGL SOCKET WHIT",
+    "stockQty": "17",
+    "price": "7",
+    "col5": "",
+    "flag": "0",
+    "category": "plug_socket"
+  },
+  {
+    "line": 4834,
+    "code": "USFA63",
+    "description": "63MM FEMALE ADAPTOR",
+    "stockQty": "93",
+    "price": "0.85",
+    "col5": "",
+    "flag": "0",
+    "category": "plug_socket"
+  },
+  {
+    "line": 5209,
+    "code": "WPS15A",
+    "description": "15A W/T S/SOCKET MODI",
+    "stockQty": "",
+    "price": "7.69",
+    "col5": "",
+    "flag": "0",
+    "category": "plug_socket"
+  },
+  {
+    "line": 30,
+    "code": "15A3W",
+    "description": "3 WAY 15 AMP EXT",
+    "stockQty": "",
+    "price": "7.2",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 117,
+    "code": "2XFNHFB",
+    "description": "FINDER HACKSAW FRAME (2PCS)",
+    "stockQty": "",
+    "price": "14",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 205,
+    "code": "8202",
+    "description": "8202 /3+1 CHANDELLIRS",
+    "stockQty": "",
+    "price": "50",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 270,
+    "code": "B25",
+    "description": "25MM MALE BUSHES",
+    "stockQty": "2047",
+    "price": "1.3",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 313,
+    "code": "BLD115",
+    "description": "FAMASTIL DIAMOND DISC 115",
+    "stockQty": "",
+    "price": "2",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 381,
+    "code": "BX5TY",
+    "description": "BAXTON 5FT TUBE",
+    "stockQty": "54",
+    "price": "5.64",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 424,
+    "code": "BXD34",
+    "description": "RND AL PLATING NICKEL + SL GU",
+    "stockQty": "",
+    "price": "2.32",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 497,
+    "code": "BXGC3",
+    "description": "BAXTON GU10 3W COB C/W",
+    "stockQty": "",
+    "price": "1.06",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 550,
+    "code": "BXPLRC30",
+    "description": "BAXTON 30W SMD COOL",
+    "stockQty": "",
+    "price": "15.83",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 626,
+    "code": "C2G",
+    "description": "MK 2 GANG 2 WAY",
+    "stockQty": "",
+    "price": "3.4",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 692,
+    "code": "CHB160",
+    "description": "MCCB 160A 3P",
+    "stockQty": "5",
+    "price": "60",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 743,
+    "code": "CHNT32S",
+    "description": "32WAY SURFACE DB CHINT",
+    "stockQty": "19",
+    "price": "39",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 813,
+    "code": "CNSL6",
+    "description": "STAY & LUG 600MM-BLACK",
+    "stockQty": "",
+    "price": "2.31",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 878,
+    "code": "CT50",
+    "description": "50X50X1MMX2.44MTR CABLETRAY",
+    "stockQty": "",
+    "price": "12",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1000,
+    "code": "D18C0N",
+    "description": "C0NTACT0R D18",
+    "stockQty": "",
+    "price": "8",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1045,
+    "code": "DLKC123",
+    "description": "DL CORONA CHROME/PEARL CHROME",
+    "stockQty": "145",
+    "price": "2",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1093,
+    "code": "DRL10",
+    "description": "10X350 HAMMER DRILL BIT",
+    "stockQty": "10",
+    "price": "1",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1174,
+    "code": "DXLYC10",
+    "description": "10W COB COOL WHT",
+    "stockQty": "",
+    "price": "7",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1250,
+    "code": "ELB22BHG",
+    "description": "BC BATTEN GOOD",
+    "stockQty": "187",
+    "price": "1.2",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1306,
+    "code": "ELMBKSS2",
+    "description": "ELITE 13A S/S +2USB MATTE BLK",
+    "stockQty": "",
+    "price": "8",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1359,
+    "code": "ELTSBD",
+    "description": "2G TS BLANK PLATE",
+    "stockQty": "",
+    "price": "2",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1419,
+    "code": "EXIG",
+    "description": "GLASS EXIT SIGN",
+    "stockQty": "",
+    "price": "30.34",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1456,
+    "code": "FD4",
+    "description": "FLAP DISC 4\"",
+    "stockQty": "10",
+    "price": "0.8",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1506,
+    "code": "FGCA1",
+    "description": "CONTACT ADHESIVE 1L",
+    "stockQty": "",
+    "price": "9",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1548,
+    "code": "FGHD12",
+    "description": "12MM HSS DRILL BIT",
+    "stockQty": "",
+    "price": "5.7",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1593,
+    "code": "FGRT4.8",
+    "description": "RIVERTS(100PC)HEADSIZE 4.8MMX1",
+    "stockQty": "",
+    "price": "2",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1635,
+    "code": "FGTRK",
+    "description": "TYRE REPAIR KIT 300ML",
+    "stockQty": "",
+    "price": "10.3",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1700,
+    "code": "FN4PCM",
+    "description": "FINDER 4PC SCREW CRYSTAL",
+    "stockQty": "30",
+    "price": "4",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1739,
+    "code": "FNCD1",
+    "description": "FINDER CUTTING DISK 4.5\"",
+    "stockQty": "48",
+    "price": "1",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1782,
+    "code": "FNGD1",
+    "description": "FINDER GRINDING DISK 4.5\"",
+    "stockQty": "71",
+    "price": "0.75",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1826,
+    "code": "FNLS15",
+    "description": "FINDER LOOSE SPNR 15",
+    "stockQty": "23",
+    "price": "1.73",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1887,
+    "code": "FNR2022",
+    "description": "FINDER LOOSE DBL RNG 20-22",
+    "stockQty": "",
+    "price": "0.3",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1922,
+    "code": "FNSCS6X100",
+    "description": "6X100 STAR SCRW DV",
+    "stockQty": "11",
+    "price": "1",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 1968,
+    "code": "FNSPL30",
+    "description": "FINDER 30CM SPRT LEVEL",
+    "stockQty": "30",
+    "price": "4",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2065,
+    "code": "GEN30KVN",
+    "description": "30KV 3PH PERKINS N",
+    "stockQty": "",
+    "price": "0",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2117,
+    "code": "GN5BRS",
+    "description": "5KV BRUSHES",
+    "stockQty": "5",
+    "price": "0.5",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2160,
+    "code": "GSK",
+    "description": "IMMESION GASKET",
+    "stockQty": "",
+    "price": "0.85",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2237,
+    "code": "HDT46G",
+    "description": "HEAD TORCH 46MM GOLD",
+    "stockQty": "",
+    "price": "3",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2282,
+    "code": "JBWP4",
+    "description": "JUNCT BOX 200X255",
+    "stockQty": "11",
+    "price": "12",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2323,
+    "code": "L2UBC3",
+    "description": "2U BC COOL 3W",
+    "stockQty": "",
+    "price": "0.5",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2375,
+    "code": "LDB32",
+    "description": "32W 4U B22",
+    "stockQty": "",
+    "price": "3.64",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2453,
+    "code": "LDPR6",
+    "description": "ROUND PANEL 6W",
+    "stockQty": "",
+    "price": "8.52",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2586,
+    "code": "LEDPL4FB",
+    "description": "4FT BLUE T15 PANEL",
+    "stockQty": "",
+    "price": "18.27",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2656,
+    "code": "LEG005MB",
+    "description": "LEGRAND 3G 2W SWITCH MATT BLAC",
+    "stockQty": "30",
+    "price": "20",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2749,
+    "code": "LSL1B",
+    "description": "1/STRIP BIG C/WHITE",
+    "stockQty": "",
+    "price": "19.29",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2823,
+    "code": "MC05G",
+    "description": "5AMP HY-MAG CHINA M.C.B B",
+    "stockQty": "",
+    "price": "4.5",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2886,
+    "code": "META0",
+    "description": "0 JOINTING KIT META",
+    "stockQty": "8",
+    "price": "6.81",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 2951,
+    "code": "MKBB",
+    "description": "LEGRAND BELL PUSH B",
+    "stockQty": "",
+    "price": "301.91",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3060,
+    "code": "ML21485B",
+    "description": "5LIGHT CHANDELIER  BACK",
+    "stockQty": "",
+    "price": "163.58",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3298,
+    "code": "N63A4P",
+    "description": "4P 63A NOVA COMPLETE",
+    "stockQty": "8",
+    "price": "15",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3360,
+    "code": "P38K",
+    "description": "PAR 38 COLOUR",
+    "stockQty": "",
+    "price": "4.87",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3406,
+    "code": "PERF4",
+    "description": "MISS WORLD PERFUME",
+    "stockQty": "",
+    "price": "3.02",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3468,
+    "code": "POPRXG",
+    "description": "RAINBIRD SMALL G",
+    "stockQty": "",
+    "price": "3.64",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3510,
+    "code": "PVG30U",
+    "description": "POWERMATIC VOLT GAURD 30AMP U",
+    "stockQty": "",
+    "price": "26.79",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3550,
+    "code": "RCB100A",
+    "description": "3PH ADJ VOLT & CURRENT PROTECT",
+    "stockQty": "7",
+    "price": "80.59",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3707,
+    "code": "S25",
+    "description": "25MM BE SADDLES",
+    "stockQty": "5289",
+    "price": "0.12",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3764,
+    "code": "SAMF8B",
+    "description": "SA 8 WAY MINI FLUSH BACK",
+    "stockQty": "",
+    "price": "25.58",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3805,
+    "code": "SC25A",
+    "description": "25AMP STRIP CONNC",
+    "stockQty": "",
+    "price": "0.97",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3855,
+    "code": "SCH34L2WD",
+    "description": "SCHNEIDER 4G 2W  SW DARK WOOD",
+    "stockQty": "9",
+    "price": "54",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3890,
+    "code": "SCHLRD21",
+    "description": "OVERLOAD RELAY 12-18A",
+    "stockQty": "",
+    "price": "30",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 3967,
+    "code": "SHM2B",
+    "description": "SHOWER ARM BIG B",
+    "stockQty": "",
+    "price": "9.71",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4002,
+    "code": "SK18WB",
+    "description": "400MM SPHERE WHITE B",
+    "stockQty": "",
+    "price": "6",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4121,
+    "code": "SLSH",
+    "description": "SLASHER / MBEMBA",
+    "stockQty": "",
+    "price": "2.44",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4206,
+    "code": "SP6B",
+    "description": "6\" SPIRAL ELEMENT BACK",
+    "stockQty": "",
+    "price": "0.43",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4260,
+    "code": "SV2",
+    "description": "2G2W SATIN CHROME",
+    "stockQty": "",
+    "price": "5.11",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4301,
+    "code": "SYL4TE",
+    "description": "SYLVANIA 4FT ECO TUBE",
+    "stockQty": "1",
+    "price": "2",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4337,
+    "code": "SYLE4C50",
+    "description": "SYLVANIA 50W E40 COOL",
+    "stockQty": "20",
+    "price": "9",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4379,
+    "code": "SYLMR16C5",
+    "description": "SYLVANIA MR16 5W COOL",
+    "stockQty": "400",
+    "price": "1.5",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4433,
+    "code": "TC30G",
+    "description": "T/P 30AMP CHINA G",
+    "stockQty": "",
+    "price": "15",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4470,
+    "code": "TL02G",
+    "description": "8218 WOOD SQ SHADE G",
+    "stockQty": "",
+    "price": "9.72",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4521,
+    "code": "TOTAP112",
+    "description": "ANGLE POLISHER",
+    "stockQty": "",
+    "price": "48.72",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4558,
+    "code": "TOTDH308",
+    "description": "ROTARY HAMMER 800W",
+    "stockQty": "",
+    "price": "84.04",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4595,
+    "code": "TOTHGC",
+    "description": "HEAVY DUTY GLASS CUTTER",
+    "stockQty": "",
+    "price": "2.44",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4669,
+    "code": "TRL12B",
+    "description": "12\" TROWEL B",
+    "stockQty": "",
+    "price": "1.222",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4720,
+    "code": "TWS",
+    "description": "TAP WASHER SMALL",
+    "stockQty": "",
+    "price": "0.21",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4777,
+    "code": "UPS1100KV",
+    "description": "1100KV 12V SUKAM UPS",
+    "stockQty": "1",
+    "price": "99",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4812,
+    "code": "USE50",
+    "description": "50MM 90D ELBOW",
+    "stockQty": "",
+    "price": "0.68",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4877,
+    "code": "USRC50X25N",
+    "description": "REDUCING COUPLING 50X25 NUF",
+    "stockQty": "",
+    "price": "0.28",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4912,
+    "code": "USST32",
+    "description": "32MM STRAIGHT TEE",
+    "stockQty": "120",
+    "price": "0.35",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 4950,
+    "code": "VIP1S",
+    "description": "VIP SILVER 1G 2W SWITCH",
+    "stockQty": "32",
+    "price": "4",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 5022,
+    "code": "WBL",
+    "description": "WEMBLEY BUILDERS LINE",
+    "stockQty": "10",
+    "price": "2",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 5058,
+    "code": "WFC1B",
+    "description": "WATER FILTR CART 1 B",
+    "stockQty": "",
+    "price": "1.28",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 5098,
+    "code": "WH0120",
+    "description": "WALL HOLE OPENER 120MM",
+    "stockQty": "3",
+    "price": "16",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 5149,
+    "code": "WLLGMLB",
+    "description": "FULL MOON GUN METAL 19C B",
+    "stockQty": "",
+    "price": "14.09",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 5235,
+    "code": "WS3N",
+    "description": "4X39 WOOD SCREWS N",
+    "stockQty": "",
+    "price": "3.61",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 5277,
+    "code": "WWSL",
+    "description": "WEMBLEY WINDOW SLIDES ALMIN 18",
+    "stockQty": "6",
+    "price": "4.59",
+    "col5": "",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 5340,
+    "code": "",
+    "description": "",
+    "stockQty": "",
+    "price": "",
+    "col5": "Total Cash",
+    "flag": "0",
+    "category": "uncategorized"
+  },
+  {
+    "line": 33,
+    "code": "15KI",
+    "description": "1.5KW IMMERSION",
+    "stockQty": "",
+    "price": "14.09",
+    "col5": "",
+    "flag": "0",
+    "category": "pumps_water"
+  },
+  {
+    "line": 251,
+    "code": "ASP4Q815CB",
+    "description": "ASIA 4QAD4/8 SUB PUMP 1.5HP + BOX",
+    "stockQty": "",
+    "price": "150.1",
+    "col5": "",
+    "flag": "0",
+    "category": "pumps_water"
+  },
+  {
+    "line": 2021,
+    "code": "FS2",
+    "description": "FLOAT SWITCH 5M",
+    "stockQty": "3",
+    "price": "7.9",
+    "col5": "",
+    "flag": "0",
+    "category": "pumps_water"
+  },
+  {
+    "line": 3719,
+    "code": "S4SPW2200",
+    "description": "SAMKING SOLAR W/PUMP 2200W",
+    "stockQty": "1",
+    "price": "526",
+    "col5": "",
+    "flag": "0",
+    "category": "pumps_water"
+  },
+  {
+    "line": 5207,
+    "code": "WPS",
+    "description": "WATER PUMP SWITCH",
+    "stockQty": "",
+    "price": "26.54",
+    "col5": "",
+    "flag": "0",
+    "category": "pumps_water"
+  },
+  {
+    "line": 42,
+    "code": "1MNB",
+    "description": "1M NEUTRAL BAR",
+    "stockQty": "12",
+    "price": "8",
+    "col5": "",
+    "flag": "0",
+    "category": "breakers_distribution"
+  },
+  {
+    "line": 758,
+    "code": "CHS06",
+    "description": "CHINT 6AMP S/P MCB",
+    "stockQty": "107",
+    "price": "2.5",
+    "col5": "",
+    "flag": "0",
+    "category": "breakers_distribution"
+  },
+  {
+    "line": 1287,
+    "code": "ELM10G",
+    "description": "10A MCB S/P G",
+    "stockQty": "",
+    "price": "2.44",
+    "col5": "",
+    "flag": "0",
+    "category": "breakers_distribution"
+  },
+  {
+    "line": 2842,
+    "code": "MCCB100G",
+    "description": "100A MCB MF G",
+    "stockQty": "",
+    "price": "54.81",
+    "col5": "",
+    "flag": "0",
+    "category": "breakers_distribution"
+  },
+  {
+    "line": 2902,
+    "code": "MF80",
+    "description": "MF 80A MCB 15KA",
+    "stockQty": "",
+    "price": "161.98",
+    "col5": "",
+    "flag": "0",
+    "category": "breakers_distribution"
+  },
+  {
+    "line": 3308,
+    "code": "NB4",
+    "description": "4 WAY NEUTRAL BAR",
+    "stockQty": "89",
+    "price": "0.5",
+    "col5": "",
+    "flag": "0",
+    "category": "breakers_distribution"
+  },
+  {
+    "line": 3896,
+    "code": "SCHME10",
+    "description": "MOTOR C BREAKER 6-3A",
+    "stockQty": "3",
+    "price": "45",
+    "col5": "",
+    "flag": "0",
+    "category": "breakers_distribution"
+  }
+]

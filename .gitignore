@@ -74,3 +74,8 @@ certificates_*.zip
 
 # vendored upstream copy, not part of this app
 /zimra-fdms-main/
+
+# local tool state and Word lock/autosave files
+/.impeccable/
+docs/~$*
+docs/*Autosaved*

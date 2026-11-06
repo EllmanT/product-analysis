@@ -52,12 +52,12 @@ export interface SaleRow {
 }
 
 const STATUS: Record<SaleRow["status"], { label: string; tone: string }> = {
-  FISCALISED: { label: "Fiscalised", tone: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" },
-  UNFISCALISED: { label: "Not fiscalised", tone: "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200" },
-  UNKNOWN: { label: "Checking device", tone: "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200" },
+  FISCALISED: { label: "Issued", tone: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" },
+  UNFISCALISED: { label: "Saved, sending", tone: "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200" },
+  UNKNOWN: { label: "Sending", tone: "bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200" },
   PENDING: { label: "Sending", tone: "bg-muted text-muted-foreground" },
   SUBMITTING: { label: "Sending", tone: "bg-muted text-muted-foreground" },
-  FAILED: { label: "Rejected", tone: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
+  FAILED: { label: "Needs attention", tone: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" },
   VOIDED: { label: "Voided", tone: "bg-muted text-muted-foreground" },
 };
 
@@ -84,9 +84,11 @@ interface Props {
   reachable?: boolean;
   /** Supervisors (not cashiers) may issue credit notes. */
   canCredit?: boolean;
+  /** Administrators see the fiscal controls; cashiers do not. */
+  isAdmin?: boolean;
 }
 
-export default function SalesSheet({ open, onOpenChange, branch, onChanged, queued = [], reachable = true, canCredit = false }: Props) {
+export default function SalesSheet({ open, onOpenChange, branch, onChanged, queued = [], reachable = true, canCredit = false, isAdmin = false }: Props) {
   const [rows, setRows] = useState<SaleRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -185,7 +187,7 @@ export default function SalesSheet({ open, onOpenChange, branch, onChanged, queu
         <SheetHeader className="border-b pr-12">
           <SheetTitle>Today&apos;s sales</SheetTitle>
           <SheetDescription>
-            This branch only. Sales without a fiscal receipt are retried automatically during the day; you can also fiscalise them here.
+            This branch only. Anything still sending is retried automatically.
           </SheetDescription>
         </SheetHeader>
 
@@ -271,10 +273,10 @@ export default function SalesSheet({ open, onOpenChange, branch, onChanged, queu
                     )}
                     {isCredit && s.originalNumber && <span className="text-xs text-muted-foreground">for {s.originalNumber}</span>}
                     {!isCredit && s.creditNoteId && <span className="text-xs text-muted-foreground">credited</span>}
-                    {s.needsApproval && <span className="text-xs text-amber-700 dark:text-amber-300">Earlier day: administrator must fiscalise</span>}
+                    {s.needsApproval && <span className="text-xs text-amber-700 dark:text-amber-300">Waiting for an administrator</span>}
                     {s.status === "FAILED" && s.lastError && <span className="truncate text-xs text-destructive">{s.lastError}</span>}
                     <span className="ml-auto flex items-center gap-1">
-                      {canFiscalise && (
+                      {canFiscalise && isAdmin && (
                         <button
                           type="button"
                           disabled={busy === s._id}

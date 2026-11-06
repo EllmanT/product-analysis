@@ -61,7 +61,7 @@ const PAYMENTS: { value: PaymentMethod; label: string }[] = [
 
 const KEYS: [string, string][] = [
   ["Enter", "add item"],
-  ["F12", "fiscalise"],
+  ["F12", "issue invoice"],
   ["F2", "currency"],
   ["F3", "product"],
   ["F4", "customer"],
@@ -521,7 +521,7 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
         }
         return { ...EMPTY_BUYER, registerName: scan.customerName ?? "", tin: scan.customerTin ?? "", email: scan.customerEmail ?? "" };
       });
-      toast.success(`${incoming.length} line${incoming.length === 1 ? "" : "s"} added from the slip. Check the customer, then Fiscalise.`);
+      toast.success(`${incoming.length} line${incoming.length === 1 ? "" : "s"} added from the slip. Check the customer, then issue the invoice.`);
       requestAnimationFrame(() => productRef.current?.focus());
     },
     [customers]
@@ -629,7 +629,7 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
   const fiscalise = useCallback(async () => {
     if (submitting) return;
     if (lines.length === 0) {
-      setEntryError("Add at least one item before fiscalising");
+      setEntryError("Add at least one item before issuing the invoice");
       productRef.current?.focus();
       return;
     }
@@ -697,17 +697,17 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
       }
       const sale = j.data as SaleRow;
       if (sale.status === "FAILED") {
-        setSubmitError(sale.lastError ?? "The fiscal device rejected this sale.");
+        setSubmitError(sale.lastError ?? "This sale could not be issued. Check the items and try again.");
         attempt.current = null;
         return;
       }
       // A sale built from a photographed slip goes to the customer by email, not on the thermal printer.
       afterSale(sale, { print: !(emailTo && importedScan) });
-      if (emailTo) toast.info(`Tax invoice will be emailed to ${emailTo}`, { description: "It is sent as soon as the sale is fiscalised." });
+      if (emailTo) toast.info(`Tax invoice will be emailed to ${emailTo}`, { description: "It is sent automatically once the invoice is final." });
       void refreshSummary();
       if (sale.status !== "FISCALISED") {
-        toast.warning("Provisional receipt issued", {
-          description: "The fiscal device was unavailable. This sale will be fiscalised automatically.",
+        toast.info("Invoice saved", {
+          description: "The final tax invoice is sent automatically. Nothing more to do.",
         });
       }
     } finally {
@@ -818,26 +818,29 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
           </label>
         )}
 
-        <div
-          className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
-          role="status"
-          aria-live="polite"
-        >
-          <span
-            className={cn(
-              "size-2 rounded-full",
-              !summary ? "bg-muted-foreground/40" : dayOpen ? "bg-emerald-500" : device?.reachable ? "bg-amber-500" : "bg-red-500"
-            )}
-            aria-hidden
-          />
-          {!summary
-            ? "Checking fiscal device…"
-            : !device?.reachable
-              ? "Fiscal device unreachable. Receipts will be provisional."
-              : dayOpen
-                ? `Fiscal day ${device.fiscalDayNo ?? ""} open`
-                : "Fiscal day closed. Receipts will be provisional."}
-        </div>
+        {/* Device and fiscal-day health is an administrator's concern; cashiers just issue invoices. */}
+        {isAdmin && (
+          <div
+            className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
+            role="status"
+            aria-live="polite"
+          >
+            <span
+              className={cn(
+                "size-2 rounded-full",
+                !summary ? "bg-muted-foreground/40" : dayOpen ? "bg-emerald-500" : device?.reachable ? "bg-amber-500" : "bg-red-500"
+              )}
+              aria-hidden
+            />
+            {!summary
+              ? "Checking fiscal device…"
+              : !device?.reachable
+                ? "Fiscal device unreachable. Receipts will be provisional."
+                : dayOpen
+                  ? `Fiscal day ${device.fiscalDayNo ?? ""} open`
+                  : "Fiscal day closed. Receipts will be provisional."}
+          </div>
+        )}
 
         {!off.reachable && (
           <div
@@ -892,13 +895,13 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
           onClick={() => setSalesOpen(true)}
           className={cn(
             "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-transform duration-150 hover:bg-accent active:scale-[0.97]",
-            ((summary && summary.unfiscalised > 0) || off.queue.length > 0) && "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+            ((isAdmin && summary && summary.unfiscalised > 0) || off.queue.length > 0) && "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
           )}
         >
           <ReceiptText className="size-3.5" aria-hidden />
           {off.queue.length > 0
             ? `${off.queue.length} saved on this till`
-            : summary && summary.unfiscalised > 0
+            : isAdmin && summary && summary.unfiscalised > 0
               ? `${summary.unfiscalised} awaiting fiscalisation`
               : "Today's sales"}
           <kbd className="rounded border bg-background px-1 font-sans text-[10px] text-muted-foreground">F8</kbd>
@@ -1168,11 +1171,11 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
             >
               {submitting ? (
                 <>
-                  <Loader2 className="size-5 animate-spin" aria-hidden /> Fiscalising…
+                  <Loader2 className="size-5 animate-spin" aria-hidden /> Issuing…
                 </>
               ) : (
                 <>
-                  Fiscalise &amp; print
+                  Issue invoice &amp; print
                   <kbd className="rounded border border-primary-foreground/30 px-1.5 font-sans text-xs font-medium opacity-80">F12</kbd>
                 </>
               )}
@@ -1269,7 +1272,7 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
                   />
                   <span>
                     Email the A4 tax invoice (PDF) to this customer
-                    <span className="block text-muted-foreground">Sent once the sale is fiscalised. Needs the customer name.</span>
+                    <span className="block text-muted-foreground">Sent automatically once the invoice is final. Needs the customer name.</span>
                   </span>
                 </label>
               )}
@@ -1310,7 +1313,7 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
                   .join(" · ")}
               </p>
             )}
-            {summary && summary.unfiscalised > 0 && (
+            {isAdmin && summary && summary.unfiscalised > 0 && (
               <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
                 {summary.unfiscalised} sale{summary.unfiscalised === 1 ? "" : "s"} issued a provisional receipt and not yet fiscalised.
               </p>
@@ -1368,6 +1371,7 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
         queued={off.queue}
         reachable={off.reachable}
         canCredit={canCredit}
+        isAdmin={isAdmin}
       />
     </div>
   );
@@ -1379,7 +1383,7 @@ function EmptyCart({ last, onReprint }: { last: SaleRow | null; onReprint: () =>
       {last ? (
         <div className="max-w-sm">
           <p className="text-sm text-muted-foreground">
-            {last.status === "FISCALISED" ? "Fiscalised" : "Provisional receipt issued"}
+            {last.status === "FISCALISED" ? "Invoice issued" : "Invoice saved. The final copy follows automatically"}
           </p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{last.invoiceNumber ?? last.provisionalNumber}</p>
           <p className="mt-1 tabular-nums text-muted-foreground">
@@ -1400,7 +1404,7 @@ function EmptyCart({ last, onReprint }: { last: SaleRow | null; onReprint: () =>
             <li>1. Type a product name or scan its code, then Enter.</li>
             <li>2. Check the quantity, then Enter to add it.</li>
             <li>
-              3. Press <kbd className="rounded border bg-muted px-1 font-sans text-xs text-foreground">F12</kbd> to fiscalise and print.
+              3. Press <kbd className="rounded border bg-muted px-1 font-sans text-xs text-foreground">F12</kbd> to issue the invoice and print.
             </li>
           </ol>
         </div>

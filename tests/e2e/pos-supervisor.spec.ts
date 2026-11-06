@@ -100,7 +100,7 @@ test("a supervisor sells, then reverses the sale with a fiscal credit note", asy
   const number = (await sold.textContent())!.trim();
 
   await page.keyboard.press("F8");
-  const row = page.getByRole("listitem").filter({ hasText: number }).filter({ hasText: "Fiscalised" }).first();
+  const row = page.getByRole("listitem").filter({ hasText: number }).filter({ hasText: "Issued" }).first();
   await expect(row).toBeVisible();
   await row.getByRole("button", { name: "Credit note" }).click();
   await row.getByLabel("Reason for the credit note").fill("Customer returned the item");

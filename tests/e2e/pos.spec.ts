@@ -112,7 +112,7 @@ test("F12 fiscalises, prints once and the totals strip moves", async ({ page }) 
   await page.keyboard.press("F12");
   // The result panel shows the fiscal number (HU0001, HZ0001 ...), not a provisional one (HUP...).
   await expect(page.getByText(/^H[UZ]\d{4,}$/)).toBeVisible({ timeout: 90_000 });
-  await expect(page.getByText("Fiscalised", { exact: true })).toBeVisible();
+  await expect(page.getByText("Invoice issued", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => window.__printed)).toBe(1);
   await expect(page.locator("#pos-product")).toBeFocused();
 });
@@ -143,7 +143,7 @@ test("offline: sale is saved on the till with a provisional number, then syncs",
   await page.keyboard.press("F12");
 
   await expect(page.getByText(/^H[UZ]P\d{4,}$/)).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText("Provisional receipt issued")).toBeVisible();
+  await expect(page.getByText("Invoice saved. The final copy follows automatically")).toBeVisible();
   await expect(page.getByRole("button", { name: /saved on this till/ })).toBeVisible();
   expect(await page.evaluate(() => window.__printed)).toBe(1);
 

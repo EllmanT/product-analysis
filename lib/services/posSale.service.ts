@@ -577,15 +577,9 @@ export async function fiscalisePosSale(saleId: string, opts: FiscaliseOptions): 
   const branch = await loadPosBranch(String(seen.branchId));
   const prefix = branch.pos.invoicePrefix!;
 
-  // Sales from an earlier day must not silently shift into today's fiscal day.
-  if (seen.soldDate !== todayInTz() && !opts.approvedBy) {
-    if (!seen.needsApproval) await PosSale.updateOne({ _id: seen._id }, { $set: { needsApproval: true } });
-    if (seen.status === "PENDING") {
-      // e.g. an offline sale synced the next day: keep it visible, numbered and waiting for an administrator.
-      return settle(seen, prefix, "UNFISCALISED", "Sale is from an earlier day; an administrator must approve fiscalising it", false);
-    }
-    return (await PosSale.findById(saleId))!;
-  }
+  // A sale from an earlier day is fiscalised in whichever fiscal day is open when it finally goes through. ZIMRA
+  // dates the receipt then; our own record keeps the day it was actually sold. Nobody has to approve it.
+  if (seen.needsApproval) await PosSale.updateOne({ _id: seen._id }, { $set: { needsApproval: false } });
 
   // The sale's own device, fixed when it was created. Older sales have none and used the central device.
   const deviceKey = seen.fiscalDeviceKey || CENTRAL_KEY;
@@ -813,7 +807,7 @@ export interface PosQueueRunResult {
 const OPEN_STATES = ["UNFISCALISED", "UNKNOWN"];
 
 /** Retry one device's sales. A dead device only affects its own branches. */
-async function runQueueForDevice(deviceKey: string, limit: number, today: string): Promise<PosQueueDeviceResult> {
+async function runQueueForDevice(deviceKey: string, limit: number): Promise<PosQueueDeviceResult> {
   const filter = saleDeviceFilter(deviceKey);
   const pendingCount = () => PosSale.countDocuments({ ...filter, status: { $in: OPEN_STATES } });
 
@@ -831,7 +825,7 @@ async function runQueueForDevice(deviceKey: string, limit: number, today: string
       return out;
     }
     out.fiscalised += await collectServiceResults(deviceKey, limit);
-    const unnumbered = await PosSale.find({ ...filter, status: "UNFISCALISED", soldDate: today, needsApproval: false, invoiceNumber: { $exists: false } })
+    const unnumbered = await PosSale.find({ ...filter, status: "UNFISCALISED", needsApproval: false, invoiceNumber: { $exists: false } })
       .sort({ soldAt: 1 })
       .limit(limit);
     for (const sale of unnumbered) {
@@ -872,7 +866,7 @@ async function runQueueForDevice(deviceKey: string, limit: number, today: string
   let status = await getPosDeviceStatus(device);
   // Sales are waiting but the fiscal day is closed: open it (if this device is set to) so nobody has to.
   if (status.reachable && !status.dayOpen) {
-    const waiting = await PosSale.countDocuments({ ...filter, status: { $in: ["UNFISCALISED", "UNKNOWN"] }, soldDate: today, needsApproval: false });
+    const waiting = await PosSale.countDocuments({ ...filter, status: { $in: ["UNFISCALISED", "UNKNOWN"] }, needsApproval: false });
     if (waiting > 0) {
       const { openDayForWaitingSales } = await import("@/lib/services/fiscalSchedule.service");
       if (await openDayForWaitingSales(deviceKey)) status = await getPosDeviceStatus(device);
@@ -892,7 +886,6 @@ async function runQueueForDevice(deviceKey: string, limit: number, today: string
   const candidates = await PosSale.find({
     ...filter,
     status: { $in: status.dayOpen ? ["UNKNOWN", "UNFISCALISED"] : ["UNKNOWN"] },
-    soldDate: today,
     needsApproval: false,
   })
     .sort({ soldAt: 1 })
@@ -915,9 +908,9 @@ async function runQueueForDevice(deviceKey: string, limit: number, today: string
 
 /**
  * 1. SUBMITTING claims that died become UNKNOWN.
- * 2. Older-day sales are flagged for admin approval (never auto-fiscalised).
+ * 2. Sales still waiting from an earlier day are released (they are fiscalised in the day that is open now).
  * 3. For each fiscal device: if it is reachable and the day is open, reconcile UNKNOWN sales
- *    (GetInvoice first) and retry UNFISCALISED sales from today, with exponential backoff.
+ *    (GetInvoice first) and retry UNFISCALISED sales (from any day), with exponential backoff.
  *
  * Without `deviceKey` every device is processed: the central one always, the others when they
  * have sales waiting. Devices run independently, so one being down never blocks another.
@@ -930,11 +923,8 @@ export async function runPosQueue(limit = 25, opts: { deviceKey?: string } = {})
     { $set: { status: "UNKNOWN", lastError: "Request interrupted; awaiting reconciliation" }, $unset: { submittingAt: "" } }
   );
 
-  const today = todayInTz();
-  await PosSale.updateMany(
-    { status: { $in: OPEN_STATES }, soldDate: { $lt: today }, needsApproval: false },
-    { $set: { needsApproval: true } }
-  );
+  // Sales that were held for approval under the old rule are released: earlier-day sales now go through by themselves.
+  await PosSale.updateMany({ status: { $in: OPEN_STATES }, needsApproval: true }, { $set: { needsApproval: false } });
   const scope = opts.deviceKey ? saleDeviceFilter(opts.deviceKey) : {};
   const needApproval = await PosSale.countDocuments({ ...scope, status: { $in: OPEN_STATES }, needsApproval: true });
 
@@ -943,12 +933,12 @@ export async function runPosQueue(limit = 25, opts: { deviceKey?: string } = {})
     keys = [opts.deviceKey];
   } else {
     const others = (
-      await PosSale.distinct("fiscalDeviceKey", { status: { $in: OPEN_STATES }, soldDate: today, needsApproval: false })
+      await PosSale.distinct("fiscalDeviceKey", { status: { $in: OPEN_STATES }, needsApproval: false })
     ).filter((k): k is string => typeof k === "string" && k !== CENTRAL_KEY);
     keys = [CENTRAL_KEY, ...others];
   }
 
-  const settled = await Promise.allSettled(keys.map((k) => runQueueForDevice(k, limit, today)));
+  const settled = await Promise.allSettled(keys.map((k) => runQueueForDevice(k, limit)));
   const devices = settled.map((r, i): PosQueueDeviceResult =>
     r.status === "fulfilled"
       ? r.value

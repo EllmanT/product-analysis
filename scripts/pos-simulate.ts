@@ -202,8 +202,8 @@ async function main() {
     }
     check(linked, "device receipt carries the provisional number in its notes (link between the two documents)");
 
-    // ---- 4. same-day rule -------------------------------------------------
-    console.log("\n[4] older-day sale needs admin approval");
+    // ---- 4. earlier-day sales -------------------------------------------------
+    console.log("\n[4] an older-day sale is fiscalised by the queue, in the day that is open now");
     try {
       await FiscalSettings.updateOne({}, { $set: { zimraApiUrl: "http://127.0.0.1:9", zimraUseProductionUrl: false } });
       const old = await sale(2, "USD", 12.25);
@@ -211,10 +211,8 @@ async function main() {
       await restoreDeviceUrl();
       await PosSale.updateOne({ _id: old._id }, { $set: { soldDate: "2020-01-01" } });
       await runPosQueueWithReset(runPosQueue, PosSale, [String(old._id)]);
-      const stillOld = await PosSale.findById(old._id);
-      check(stillOld?.status === "UNFISCALISED" && stillOld.needsApproval, "auto queue leaves it alone and flags it", [stillOld?.status, stillOld?.needsApproval]);
-      const approved = await fiscalisePosSale(String(old._id), { reason: "manual", force: true, approvedBy: String(new Types.ObjectId()) });
-      check(approved.status === "FISCALISED", "admin-approved fiscalise succeeds", [approved.status, approved.lastError]);
+      const moved = await PosSale.findById(old._id);
+      check(moved?.status === "FISCALISED" && !moved.needsApproval, "auto queue fiscalises it with no approval; our record keeps the original sale date", [moved?.status, moved?.needsApproval, moved?.soldDate]);
     } finally {
       await restoreDeviceUrl();
     }
@@ -313,7 +311,7 @@ async function main() {
     check(o5.provisionalNumber === fb, "the till-unique fallback number (used if a leased block runs out) is accepted");
     const o6 = await offlineSale({ provisionalNumber: leased[1], soldAt: new Date(Date.now() - 26 * 3_600_000) });
     createdSaleIds.push(String(o6._id));
-    check(o6.status === "UNFISCALISED" && o6.needsApproval === true && o6.provisionalNumber === leased[1], "an offline sale from an earlier day is kept visible and waits for admin approval", [o6.status, o6.needsApproval]);
+    check(o6.status === "FISCALISED" && !o6.needsApproval && o6.provisionalNumber === leased[1], "an offline sale from an earlier day is fiscalised when it syncs, with no approval step", [o6.status, o6.needsApproval]);
     let tooOld = false;
     try {
       await offlineSale({ soldAt: new Date(Date.now() - 45 * 86_400_000) });

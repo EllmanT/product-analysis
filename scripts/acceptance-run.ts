@@ -213,7 +213,11 @@ async function main() {
   interface Till { branch: string; branchId: string; tillId: string; code: string; offline: boolean; device: Real }
   const tills: Till[] = [];
   const storeId = new m.Types.ObjectId();
-  for (const b of sc.branches) {
+  // A device keeps every invoice number it was ever given, and refuses a repeat as RCPT013 (a Red receipt that stops
+  // the day closing). The branch counters start at 0001 in this throw-away database, so every run needs prefixes that
+  // no earlier run used on these devices: the branch initial, two characters from the clock, and the branch's position.
+  const runTag = Math.floor(Date.now() / 1000).toString(36).slice(-2).toUpperCase();
+  for (const [bi, b] of sc.branches.entries()) {
     const dev = real.get(b.device)!;
     const a = dev.taxPayer["deviceBranchAddress"] ?? {};
     const doc = await Branch.create({
@@ -222,7 +226,7 @@ async function main() {
       location: b.name,
       pos: {
         enabled: true,
-        invoicePrefix: b.name.slice(0, 2).toUpperCase(),
+        invoicePrefix: `${b.name.slice(0, 1).toUpperCase()}${runTag}${bi % 10}`,
         taxPercent: 15.5,
         taxCode: "A",
         taxInclusive: b.taxInclusive !== false,

@@ -1,0 +1,27 @@
+{
+  "name": "acceptance",
+  "description": "Go-live rehearsal on the ZIMRA TEST system: five branches on four real devices, one VAT-exclusive branch, normal trading, credit notes, a ZIMRA outage that tills trade through, offline tills reconnecting during the outage, a service restart, and the day close.",
+  "seed": 2026,
+  "devices": [
+    { "id": "SHARED", "zimraId": 28892 },
+    { "id": "C", "zimraId": 29203 },
+    { "id": "D", "zimraId": 29234 },
+    { "id": "E", "zimraId": 31591 }
+  ],
+  "branches": [
+    { "name": "Harare", "device": "SHARED", "tills": 3 },
+    { "name": "Gweru", "device": "SHARED", "tills": 2 },
+    { "name": "Bulawayo", "device": "C", "tills": 3 },
+    { "name": "Mutare", "device": "D", "tills": 2 },
+    { "name": "VicFalls", "device": "E", "tills": 2, "taxInclusive": false }
+  ],
+  "phases": {
+    "normal": 30,
+    "credits": 6,
+    "outage": 30,
+    "offlineTills": 20,
+    "afterRestart": 10
+  },
+  "outageSeconds": 60,
+  "offlineTillRate": 0.4
+}

@@ -1,0 +1,51 @@
+{
+  "name": "acceptance-closed-devices",
+  "description": "Go-live rehearsal on three real ZIMRA TEST devices that are closed and clean: four branches (two share a device, one is VAT-exclusive), normal trading, credit notes, a ZIMRA outage that tills trade through, offline tills reconnecting during it, a service restart, and the day close.",
+  "seed": 2026,
+  "devices": [
+    {
+      "id": "SHARED",
+      "zimraId": 31728
+    },
+    {
+      "id": "C",
+      "zimraId": 32160
+    },
+    {
+      "id": "D",
+      "zimraId": 31591
+    }
+  ],
+  "branches": [
+    {
+      "name": "Harare",
+      "device": "SHARED",
+      "tills": 3
+    },
+    {
+      "name": "Gweru",
+      "device": "SHARED",
+      "tills": 2
+    },
+    {
+      "name": "Bulawayo",
+      "device": "C",
+      "tills": 3
+    },
+    {
+      "name": "Mutare",
+      "device": "D",
+      "tills": 2,
+      "taxInclusive": false
+    }
+  ],
+  "phases": {
+    "normal": 30,
+    "credits": 6,
+    "outage": 30,
+    "offlineTills": 20,
+    "afterRestart": 10
+  },
+  "outageSeconds": 30,
+  "offlineTillRate": 0.4
+}

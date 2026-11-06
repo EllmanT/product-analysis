@@ -24,13 +24,13 @@ export const mainSidebarLinks = [
       },
 
     {
-      title: "View All",
+      title: "Upload history",
       url: "/uploads",
       icon: IconPackages,
     },
     
     {
-      title: "Upload",
+      title: "Upload stock",
       url: "/uploads/upload",
       icon: IconFileUpload,
     },
@@ -50,20 +50,16 @@ export const mainSidebarLinks = [
       icon: IconAlertTriangle,
     },
     {
-      title: "Products",
+      title: "Stock products",
       url: "/products",
       icon: Package,
     },
     {
-      title: "Branch Upload Reports",
+      title: "Branch upload status",
       url: "/branch-up-reports",
       icon: IconTrendingUp,
     },
    
-      {
-        title: "Downloads",
-        url:""
-      },
 
     // {
     //   title: "Download Centre",
@@ -123,14 +119,14 @@ export const mainSidebarLinks = [
       hidden: true,
     },
     {
-      title: "Fiscal Day",
+      title: "Fiscal day",
       url: "/fiscal-day",
       icon: Calendar,
       adminOnly: true,
       hidden: true,
     },
     {
-      title: "Fiscal settings",
+      title: "Central device",
       url: "/fiscal-settings",
       icon: IconSettings,
       adminOnly: true,
@@ -143,7 +139,7 @@ export const mainSidebarLinks = [
       adminOnly: true,
     },
     {
-      title: "Z-reports",
+      title: "Day-end reports",
       url: "/z-reports",
       icon: FileText,
       adminOnly: true,
@@ -156,7 +152,7 @@ export const mainSidebarLinks = [
       hidden: true,
     },
     {
-      title: "Exchange Rates",
+      title: "Exchange rates",
       url: "/exchange-rates",
       icon: IconCurrencyDollar,
       adminOnly: true,

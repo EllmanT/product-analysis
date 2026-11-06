@@ -291,6 +291,13 @@ export class FakeGateway {
     const day = d.days[d.days.length - 1]!;
     const all = d.days.flatMap((x) => x.receipts);
 
+    // Real gateway (seen 2026-11-06): a buyer block must carry an email or a phone number, or the whole request is
+    // refused with HTTP 422 before anything is stored. An empty buyer block counts as a buyer block.
+    const bd = r.buyerData as { buyerContacts?: { email?: string; phoneNo?: string } } | null | undefined;
+    if (bd && !bd.buyerContacts?.email && !bd.buyerContacts?.phoneNo) {
+      return { status: 422, body: { type: "https://httpstatuses.io/422", title: "Unprocessable Entity", status: 422, detail: "Either email or phone number must be provided in the contact block." } };
+    }
+
     // Idempotent resend: same global number and same hash returns the stored result.
     const sameNo = all.find((x) => x.receipt.receiptGlobalNo === r.receiptGlobalNo && x.hash === r.receiptDeviceSignature?.hash);
     if (sameNo) return { status: 200, body: this.reply(sameNo) };
@@ -330,6 +337,19 @@ export class FakeGateway {
     const credit = r.receiptType === "CreditNote";
     if (credit && r.receiptLines.some((l) => toCents(l.receiptLineTotal) > 0)) err("RCPT022", "Red", "Credit note lines must be negative");
     if (!credit && r.receiptLines.some((l) => toCents(l.receiptLineTotal) < 0)) err("RCPT022", "Red", "Invoice lines must not be negative");
+
+    // The gateway recomputes each tax group's tax ONCE on the group's total (seen on the real test gateway: tax
+    // rounded line by line is flagged RCPT026, and the total that follows from it RCPT027).
+    for (const t of r.receiptTaxes) {
+      const group = r.receiptLines.filter((l) => l.taxID === t.taxID && (l.taxPercent ?? null) === (t.taxPercent ?? null)).reduce((s, l) => s + toCents(l.receiptLineTotal), 0);
+      const bp = Math.round((t.taxPercent ?? 0) * 100);
+      const num = Math.abs(group) * bp;
+      const den = r.receiptLinesTaxInclusive ? 10000 + bp : 10000;
+      const mag = bp > 0 ? Math.floor((2 * num + den) / (2 * den)) : 0;
+      const expectTax = group < 0 ? -mag : mag;
+      if (toCents(t.taxAmount) !== expectTax) err("RCPT026", "Red", "Incorrectly calculated tax amount");
+      if (toCents(t.salesAmountWithTax) !== (r.receiptLinesTaxInclusive ? group : group + expectTax)) err("RCPT027", "Red", "Incorrectly calculated total sales amount(including tax)");
+    }
 
     for (const l of r.receiptLines) {
       const t = this.taxes.find((x) => x.taxID === l.taxID);

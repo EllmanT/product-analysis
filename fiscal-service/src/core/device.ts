@@ -676,16 +676,19 @@ function cloneState(state: FiscalDayState): FiscalDayState {
 }
 
 /**
- * Group lines by tax and compute the receipt tax summary. Arithmetic is in
- * integer cents; each line's tax is rounded on its own, as FDMS does.
- * taxCode is part of the group, so two codes under one taxID stay separate
- * entries, as in the spec's own example.
+ * Group lines by tax and compute the receipt tax summary. Arithmetic is in integer cents.
+ *
+ * Tax is worked out ONCE PER TAX GROUP, on the sum of the group's line totals, and rounded once. Rounding each line
+ * and adding them up is wrong: the ZIMRA gateway recomputes the group's tax and flags any difference Red (RCPT026
+ * "Incorrectly calculated tax amount", then RCPT027 for the total). Proven on the real test gateway on 2026-11-06:
+ * lines 2.70 + 3.40 + 2.20 (inclusive, 15.5%) give 1.12 line by line but ZIMRA expects 1.11 for the group of 8.30.
+ * taxCode is part of the group, so two codes under one taxID stay separate entries, as in the spec's own example.
  */
 export function buildReceiptTaxes(
   lines: ReceiptLine[],
   taxInclusive: boolean,
 ): ReceiptTax[] {
-  const groups = new Map<string, { tax: ReceiptTax; taxCents: number; salesCents: number }>();
+  const groups = new Map<string, { tax: ReceiptTax; percent: number; totalCents: number }>();
   for (const line of lines) {
     const key = `${line.taxID}|${line.taxPercent ?? ""}|${line.taxCode ?? ""}`;
     const g = groups.get(key) ?? {
@@ -696,26 +699,26 @@ export function buildReceiptTaxes(
         taxAmount: 0,
         salesAmountWithTax: 0,
       },
-      taxCents: 0,
-      salesCents: 0,
+      percent: line.taxPercent ?? 0,
+      totalCents: 0,
     };
-    const totalCents = toCents(line.receiptLineTotal);
-    const taxCents = lineTaxCents(totalCents, line.taxPercent ?? 0, taxInclusive);
-    g.taxCents += taxCents;
-    g.salesCents += taxInclusive ? totalCents : totalCents + taxCents;
+    g.totalCents += toCents(line.receiptLineTotal);
     groups.set(key, g);
   }
   return [...groups.values()]
-    .map((g) => ({
-      ...g.tax,
-      taxAmount: centsToAmount(g.taxCents),
-      salesAmountWithTax: centsToAmount(g.salesCents),
-    }))
+    .map((g) => {
+      const taxCents = lineTaxCents(g.totalCents, g.percent, taxInclusive);
+      return {
+        ...g.tax,
+        taxAmount: centsToAmount(taxCents),
+        salesAmountWithTax: centsToAmount(taxInclusive ? g.totalCents : g.totalCents + taxCents),
+      };
+    })
     .sort(compareReceiptTaxes);
 }
 
 /**
- * Tax on one line total, in integer cents, rounded half away from zero.
+ * Tax on a total (a line, or a whole tax group), in integer cents, rounded half away from zero.
  *
  * The rate is taken in hundredths of a percent from the same two-decimal
  * text that is signed (formatTaxPercent), so the tax always matches the

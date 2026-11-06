@@ -123,9 +123,32 @@ export function validateRequest(req: SubmitRequest, rules: DeviceRules): Validat
 
   const b = req.buyer;
   if (b) {
+    // The real gateway refuses (HTTP 422, nothing stored) a buyer block with neither an email nor a phone number.
+    if (!b.buyerContacts?.email && !b.buyerContacts?.phoneNo) bad("BUYER_CONTACT_REQUIRED", "A customer on the invoice needs an email address or a phone number");
     if ((b.buyerRegisterName && !b.buyerTIN) || (!b.buyerRegisterName && b.buyerTIN)) bad("BUYER_INCOMPLETE", "Buyer name and TIN must be given together");
     if (b.buyerTIN && !/^\d{10}$/.test(b.buyerTIN)) bad("BUYER_TIN_INVALID", "Buyer TIN must be 10 digits");
     if (b.vatNumber && !/^\d{9}$/.test(b.vatNumber)) bad("BUYER_VAT_INVALID", "Buyer VAT number must be 9 digits");
   }
   return out;
+}
+
+/**
+ * Drop empty pieces of a buyer block (undefined, blank text, empty contact or address objects). A cash sale arrives
+ * from the app as `{ buyerContacts: {}, buyerAddress: {} }`, which the real gateway treats as a buyer WITHOUT a
+ * contact and refuses; it must be sent as no buyer at all.
+ */
+export function normalizeBuyer(b: SubmitRequest["buyer"]): SubmitRequest["buyer"] {
+  if (!b || typeof b !== "object") return undefined;
+  const clean = (o: Record<string, unknown> | undefined): Record<string, string> | undefined => {
+    if (!o) return undefined;
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(o)) if (typeof v === "string" && v.trim()) out[k] = v.trim();
+    return Object.keys(out).length ? out : undefined;
+  };
+  const { buyerContacts, buyerAddress, ...rest } = b as Record<string, unknown> & { buyerContacts?: Record<string, unknown>; buyerAddress?: Record<string, unknown> };
+  const flat = clean(rest) ?? {};
+  const contacts = clean(buyerContacts);
+  const address = clean(buyerAddress);
+  const out: Record<string, unknown> = { ...flat, ...(contacts ? { buyerContacts: contacts } : {}), ...(address ? { buyerAddress: address } : {}) };
+  return Object.keys(out).length ? (out as SubmitRequest["buyer"]) : undefined;
 }

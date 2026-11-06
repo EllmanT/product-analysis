@@ -37,7 +37,9 @@ export function buildServiceRequest(sale: SaleForService, defaultHsCode: string)
       hsCode: l.hsCode || defaultHsCode,
     })),
     payments: [{ moneyType: MONEY[sale.paymentMethod] ?? "Other", amount: fixed2(total) }],
-    ...(sale.buyer
+    // A cash sale is saved with an empty buyer object; the gateway treats an empty buyer block as a buyer with no
+    // contact and refuses the whole receipt, so a buyer is only sent when something was actually entered.
+    ...(sale.buyer && Object.values(sale.buyer).some((v) => typeof v === "string" && v.trim())
       ? {
           buyer: {
             buyerRegisterName: sale.buyer.registerName,

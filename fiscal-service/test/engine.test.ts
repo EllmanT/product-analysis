@@ -98,6 +98,37 @@ describe("device engine", { skip: !have }, () => {
     assert.equal(gw.devices.get(id)!.status, "FiscalDayClosed");
   });
 
+  // Seen on the real ZIMRA test gateway on 2026-11-06 (acceptance rehearsal). The fake gateway now enforces both rules.
+  it("tax is worked out per tax group like ZIMRA: odd-cent multi-line receipts, inclusive and exclusive, are not flagged", async () => {
+    const t = tenant();
+    const { engine, id } = await boot();
+    const lines = (rows: [string, number][]): SubmitRequest["lines"] => rows.map(([p, q]) => ({ name: "Item", unitPrice: p, quantity: q, taxId: 517, taxPercent: 15.5, hsCode: "99001000" }));
+    // inclusive 0.90 x3 + 3.40 + 2.20 = 8.30; line by line the tax is 1.12, for the group it is 1.11
+    const a = await engine.submit({ tenantId: t, invoiceNo: `INV-${++n}`, currency: "USD", lines: lines([["0.90", 3], ["3.40", 1], ["2.20", 1]]), payments: [{ moneyType: "Cash", amount: "8.30" }] });
+    // exclusive 1.50 + 4.75 + 1.50 x2 = 9.25 net; group tax 1.43, total 10.68 (line by line 1.44 and 10.69)
+    const b = await engine.submit({ tenantId: t, invoiceNo: `INV-${++n}`, currency: "USD", taxInclusive: false, lines: lines([["1.50", 1], ["4.75", 1], ["1.50", 2]]), payments: [{ moneyType: "Cash", amount: "10.68" }] });
+    assert.equal(a.status, "fiscalised", JSON.stringify(a));
+    assert.equal(b.status, "fiscalised", JSON.stringify(b));
+    assert.ok(await waitFor(async () => gw.receipts(id).length === 2));
+    assert.ok(gw.receipts(id).every((x) => x.validationErrors.length === 0), JSON.stringify(gw.receipts(id).map((x) => x.validationErrors)));
+    assert.equal(gw.receipts(id)[0]!.receipt.receiptTaxes[0]!.taxAmount, 1.11);
+    assert.equal(gw.receipts(id)[1]!.receipt.receiptTaxes[0]!.taxAmount, 1.43);
+  });
+
+  it("a cash sale arrives with an empty buyer block and is sent as no buyer; a buyer without email or phone is refused BEFORE a number is used", async () => {
+    const t = tenant();
+    const { engine, id } = await boot();
+    const cash = await engine.submit(req(t, { buyer: { buyerContacts: {}, buyerAddress: {} } as never }));
+    assert.equal(cash.status, "fiscalised", JSON.stringify(cash));
+    assert.equal(gw.receipts(id)[0]!.receipt.buyerData ?? null, null, "no buyer block reached the gateway");
+    const bad = await engine.submit(req(t, { buyer: { buyerRegisterName: "Example Traders", buyerTIN: "2000999888" } }));
+    assert.equal(bad.status, "rejected");
+    assert.ok(bad.problems?.some((p) => p.code === "BUYER_CONTACT_REQUIRED"), JSON.stringify(bad));
+    assert.equal(gw.receipts(id).length, 1, "nothing was sent for the refused sale");
+    const ok = await engine.submit(req(t, { buyer: { buyerRegisterName: "Example Traders", buyerTIN: "2000999888", buyerContacts: { email: "a@example.com" } } }));
+    assert.equal(ok.status, "fiscalised", JSON.stringify(ok));
+  });
+
   it("many tills at once: every number is used once, in order, with no gap", async () => {
     const t = tenant();
     const { engine, id } = await boot({ waitMs: 10_000 });

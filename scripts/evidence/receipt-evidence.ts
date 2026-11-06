@@ -216,8 +216,8 @@ function decodeQr(rgba: Uint8ClampedArray, w: number, h: number): string | null 
 
 async function rgbaToPng(rgba: Uint8ClampedArray, w: number, h: number): Promise<Buffer> {
   // pngjs ships no type declarations
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { PNG } = (await import("pngjs")) as any;
+  // @ts-expect-error no declarations for pngjs
+  const { PNG } = (await import("pngjs")) as { PNG: any };
   const png = new PNG({ width: w, height: h });
   png.data = Buffer.from(rgba);
   return PNG.sync.write(png);

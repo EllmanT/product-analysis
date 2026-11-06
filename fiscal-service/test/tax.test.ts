@@ -101,18 +101,28 @@ describe("receipt tax arithmetic", () => {
     }
   });
 
-  it("sums per-line rounded tax within a group and keeps exempt lines at zero", () => {
+  it("works tax out once per group, not line by line, and keeps exempt lines at zero", () => {
     const taxes = buildReceiptTaxes(
       [line(100, 14.5, 1), line(100, 14.5, 2), line(500, null, 3, 3)],
       false,
     );
+    // one group of 2.00 at 14.5% = 0.29 (line by line it would be 0.15 + 0.15 = 0.30)
     assert.deepEqual(
       taxes.map((t) => [t.taxID, t.taxAmount, t.salesAmountWithTax]),
       [
-        [1, 0.3, 2.3],
+        [1, 0.29, 2.29],
         [3, 0, 5],
       ],
     );
+  });
+
+  // Receipts the real ZIMRA test gateway flagged Red (RCPT026/RCPT027) on 2026-11-06 when tax was rounded per line.
+  it("matches ZIMRA on the receipts it refused: tax-inclusive 8.30 and 34.37, tax-exclusive 9.25", () => {
+    const incl = (cents: number[]) => buildReceiptTaxes(cents.map((c) => line(c, 15.5, 1)), true);
+    assert.deepEqual(incl([270, 340, 220]).map((t) => [t.taxAmount, t.salesAmountWithTax]), [[1.11, 8.3]]);
+    assert.deepEqual(incl([2997, 220, 220]).map((t) => [t.taxAmount, t.salesAmountWithTax]), [[4.61, 34.37]]);
+    const excl = buildReceiptTaxes([150, 475, 300].map((c) => line(c, 15.5, 1)), false);
+    assert.deepEqual(excl.map((t) => [t.taxAmount, t.salesAmountWithTax]), [[1.43, 10.68]]);
   });
 
   it("refuses a non-finite tax percent or an amount too large to compute exactly", () => {

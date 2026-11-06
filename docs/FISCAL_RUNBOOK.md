@@ -63,7 +63,8 @@ Always acceptable: close attempts continue until the device's maximum day length
 2. Stop. Do not resend; a resend creates a second record (Gray `RCPT011` plus Red `RCPT013` seen on a real device).
 3. Fix the cause in the data (HS codes must be 8 digits on every line for VAT payers; credit notes must keep the original's currency, taxes and not exceed it).
 4. Close the day on the portal (section 3). The sale itself needs re-issuing as a correct invoice if the customer needs one.
-5. Prevention already in place: the service checks HS codes, currency, tax ids, arithmetic in whole cents, credit-note rules and sends nothing it expects to be Red.
+5. Real causes found on the real test gateway (2026-11-06 rehearsal), all fixed: **tax rounded line by line** instead of once per tax group (`RCPT026`, then `RCPT027`; about one in four multi-line invoices), an **empty buyer block** on cash sales or a **customer with no email or phone** (HTTP 422 "Either email or phone number must be provided in the contact block"; the till now asks for a contact and cash sales send no buyer), and an **invoice number handed back after ZIMRA refused it** (the next sale then failed as "already used for a different receipt"; such numbers are now burned).
+6. Prevention already in place: the service checks HS codes, currency, tax ids, arithmetic in whole cents, credit-note rules and sends nothing it expects to be Red.
 
 ## 6. Certificates
 

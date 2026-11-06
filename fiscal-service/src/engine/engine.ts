@@ -28,7 +28,7 @@ import { parseFdmsDateTime } from "../core/time.js";
 import { KeySigner } from "../node/key-signer.js";
 import { MongoStorage } from "./mongo-storage.js";
 import type { Colour, ReceiptRecord, ReceiptResult, SubmitRequest, ValidationProblem } from "./types.js";
-import { resolveTaxIds, validateRequest, type DeviceRules } from "./validate.js";
+import { normalizeBuyer, resolveTaxIds, validateRequest, type DeviceRules } from "./validate.js";
 
 export interface EngineOptions {
   /** How long submit() waits for ZIMRA before answering "queued" (with a valid QR). */
@@ -336,7 +336,7 @@ export class DeviceEngine {
   // ---------------------------------------------------------------------------------------------------------
 
   async submit(input: SubmitRequest): Promise<ReceiptResult> {
-    const req = resolveTaxIds(input, this.rules);
+    const req = resolveTaxIds({ ...input, buyer: normalizeBuyer(input.buyer) }, this.rules);
     const requestHash = hashRequest(req);
     const existing = await this.receipts.findOne({ tenantId: req.tenantId, invoiceNo: req.invoiceNo });
     if (existing) return this.existingResult(existing, requestHash);

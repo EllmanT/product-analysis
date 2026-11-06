@@ -283,6 +283,15 @@ export async function createPosSale(input: CreatePosSaleInput): Promise<IPosSale
   if (input.emailInvoice && (!input.buyer?.registerName?.trim() || !/^\S+@\S+\.\S+$/.test(input.buyer?.email?.trim() ?? ""))) {
     throw new PosError("To email the invoice, enter the customer's name and a valid email address.", 422, "EMAIL_NEEDS_CUSTOMER");
   }
+  // ZIMRA refuses a receipt that names a customer without an email or phone number, after the customer has already
+  // left with a slip. Ask for it at the till instead.
+  if (fiscalBackend() === "service") {
+    const b = input.buyer;
+    const named = !!b && [b.registerName, b.tradeName, b.tin, b.vatNumber, b.address, b.city].some((v) => typeof v === "string" && v.trim());
+    if (named && !b!.email?.trim() && !b!.phone?.trim()) {
+      throw new PosError("A customer on a fiscal invoice needs an email address or a phone number. Add one, or clear the customer details for a cash sale.", 422, "BUYER_CONTACT_REQUIRED");
+    }
+  }
 
   const taxPercent = branch.pos.taxPercent;
   const taxCode = branch.pos.taxCode;
@@ -528,8 +537,19 @@ async function fiscaliseViaService(claimed: IPosSaleDoc, prefix: string, deviceK
     "A receipt was refused by the fiscal service",
     `Sale ${claimed.invoiceNumber} was refused (${problem.code}) and needs review.\n\nReason: ${problem.message}\n\nThe scheduled fiscal day close is held back until an administrator reviews it (Admin > POS sales).`
   );
-  // The service holds a receipt under this number, so the number is not ours to give back to the counter.
-  return settle(claimed, prefix, "FAILED", problem.message, problem.code !== "INVOICE_NO_REUSED");
+  // If the service holds a record under this number (ZIMRA refused the receipt after it was numbered), the number is
+  // burned: handing it back would give the next sale a number the service then refuses as "already used for a
+  // different receipt", and a whole run of sales fails behind the first one (seen in the 2026-11-06 rehearsal).
+  // Only a number the service never stored (refused before numbering) may go back to the counter.
+  let release = problem.code !== "INVOICE_NO_REUSED";
+  if (release) {
+    try {
+      if (await getReceipt(serviceDeviceId, claimed.invoiceNumber!)) release = false;
+    } catch {
+      release = false; // cannot tell: keep the number rather than risk a reuse
+    }
+  }
+  return settle(claimed, prefix, "FAILED", problem.message, release);
 }
 
 /** Queued sales are delivered by the service; ask it which ones have been accepted and finish those here. */

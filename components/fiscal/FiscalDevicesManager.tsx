@@ -11,7 +11,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import type { CertBundleValidation } from "@/lib/fiscalCertBundle";
 import type { FiscalDeviceSafe } from "@/lib/services/fiscalDevice.service";
+
+/**
+ * The central device is edited with the very same screen as a branch device. Only where it saves to differs, and
+ * which fields apply (it has no name, no switch, no virtual-device login: those come from the server's settings).
+ */
+export const CENTRAL_ID = "central";
+
+export function deviceApi(d: { id: string }) {
+  const central = d.id === CENTRAL_ID;
+  const base = central ? "/api/admin/fiscal-settings" : `/api/admin/fiscal-devices/${d.id}`;
+  return {
+    central,
+    base,
+    certificates: `${base}/certificates`,
+    register: `${base}/register`,
+    renew: `${base}/renew`,
+    sync: central ? `${base}/sync-device` : `${base}/sync`,
+  };
+}
+
+const ALL_DAYS = [1, 2, 3, 4, 5, 6, 7];
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 type Api<T = unknown> = { success: boolean; message?: string; data?: T };
 
@@ -85,6 +108,8 @@ interface Form {
   closeTime: string;
   openTime: string;
   timezone: string;
+  closeWeekdays: number[];
+  openWeekdays: number[];
 }
 
 const blankForm: Form = {
@@ -106,6 +131,8 @@ const blankForm: Form = {
   closeTime: "00:00",
   openTime: "00:05",
   timezone: "Africa/Harare",
+  closeWeekdays: ALL_DAYS,
+  openWeekdays: ALL_DAYS,
 };
 
 const toForm = (d: FiscalDeviceSafe): Form => ({
@@ -127,9 +154,11 @@ const toForm = (d: FiscalDeviceSafe): Form => ({
   closeTime: d.closeTime,
   openTime: d.openTime,
   timezone: d.timezone,
+  closeWeekdays: d.closeWeekdays?.length ? d.closeWeekdays : ALL_DAYS,
+  openWeekdays: d.openWeekdays?.length ? d.openWeekdays : ALL_DAYS,
 });
 
-function DeviceEditor({
+export function DeviceEditor({
   device,
   encryptionConfigured,
   onSaved,
@@ -147,44 +176,52 @@ function DeviceEditor({
   const [error, setError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const api = device ? deviceApi(device) : null;
+  const central = !!api?.central;
 
   async function save() {
     setBusy("save");
     setError("");
-    const body = {
-      name: form.name,
-      active: form.active,
+    // What both kinds of device have.
+    const shared = {
       zimraApiUrl: form.zimraApiUrl.trim() || null,
       zimraUseProductionUrl: form.zimraUseProductionUrl,
       deviceId: form.deviceId.trim() || null,
       deviceSerialNumber: form.deviceSerialNumber.trim() || null,
-      vdEmail: form.vdEmail.trim() || null,
-      serviceDeviceId: form.serviceDeviceId.trim() || null,
-      deviceModelName: form.deviceModelName.trim() || null,
-      deviceModelVersion: form.deviceModelVersion.trim() || null,
-      ...(form.clearVdPassword ? { vdPassword: null } : form.vdPassword ? { vdPassword: form.vdPassword } : {}),
       autoScheduleEnabled: form.autoScheduleEnabled,
       autoCloseEnabled: form.autoCloseEnabled,
       autoOpenEnabled: form.autoOpenEnabled,
       closeTime: form.closeTime,
       openTime: form.openTime,
-      timezone: form.timezone,
+      timezone: form.timezone.trim() || "Africa/Harare",
+      closeWeekdays: form.closeWeekdays,
+      openWeekdays: form.openWeekdays,
     };
-    const res = await call<FiscalDeviceSafe>(
-      device ? `/api/admin/fiscal-devices/${device.id}` : "/api/admin/fiscal-devices",
-      jsonInit(device ? "PATCH" : "POST", body)
-    );
+    // A branch device also has a name, an on/off switch, a virtual-device login and a service id.
+    const body = central
+      ? shared
+      : {
+          ...shared,
+          name: form.name,
+          active: form.active,
+          vdEmail: form.vdEmail.trim() || null,
+          serviceDeviceId: form.serviceDeviceId.trim() || null,
+          deviceModelName: form.deviceModelName.trim() || null,
+          deviceModelVersion: form.deviceModelVersion.trim() || null,
+          ...(form.clearVdPassword ? { vdPassword: null } : form.vdPassword ? { vdPassword: form.vdPassword } : {}),
+        };
+    const res = await call<FiscalDeviceSafe>(api ? api.base : "/api/admin/fiscal-devices", jsonInit(api ? "PATCH" : "POST", body));
     setBusy("");
-    if (!res.success || !res.data) return setError(res.message ?? "Could not save");
-    toast.success(device ? "Device saved" : "Device added");
-    onSaved(res.data.id);
+    if (!res.success) return setError(res.message ?? "Could not save");
+    toast.success(central ? "Settings saved" : device ? "Device saved" : "Device added");
+    onSaved(res.data?.id ?? device?.id ?? CENTRAL_ID);
   }
 
   async function sync() {
-    if (!device) return;
+    if (!device || !api) return;
     setBusy("sync");
     setError("");
-    const res = await call(`/api/admin/fiscal-devices/${device.id}/sync`, { method: "POST" });
+    const res = await call(api.sync, { method: "POST" });
     setBusy("");
     if (!res.success) return setError(res.message ?? "Could not read the device");
     toast.success("Device ID and serial read from the device");
@@ -208,24 +245,38 @@ function DeviceEditor({
       <section className="space-y-4 rounded-xl border bg-background p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="font-medium">{device ? device.name : "New device"}</h2>
+            <h2 className="font-medium">{central ? "Central device" : device ? device.name : "New device"}</h2>
             <p className="text-sm text-muted-foreground">
-              Its own Virtual Device: fiscal day, receipt counters, certificate and login are separate from every other device.
+              {central
+                ? "The device every branch uses unless it has its own. Its fiscal day, receipt counters and certificate are shared by those branches."
+                : "Its own Virtual Device: fiscal day, receipt counters, certificate and login are separate from every other device."}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Label htmlFor="dev-active" className="text-sm">
-              Active
-            </Label>
-            <Switch id="dev-active" checked={form.active} onCheckedChange={(v) => set("active", v)} />
-          </div>
+          {!central && (
+            <div className="flex items-center gap-2">
+              <Label htmlFor="dev-active" className="text-sm">
+                Active
+              </Label>
+              <Switch id="dev-active" checked={form.active} onCheckedChange={(v) => set("active", v)} />
+            </div>
+          )}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Name" htmlFor="dev-name" hint="Shown on Z-reports and in lists, e.g. Bulawayo till device.">
-            <Input id="dev-name" value={form.name} maxLength={80} onChange={(e) => set("name", e.target.value)} />
-          </Field>
-          <Field label="Virtual Device URL" htmlFor="dev-url" hint="Must differ from the central device and every other device.">
-            <Input id="dev-url" value={form.zimraApiUrl} placeholder="http://host:10005" onChange={(e) => set("zimraApiUrl", e.target.value)} />
+          {!central && (
+            <Field label="Name" htmlFor="dev-name" hint="Shown on Z-reports and in lists, e.g. Bulawayo till device.">
+              <Input id="dev-name" value={form.name} maxLength={80} onChange={(e) => set("name", e.target.value)} />
+            </Field>
+          )}
+          <Field
+            label={central ? "ZIMRA address (optional)" : "Virtual Device URL"}
+            htmlFor="dev-url"
+            hint={
+              central
+                ? `Leave blank for ${device?.effectiveZimraUrl ?? "the standard ZIMRA test address"}.`
+                : "Must differ from the central device and every other device."
+            }
+          >
+            <Input id="dev-url" value={form.zimraApiUrl} placeholder={central ? (device?.effectiveZimraUrl ?? "") : "http://host:10005"} onChange={(e) => set("zimraApiUrl", e.target.value)} />
           </Field>
           <Field label="Device ID" htmlFor="dev-id" hint={device ? undefined : "Can be read from the device after saving."}>
             <Input id="dev-id" inputMode="numeric" value={form.deviceId} onChange={(e) => set("deviceId", e.target.value)} />
@@ -233,9 +284,12 @@ function DeviceEditor({
           <Field label="Serial number" htmlFor="dev-serial">
             <Input id="dev-serial" value={form.deviceSerialNumber} onChange={(e) => set("deviceSerialNumber", e.target.value)} />
           </Field>
+          {!central && (
           <Field label="Device login (email)" htmlFor="dev-email" hint="Only if this Virtual Device asks for a login.">
             <Input id="dev-email" autoComplete="off" value={form.vdEmail} onChange={(e) => set("vdEmail", e.target.value)} />
           </Field>
+          )}
+          {!central && (
           <Field
             label="Device login (password)"
             htmlFor="dev-pass"
@@ -262,10 +316,14 @@ function DeviceEditor({
               </label>
             )}
           </Field>
+          )}
         </div>
+        {!central && (
         <Field label="Fiscal service device id" htmlFor="dev-svc" hint="Only when the app runs with FISCAL_BACKEND=service: the id the fiscal service gave this device after its certificate was uploaded there.">
           <Input id="dev-svc" value={form.serviceDeviceId} onChange={(e) => set("serviceDeviceId", e.target.value)} placeholder="24 character id" />
         </Field>
+        )}
+        {!central && (
         <details className="text-sm">
           <summary className="cursor-pointer text-muted-foreground">Advanced: ZIMRA model headers</summary>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -277,10 +335,16 @@ function DeviceEditor({
             </Field>
           </div>
         </details>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.zimraUseProductionUrl} onChange={(e) => set("zimraUseProductionUrl", e.target.checked)} />
           Production host (removes “test” from the URL host name)
         </label>
+        {device?.effectiveZimraUrl && (
+          <p className="text-xs text-muted-foreground">
+            Calls go to <span className="font-mono">{device.effectiveZimraUrl}</span>
+          </p>
+        )}
         {device && (
           <div>
             <Button type="button" variant="outline" size="sm" onClick={() => void sync()} disabled={busy !== ""}>
@@ -315,6 +379,8 @@ function DeviceEditor({
             <Field label="Time zone" htmlFor="dev-tz">
               <Input id="dev-tz" value={form.timezone} onChange={(e) => set("timezone", e.target.value)} />
             </Field>
+            <Weekdays label="Opens on" days={form.openWeekdays} onChange={(d) => set("openWeekdays", d)} />
+            <Weekdays label="Closes on" days={form.closeWeekdays} onChange={(d) => set("closeWeekdays", d)} />
           </div>
         )}
       </section>
@@ -327,10 +393,10 @@ function DeviceEditor({
 
       {device && (
         <section className="space-y-2 rounded-xl border bg-background p-5">
-          <h2 className="font-medium">Branches using this device</h2>
+          <h2 className="font-medium">{central ? "Branches using the central device" : "Branches using this device"}</h2>
           {device.branches.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              None yet. Choose this device for a branch under{" "}
+              {central ? "None. Every branch has its own device. Change that under " : "None yet. Choose this device for a branch under "}{" "}
               <Link href="/pos-settings" className="underline underline-offset-2">
                 POS settings
               </Link>
@@ -347,18 +413,20 @@ function DeviceEditor({
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={() => void save()} disabled={busy !== "" || !form.name.trim()}>
-          {busy === "save" ? "Saving…" : device ? "Save device" : "Add device"}
+        <Button onClick={() => void save()} disabled={busy !== "" || (!central && !form.name.trim())}>
+          {busy === "save" ? "Saving…" : central ? "Save settings" : device ? "Save device" : "Add device"}
         </Button>
-        <Button type="button" variant="outline" onClick={onClose}>
-          Close
-        </Button>
-        {device && !confirmDelete && (
+        {!central && (
+          <Button type="button" variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        )}
+        {device && !central && !confirmDelete && (
           <Button type="button" variant="ghost" className="ml-auto text-red-700 hover:bg-red-50" onClick={() => setConfirmDelete(true)}>
             Delete device
           </Button>
         )}
-        {device && confirmDelete && (
+        {device && !central && confirmDelete && (
           <span className="ml-auto flex items-center gap-2 text-sm">
             Delete “{device.name}”?
             <Button type="button" size="sm" className="bg-red-600 text-white hover:bg-red-700" onClick={() => void remove()} disabled={busy !== ""}>
@@ -381,7 +449,58 @@ function DeviceEditor({
 
 // ---------------------------------------------------------------------------
 
-type CertMode = "bundle_zip" | "pem" | "pfx";
+function Weekdays({ label, days, onChange }: { label: string; days: number[]; onChange: (d: number[]) => void }) {
+  const toggle = (d: number) => {
+    const next = days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort((a, b) => a - b);
+    onChange(next.length ? next : [d]); // at least one day
+  };
+  return (
+    <Field label={label}>
+      <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
+        {DAY_NAMES.map((n, i) => (
+          <button
+            key={n}
+            type="button"
+            aria-pressed={days.includes(i + 1)}
+            onClick={() => toggle(i + 1)}
+            className={`rounded-md border px-2 py-1 text-xs font-medium transition-colors duration-150 motion-reduce:transition-none ${
+              days.includes(i + 1) ? "border-amber-500 bg-amber-50 text-amber-900" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+    </Field>
+  );
+}
+
+function BundleReport({ v }: { v: CertBundleValidation }) {
+  const list = (title: string, items: readonly string[], tone = "") =>
+    items.length > 0 && (
+      <div>
+        <p className={`font-medium ${tone}`}>{title}</p>
+        <ul className="list-disc pl-5 text-xs">
+          {items.map((x) => (
+            <li key={x} className="break-all">
+              {x}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  return (
+    <div className="space-y-2 rounded-lg border bg-muted/40 p-3 text-sm">
+      {list("Will be used", v.usedFiles as readonly string[])}
+      {list("Missing", v.missing as readonly string[], "text-destructive")}
+      {list("Worth a look", v.warnings as readonly string[], "text-amber-800")}
+      {list("Ignored", v.ignored.map((i) => `${i.path} (${i.reason})`))}
+      {v.tlsReady !== null && <p className="text-xs text-muted-foreground">{v.tlsReady ? "A certificate and key were found." : "No usable certificate and key were found."}</p>}
+    </div>
+  );
+}
+
+type CertMode = "bundle_zip" | "bundle_folder" | "pem" | "pfx";
 
 function CertificatePanel({
   device,
@@ -394,6 +513,9 @@ function CertificatePanel({
 }) {
   const [mode, setMode] = useState<CertMode>("bundle_zip");
   const [files, setFiles] = useState<{ bundle?: File; cert?: File; key?: File; pfx?: File }>({});
+  const [folder, setFolder] = useState<File[]>([]);
+  const [report, setReport] = useState<CertBundleValidation | null>(null);
+  const api = deviceApi(device);
   const [passphrase, setPassphrase] = useState("");
   const [busy, setBusy] = useState(false);
   const [renewing, setRenewing] = useState(false);
@@ -406,7 +528,7 @@ function CertificatePanel({
     setRenewing(true);
     setConfirmRenew(false);
     setError("");
-    const res = await call(`/api/admin/fiscal-devices/${device.id}/renew`, { method: "POST" });
+    const res = await call(api.renew, { method: "POST" });
     setRenewing(false);
     if (!res.success) {
       setError(res.message ?? "Renewal failed");
@@ -418,30 +540,45 @@ function CertificatePanel({
   }
 
   async function setAutoRenew(v: boolean) {
-    const res = await call(`/api/admin/fiscal-devices/${device.id}`, jsonInit("PATCH", { autoRenewCertificate: v }));
+    const res = await call(api.base, jsonInit("PATCH", { autoRenewCertificate: v }));
     if (!res.success) return setError(res.message ?? "Could not change the setting");
     onChanged();
   }
   const ready =
-    (mode === "bundle_zip" && files.bundle) || (mode === "pem" && files.cert && files.key) || (mode === "pfx" && files.pfx);
+    (mode === "bundle_zip" && files.bundle) ||
+    (mode === "bundle_folder" && folder.length > 0) ||
+    (mode === "pem" && files.cert && files.key) ||
+    (mode === "pfx" && files.pfx);
 
   async function post(form: FormData, done: string) {
     setBusy(true);
     setError("");
-    const res = await call(`/api/admin/fiscal-devices/${device.id}/certificates`, { method: "POST", body: form });
+    const res = (await call(api.certificates, { method: "POST", body: form })) as Api & { validation?: CertBundleValidation; storable?: boolean };
     setBusy(false);
+    if (res.validation) setReport(res.validation);
     if (!res.success) return setError(res.message ?? "Upload failed");
+    if (form.get("dryRun") === "true") {
+      toast[res.storable ? "success" : "warning"](res.storable ? "The files look complete. Upload them when ready." : "The files are incomplete. See the details below.");
+      return;
+    }
     setFiles({});
+    setFolder([]);
+    setReport(null);
     setPassphrase("");
     toast.success(done);
     onChanged();
   }
 
-  function upload() {
+  function upload(dryRun = false) {
     const f = new FormData();
     f.set("mode", mode);
+    if (dryRun) f.set("dryRun", "true");
     if (mode === "bundle_zip" && files.bundle) {
       f.set("bundle", files.bundle);
+      f.set("passphrase", passphrase);
+    }
+    if (mode === "bundle_folder") {
+      for (const file of folder) f.append("files", file);
       f.set("passphrase", passphrase);
     }
     if (mode === "pem" && files.cert && files.key) {
@@ -452,7 +589,7 @@ function CertificatePanel({
       f.set("pfx", files.pfx);
       f.set("passphrase", passphrase);
     }
-    void post(f, "Certificate saved");
+    void post(f, dryRun ? "Checked" : "Certificate saved");
   }
 
   function remove(kind: "clear_pem" | "clear_pfx") {
@@ -499,7 +636,7 @@ function CertificatePanel({
 
       {(!hasCert || device.certExpiryStatus === "expired") && (
         <RegisterDevicePanel
-          endpoint={`/api/admin/fiscal-devices/${device.id}/register`}
+          endpoint={api.register}
           initialDeviceId={device.deviceId}
           initialSerial={device.deviceSerialNumber}
           pending={device.renewalPending}
@@ -566,6 +703,7 @@ function CertificatePanel({
         <Field label={hasCert ? "Replace with" : "Upload"} htmlFor="cert-mode">
           <select id="cert-mode" value={mode} onChange={(e) => setMode(e.target.value as CertMode)} className={selectClass}>
             <option value="bundle_zip">ZIMRA zip (finds the certificate and key)</option>
+            <option value="bundle_folder">Folder of certificate files</option>
             <option value="pem">Certificate + key (PEM)</option>
             <option value="pfx">PFX file</option>
           </select>
@@ -573,6 +711,19 @@ function CertificatePanel({
         {mode === "bundle_zip" && (
           <Field label="Zip file" htmlFor="cert-zip" hint="The zip ZIMRA gave you, e.g. certificates_31591.zip.">
             <Input id="cert-zip" type="file" accept=".zip" onChange={(e) => setFiles({ bundle: e.target.files?.[0] })} />
+          </Field>
+        )}
+        {mode === "bundle_folder" && (
+          <Field label="Folder" htmlFor="cert-folder" hint={folder.length ? `${folder.length} files selected.` : "Choose the folder ZIMRA gave you, e.g. certificates_31591."}>
+            <input
+              id="cert-folder"
+              type="file"
+              multiple
+              // @ts-expect-error webkitdirectory is a non-standard attribute that every major browser supports
+              webkitdirectory=""
+              className="block w-full text-sm"
+              onChange={(e) => setFolder(Array.from(e.target.files ?? []))}
+            />
           </Field>
         )}
         {mode === "pem" && (
@@ -590,15 +741,20 @@ function CertificatePanel({
             <Input id="cert-pfx" type="file" accept=".pfx,.p12" onChange={(e) => setFiles({ pfx: e.target.files?.[0] })} />
           </Field>
         )}
-        {(mode === "pfx" || mode === "bundle_zip") && (
-          <Field label="PFX passphrase" htmlFor="cert-pass" hint={mode === "bundle_zip" ? "Only needed if the zip contains a PFX." : undefined}>
+        {(mode === "pfx" || mode === "bundle_zip" || mode === "bundle_folder") && (
+          <Field label="PFX passphrase" htmlFor="cert-pass" hint={mode !== "pfx" ? "Only needed if it contains a PFX." : undefined}>
             <Input id="cert-pass" type="password" autoComplete="off" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} />
           </Field>
         )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" onClick={upload} disabled={busy || !ready || !encryptionConfigured}>
+        {(mode === "bundle_zip" || mode === "bundle_folder") && (
+          <Button type="button" variant="outline" onClick={() => upload(true)} disabled={busy || !ready}>
+            Check the files first
+          </Button>
+        )}
+        <Button type="button" onClick={() => upload()} disabled={busy || !ready || !encryptionConfigured}>
           {busy ? "Saving…" : hasCert ? "Replace certificate" : "Upload certificate"}
         </Button>
         {device.hasClientCert && (
@@ -612,6 +768,7 @@ function CertificatePanel({
           </Button>
         )}
       </div>
+      {report && <BundleReport v={report} />}
       {error && (
         <p className="text-sm text-destructive" role="alert">
           {error}

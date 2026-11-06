@@ -12,7 +12,7 @@ const PUBLIC_PREFIXES = [
   "app/api/shop/", // storefront: checked separately (customer session or public catalogue)
   "app/api/payments/", // payment provider callbacks and customer polling
 ];
-const GUARD = /(requireAdmin|requireAuth|requireStoreAccess|resolvePosScope|guardSignedIn|guardStore|guardBranch|\bauth\(|getToken|currentUser|handleCertificateUpload|handleRegistration)/;
+const GUARD = /(requireAdmin|requirePermission|requireAuth|requireStoreAccess|resolvePosScope|guardSignedIn|guardStore|guardBranch|\bauth\(|getToken|currentUser|handleCertificateUpload|handleRegistration)/;
 
 function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {

@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 import { z } from "zod";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { TillError, updateTill } from "@/lib/services/posTill.service";
 
 const Body = z
@@ -16,7 +16,7 @@ const Body = z
 /** Admin only: rename a till or switch it on or off. */
 export async function PATCH(request: Request, context: { params: Promise<{ tillId: string }> }) {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/pos-settings");
     if (denied) return denied;
     const { tillId } = await context.params;
     if (!Types.ObjectId.isValid(tillId)) {

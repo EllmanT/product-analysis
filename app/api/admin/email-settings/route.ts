@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import handleError from "@/lib/handlers/error";
 import { ValidationError } from "@/lib/http-errors";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import {
   getEmailSettingsSafe,
   patchEmailSettings,
@@ -13,7 +13,7 @@ import {
 export async function GET() {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/settings");
     if (denied) return denied;
 
     const data = await getEmailSettingsSafe();
@@ -26,7 +26,7 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/settings");
     if (denied) return denied;
 
     const json = await request.json();

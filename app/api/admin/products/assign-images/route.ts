@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import ProductMaster, { type IProductMaster } from "@/database/productmaster.model";
 import dbConnect from "@/lib/mongoose";
 import { assignProductImage } from "@/lib/utils/assignProductImage";
@@ -10,7 +10,7 @@ const BATCH = 100;
 
 export async function POST(req: Request) {
   const session = await auth();
-  const denied = requireAdmin(session);
+  const denied = requirePermission(session, "/products");
   if (denied) return denied;
 
   let replaceAll = new URL(req.url).searchParams.get("replaceAll") === "true";

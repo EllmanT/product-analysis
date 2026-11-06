@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { deviceError, deviceSchema } from "@/lib/fiscalDeviceApi";
 import { deleteFiscalDevice, getFiscalDeviceSafe, updateFiscalDevice } from "@/lib/services/fiscalDevice.service";
 
@@ -9,7 +9,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Ctx) {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/fiscal-devices");
     if (denied) return denied;
     const device = await getFiscalDeviceSafe((await params).id);
     if (!device) return NextResponse.json({ success: false, message: "Not found" }, { status: 404 });
@@ -21,7 +21,7 @@ export async function GET(_request: Request, { params }: Ctx) {
 
 export async function PATCH(request: Request, { params }: Ctx) {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/fiscal-devices");
     if (denied) return denied;
     const parsed = deviceSchema.partial().safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
@@ -35,7 +35,7 @@ export async function PATCH(request: Request, { params }: Ctx) {
 
 export async function DELETE(_request: Request, { params }: Ctx) {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/fiscal-devices");
     if (denied) return denied;
     await deleteFiscalDevice((await params).id);
     return NextResponse.json({ success: true });

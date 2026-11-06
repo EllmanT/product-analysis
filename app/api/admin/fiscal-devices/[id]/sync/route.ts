@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { deviceError } from "@/lib/fiscalDeviceApi";
 import { getFiscalDeviceSafe, resolveDeviceByKey, saveDeviceIdentity } from "@/lib/services/fiscalDevice.service";
 import { getVirtualDeviceConfig } from "@/lib/services/zimraFiscal.service";
@@ -9,7 +9,7 @@ import { getVirtualDeviceConfig } from "@/lib/services/zimraFiscal.service";
 /** Read this device's GetConfig and store the device ID and serial it reports. */
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/fiscal-devices");
     if (denied) return denied;
     const { id } = await params;
     if (!(await getFiscalDeviceSafe(id))) {

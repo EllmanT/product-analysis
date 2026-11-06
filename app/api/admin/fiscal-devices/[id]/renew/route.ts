@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { deviceError } from "@/lib/fiscalDeviceApi";
 import { renewCertificate } from "@/lib/services/fiscalCertRenewal.service";
 import { getFiscalDeviceSafe } from "@/lib/services/fiscalDevice.service";
@@ -12,7 +12,7 @@ export const maxDuration = 60;
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/fiscal-devices");
     if (denied) return denied;
     const { id } = await params;
     if (!(await getFiscalDeviceSafe(id))) {

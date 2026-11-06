@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { type BundleFileEntry, entriesFromZipBuffer, resolveCertificateBundle } from "@/lib/fiscalCertBundle";
 import type { CertActor } from "@/lib/services/fiscalSettings.service";
 
@@ -45,11 +45,11 @@ async function loadBundleEntries(
   return { error: "Invalid bundle mode" };
 }
 
-/** Admin-only certificate upload (PEM pair, PFX, ZIMRA zip or folder) for any device. */
-export async function handleCertificateUpload(request: Request, target: CertUploadTarget): Promise<NextResponse> {
+/** Certificate upload (PEM pair, PFX, ZIMRA zip or folder) for any device. The caller says which permission it needs. */
+export async function handleCertificateUpload(request: Request, target: CertUploadTarget, permission: string): Promise<NextResponse> {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, permission);
     if (denied) return denied;
     const actor: CertActor = { id: session?.user?.id, email: session?.user?.email };
 

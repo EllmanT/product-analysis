@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { Role } from "@/database";
 import dbConnect from "@/lib/mongoose";
 import { NextResponse } from "next/server";
@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 const ROLE_NAMES = ["admin", "branch_user", "cashier"] as const;
 
 export async function POST() {
-  const denied = requireAdmin(await auth());
+  const denied = requirePermission(await auth(), "/users");
   if (denied) return denied;
   try {
     await dbConnect();

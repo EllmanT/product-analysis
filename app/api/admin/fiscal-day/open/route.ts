@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { openFiscalDay } from "@/lib/services/invoice.service";
 
 /** Body `{ "deviceKey": "<FiscalDevice id>" }` opens a branch device; omitted means the central device. */
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/fiscal-day");
     if (denied) return denied;
 
     const body = (await request.json().catch(() => null)) as { deviceKey?: unknown } | null;

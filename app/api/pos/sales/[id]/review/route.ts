@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { clearSaleReview, PosError } from "@/lib/services/posSale.service";
 
 /** Admin only. Marks a receipt the fiscal device refused as reviewed, so the scheduled close can run. */
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "pos.void");
     if (denied) return denied;
 
     const { id } = await context.params;

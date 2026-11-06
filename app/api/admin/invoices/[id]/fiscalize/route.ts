@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import handleError from "@/lib/handlers/error";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { fiscalizeInvoice } from "@/lib/services/invoice.service";
 
 export async function POST(
@@ -11,7 +11,7 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/admin/invoices");
     if (denied) return denied;
 
     const { id } = await context.params;

@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { NextResponse } from "next/server";
 
 import Account from "@/database/account.model";
@@ -9,7 +9,7 @@ import { NotFoundError, ValidationError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
 
 export async function POST(request: Request) {
-  const denied = requireAdmin(await auth());
+  const denied = requirePermission(await auth(), "/users");
   if (denied) return denied;
   try {
     const providerEmail = await request.json();

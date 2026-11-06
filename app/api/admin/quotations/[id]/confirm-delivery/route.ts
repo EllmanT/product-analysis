@@ -5,7 +5,7 @@ import Quotation from "@/database/quotation.model";
 import { auth } from "@/auth";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError, RequestError } from "@/lib/http-errors";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import { issueFiscalInvoiceForPaidQuotation } from "@/lib/services/postPaymentInvoice.service";
 
@@ -15,7 +15,7 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/admin/quotations");
     if (denied) return denied;
 
     await dbConnect();

@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { acknowledgeAlert, fiscalBackend, listAlerts } from "@/lib/fiscal/client";
 
 /** Open alerts recorded by the fiscal service. Empty (not an error) when the legacy backend is in use. */
 export async function GET() {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/fiscal-day");
     if (denied) return denied;
     if (fiscalBackend() !== "service") return NextResponse.json({ success: true, data: [], backend: "legacy" });
     return NextResponse.json({ success: true, data: await listAlerts(true), backend: "service" });
@@ -20,7 +20,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/fiscal-day");
     if (denied) return denied;
     const parsed = z.object({ id: z.string().regex(/^[a-f0-9]{24}$/) }).safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid alert id" }, { status: 400 });

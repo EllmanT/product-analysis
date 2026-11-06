@@ -5,7 +5,7 @@ import Quotation, { type IQuotationItem } from "@/database/quotation.model";
 import { auth } from "@/auth";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError } from "@/lib/http-errors";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import { NextResponse } from "next/server";
 
@@ -15,7 +15,7 @@ export async function GET(
 ) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/admin/quotations");
     if (denied) return denied;
 
     await dbConnect();

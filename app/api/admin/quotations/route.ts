@@ -2,7 +2,7 @@ import Customer from "@/database/customer.model";
 import Quotation from "@/database/quotation.model";
 import { auth } from "@/auth";
 import handleError from "@/lib/handlers/error";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import { NextResponse } from "next/server";
 
@@ -11,7 +11,7 @@ const PAGE_SIZE = 20;
 export async function GET(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/admin/quotations");
     if (denied) return denied;
 
     await dbConnect();

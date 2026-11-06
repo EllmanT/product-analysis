@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ProductMaster, UploadProduct } from "@/database";
 import { auth } from "@/auth";
 import { getUser } from "@/lib/actions/user.action";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 
 const PatchBodySchema = z.object({
   isActive: z.boolean(),
@@ -97,7 +97,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  const denied = requireAdmin(session);
+  const denied = requirePermission(session, "/products");
   if (denied) return denied;
 
   const { id } = await context.params;

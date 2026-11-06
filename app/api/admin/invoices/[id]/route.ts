@@ -6,7 +6,7 @@ import Invoice, { type IInvoiceItem } from "@/database/invoice.model";
 import { auth } from "@/auth";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError, RequestError, ValidationError } from "@/lib/http-errors";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import { getSellerForAdminSession } from "@/lib/services/invoiceSeller.service";
 import { NextResponse } from "next/server";
@@ -21,7 +21,7 @@ export async function GET(
 ) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/admin/invoices");
     if (denied) return denied;
 
     await dbConnect();
@@ -106,7 +106,7 @@ export async function PATCH(
 ) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/admin/invoices");
     if (denied) return denied;
 
     await dbConnect();

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import ExchangeRate from "@/database/exchangeRate.model";
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import handleError from "@/lib/handlers/error";
 import dbConnect from "@/lib/mongoose";
 import { NextResponse } from "next/server";
@@ -17,7 +17,7 @@ const CreateRateSchema = z.object({
 export async function GET(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/exchange-rates");
     if (denied) return denied;
 
     await dbConnect();
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/exchange-rates");
     if (denied) return denied;
 
     await dbConnect();

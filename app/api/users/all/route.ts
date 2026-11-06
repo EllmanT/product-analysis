@@ -1,11 +1,11 @@
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { getUser, getUsers } from "@/lib/actions/user.action";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   const session = await auth();
-  const denied = requireAdmin(session);
+  const denied = requirePermission(session, "/users");
   if (denied) return denied;
 
   const userId = session!.user.id;

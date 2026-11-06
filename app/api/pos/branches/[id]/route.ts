@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { auth } from "@/auth";
 import Branch from "@/database/branch.model";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import { assignBranchDevice, DeviceConfigError } from "@/lib/services/fiscalDevice.service";
 import { getPosBranch } from "@/lib/services/posBranch.service";
@@ -42,7 +42,7 @@ const PatchSchema = z
 /** Admin only: enable POS for a branch and set its prefix, VAT, offline limit and slip details. */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/pos-settings");
     if (denied) return denied;
 
     const { id } = await context.params;

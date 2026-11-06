@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import ZReport from "@/database/zReport.model";
 
@@ -12,7 +12,7 @@ import ZReport from "@/database/zReport.model";
 export async function GET(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/z-reports");
     if (denied) return denied;
 
     await dbConnect();

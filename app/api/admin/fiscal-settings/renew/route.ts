@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { deviceError } from "@/lib/fiscalDeviceApi";
 import { renewCertificate } from "@/lib/services/fiscalCertRenewal.service";
 import { getFiscalSettingsSafe } from "@/lib/services/fiscalSettings.service";
@@ -12,7 +12,7 @@ export const maxDuration = 60;
 export async function POST() {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/fiscal-settings");
     if (denied) return denied;
     const result = await renewCertificate("central", { actor: { id: session?.user?.id, email: session?.user?.email } });
     return NextResponse.json({ success: true, data: await getFiscalSettingsSafe(), renewal: { newNotAfter: result.newNotAfter } });

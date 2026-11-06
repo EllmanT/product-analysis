@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import User from "@/database/user.model";
 import { auth } from "@/auth";
 import { getUser } from "@/lib/actions/user.action";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError, ValidationError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
@@ -55,7 +55,7 @@ export async function DELETE(
 
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/users");
     if (denied) return denied;
 
     if (id === session!.user.id) {
@@ -93,7 +93,7 @@ export async function PUT(
 
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/users");
     if (denied) return denied;
 
     const storeId = await adminStoreId(session!.user.id);

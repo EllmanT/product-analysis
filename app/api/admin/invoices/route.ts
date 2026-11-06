@@ -6,7 +6,7 @@ import Invoice from "@/database/invoice.model";
 import { auth } from "@/auth";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError, RequestError, ValidationError } from "@/lib/http-errors";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import {
   getEmailSettingsDoc,
@@ -32,7 +32,7 @@ const PostSchema = z.object({
 export async function GET(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/admin/invoices");
     if (denied) return denied;
 
     await dbConnect();
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/admin/invoices");
     if (denied) return denied;
 
     const json = await request.json();

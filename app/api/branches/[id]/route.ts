@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { Branch, Store } from "@/database";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import { NextResponse } from "next/server";
 export async function DELETE(
@@ -8,7 +8,7 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  const denied = requireAdmin(session);
+  const denied = requirePermission(session, "/branches");
   if (denied) return denied;
 
   const { id } = await context.params;

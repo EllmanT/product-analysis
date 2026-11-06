@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { deviceError } from "@/lib/fiscalDeviceApi";
 import { registerDevice, resumeRegistration, verifyTaxpayer } from "@/lib/services/fiscalDeviceRegistration.service";
 
@@ -20,10 +20,10 @@ const bodySchema = z.object({
  *  register registers the device and installs its first certificate
  *  resume   finishes a registration whose certificate was issued but failed its test call
  */
-export async function handleRegistration(request: Request, key: string, safe: () => Promise<unknown>): Promise<NextResponse> {
+export async function handleRegistration(request: Request, key: string, safe: () => Promise<unknown>, permission: string): Promise<NextResponse> {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, permission);
     if (denied) return denied;
     const actor = { id: session?.user?.id, email: session?.user?.email };
 

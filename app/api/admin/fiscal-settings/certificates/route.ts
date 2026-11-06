@@ -15,5 +15,5 @@ export async function POST(request: Request) {
     clearPem: clearPemCertificates,
     clearPfx: clearPfxCertificate,
     safe: getFiscalSettingsSafe,
-  });
+  }, "/fiscal-settings");
 }

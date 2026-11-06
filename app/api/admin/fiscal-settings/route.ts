@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import {
   getFiscalSettingsSafe,
   patchFiscalSettings,
@@ -33,7 +33,7 @@ const patchSchema = z.object({
 export async function GET() {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/fiscal-settings");
     if (denied) return denied;
 
     const settings = await getFiscalSettingsSafe();
@@ -47,7 +47,7 @@ export async function GET() {
 export async function PATCH(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/fiscal-settings");
     if (denied) return denied;
 
     const body = (await request.json()) as unknown;

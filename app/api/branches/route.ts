@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { Branch, Store } from "@/database";
 import { getBranchesByStore } from "@/lib/actions/branch.action";
 import { getUser } from "@/lib/actions/user.action";
-import { requireAdmin, requireAuth, normalizeRole } from "@/lib/auth/role";
+import { requirePermission, requireAuth, normalizeRole } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import { AddBranchSchema } from "@/lib/validations";
 import { NextResponse } from "next/server";
@@ -52,7 +52,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const session = await auth();
-  const denied = requireAdmin(session);
+  const denied = requirePermission(session, "/branches");
   if (denied) return denied;
 
   const body = await request.json().catch(() => null);

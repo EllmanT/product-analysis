@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { deviceError, deviceSchema } from "@/lib/fiscalDeviceApi";
 import { isEncryptionConfigured } from "@/lib/security/secretBox";
 import { createFiscalDevice, listFiscalDevices } from "@/lib/services/fiscalDevice.service";
@@ -9,7 +9,7 @@ import { createFiscalDevice, listFiscalDevices } from "@/lib/services/fiscalDevi
 /** Admin: branch fiscal devices (the central device stays under Fiscal settings). */
 export async function GET() {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/fiscal-devices");
     if (denied) return denied;
     return NextResponse.json({
       success: true,
@@ -24,7 +24,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/fiscal-devices");
     if (denied) return denied;
     const parsed = deviceSchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {

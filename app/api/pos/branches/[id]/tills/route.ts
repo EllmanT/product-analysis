@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { resolvePosScope } from "@/lib/auth/pos-scope";
 import { addTill, listTills, setTillCount, TillError } from "@/lib/services/posTill.service";
 
@@ -28,7 +28,7 @@ const Body = z.object({ count: z.number().int().min(0).max(50) }).strict();
 /** Admin only: set how many tills the branch has. Extra tills are switched off, never deleted. */
 export async function PUT(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/pos-settings");
     if (denied) return denied;
     const { id } = await context.params;
     const parsed = Body.safeParse(await request.json().catch(() => null));
@@ -48,7 +48,7 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
 /** Admin only: add one more till to the branch. */
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/pos-settings");
     if (denied) return denied;
     const { id } = await context.params;
     const scoped = await resolvePosScope(await auth(), id);

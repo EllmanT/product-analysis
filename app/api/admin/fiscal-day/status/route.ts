@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { resolveDeviceByKey } from "@/lib/services/fiscalDevice.service";
 import { getFiscalDayStatus } from "@/lib/services/invoice.service";
 import { getDeviceHealth } from "@/lib/services/zimraPosDevice.service";
@@ -10,7 +10,7 @@ import { getDeviceHealth } from "@/lib/services/zimraPosDevice.service";
 export async function GET(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/fiscal-day");
     if (denied) return denied;
 
     const deviceKey = new URL(request.url).searchParams.get("deviceKey") || undefined;

@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { auth } from "@/auth";
 import User from "@/database/user.model";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import { getFiscalAlertSettings, saveFiscalAlertSettings } from "@/lib/services/fiscalAlertSettings.service";
 
@@ -15,7 +15,7 @@ const bodySchema = z.object({
 
 export async function GET() {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/settings");
     if (denied) return denied;
     await dbConnect();
     const [settings, admins] = await Promise.all([
@@ -33,7 +33,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/settings");
     if (denied) return denied;
     const parsed = bodySchema.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid settings" }, { status: 400 });

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { patchFiscalSettings } from "@/lib/services/fiscalSettings.service";
 import { getVirtualDeviceConfig } from "@/lib/services/zimraFiscal.service";
 
 export async function POST() {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/fiscal-settings");
     if (denied) return denied;
 
     const config = await getVirtualDeviceConfig();

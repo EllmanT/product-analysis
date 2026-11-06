@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { assignBranchDevice, DeviceConfigError } from "@/lib/services/fiscalDevice.service";
 
 const Body = z
@@ -19,7 +19,7 @@ const Body = z
  */
 export async function POST(request: Request) {
   try {
-    const denied = requireAdmin(await auth());
+    const denied = requirePermission(await auth(), "/pos-settings");
     if (denied) return denied;
     const parsed = Body.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {

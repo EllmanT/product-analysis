@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { requireAdmin } from "@/lib/auth/role";
+import { requirePermission } from "@/lib/auth/role";
 import { PendingPosSalesError } from "@/lib/services/fiscalDayOps.service";
 import { closeFiscalDay } from "@/lib/services/invoice.service";
 
@@ -12,7 +12,7 @@ import { closeFiscalDay } from "@/lib/services/invoice.service";
 export async function POST(request: Request) {
   try {
     const session = await auth();
-    const denied = requireAdmin(session);
+    const denied = requirePermission(session, "/fiscal-day");
     if (denied) return denied;
 
     const body = (await request.json().catch(() => null)) as { force?: unknown; deviceKey?: unknown } | null;

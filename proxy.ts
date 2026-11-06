@@ -29,7 +29,7 @@ export default clerkMiddleware(async (_auth, request: NextRequest) => {
     }
     if (
       token?.role === "branch_user" &&
-      (path.startsWith("/users") || path.startsWith("/branches") || path.startsWith("/pos-settings"))
+      (path.startsWith("/users") || path.startsWith("/branches") || path.startsWith("/pos-settings") || path.startsWith("/access"))
     ) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }

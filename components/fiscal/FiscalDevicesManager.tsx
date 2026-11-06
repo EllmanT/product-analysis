@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { useFiscalDevices } from "@/components/fiscal/DeviceSelect";
 import RegisterDevicePanel from "@/components/fiscal/RegisterDevicePanel";
+import { AddDeviceWizard, ReplaceCertificateDialog } from "@/components/fiscal/DeviceWizards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -625,11 +626,11 @@ function CertificatePanel({
 export default function FiscalDevicesManager() {
   const [reloadKey, setReloadKey] = useState(0);
   const { devices, loaded, encryptionConfigured } = useFiscalDevices(reloadKey);
-  // null = list only, "new" = blank editor, otherwise the device being edited.
+  // null = list only, otherwise the id of the device whose advanced settings are open.
   const [openId, setOpenId] = useState<string | null>(null);
   const reload = () => setReloadKey((n) => n + 1);
 
-  const open = openId && openId !== "new" ? devices.find((d) => d.id === openId) : undefined;
+  const open = openId ? devices.find((d) => d.id === openId) : undefined;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-4 lg:p-6">
@@ -644,9 +645,7 @@ export default function FiscalDevicesManager() {
           <Button variant="outline" size="sm" asChild>
             <Link href="/fiscal-settings">Central device settings</Link>
           </Button>
-          <Button size="sm" onClick={() => setOpenId("new")} disabled={openId === "new"}>
-            Add device
-          </Button>
+          <AddDeviceWizard onDone={reload} />
         </div>
       </div>
 
@@ -658,9 +657,9 @@ export default function FiscalDevicesManager() {
 
       {!loaded ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : devices.length === 0 && openId !== "new" ? (
+      ) : devices.length === 0 ? (
         <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No branch devices yet. Every branch uses the central device.
+          No separate devices yet. Every branch uses the central device. Use Add device when a branch needs its own, or when you are setting up a client&apos;s test device.
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-background">
@@ -689,9 +688,12 @@ export default function FiscalDevicesManager() {
                   </td>
                   <td className="px-4 py-3">{d.active ? <Chip tone="ok">Active</Chip> : <Chip tone="muted">Off</Chip>}</td>
                   <td className="px-4 py-3 text-right">
-                    <Button variant="outline" size="sm" onClick={() => setOpenId(openId === d.id ? null : d.id)}>
-                      {openId === d.id ? "Close" : "Edit"}
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <ReplaceCertificateDialog device={d} onDone={reload} />
+                      <Button variant="outline" size="sm" onClick={() => setOpenId(openId === d.id ? null : d.id)}>
+                        {openId === d.id ? "Close" : "Settings"}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -700,19 +702,6 @@ export default function FiscalDevicesManager() {
         </div>
       )}
 
-      {openId === "new" && (
-        <DeviceEditor
-          key="new"
-          device={null}
-          encryptionConfigured={encryptionConfigured}
-          onSaved={(id) => {
-            reload();
-            setOpenId(id);
-          }}
-          onClose={() => setOpenId(null)}
-          onDeleted={() => setOpenId(null)}
-        />
-      )}
       {open && (
         <DeviceEditor
           // Remount whenever the saved device changes so the form shows what is stored.

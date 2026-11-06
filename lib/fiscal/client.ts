@@ -118,3 +118,41 @@ export async function closeDay(serviceDeviceId: string) {
   const { json } = await call<Record<string, unknown>>("POST", `/v1/devices/${serviceDeviceId}/day/close`, {}, 300_000);
   return json;
 }
+
+export interface ServiceAlert {
+  id: string;
+  deviceKey: string;
+  kind: string;
+  message: string;
+  day: string;
+  count: number;
+  firstAt: string;
+  lastAt: string;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+}
+
+/** Alerts the service has recorded (one per device + kind + day with a counter). */
+export async function listAlerts(unacknowledgedOnly = true): Promise<ServiceAlert[]> {
+  const { json } = await call<ServiceAlert[]>("GET", `/v1/alerts${unacknowledgedOnly ? "?unacknowledged=1" : ""}`, undefined, 10_000);
+  return json.data ?? [];
+}
+
+export async function acknowledgeAlert(id: string, by: string): Promise<boolean> {
+  const { status } = await call("POST", `/v1/alerts/${encodeURIComponent(id)}/ack`, { by }, 10_000);
+  return status === 200;
+}
+
+export interface ServiceDayCounters {
+  fiscalDayNo: number;
+  fiscalDayDate: string;
+  receiptCounter: number;
+  receiptGlobalNo: number;
+  counters: { fiscalCounterType: string; fiscalCounterCurrency: string; fiscalCounterTaxID?: number; fiscalCounterMoneyType?: string; fiscalCounterValue: number }[];
+}
+
+/** The service's running counters for the open day, or null when no day is open. */
+export async function dayCounters(serviceDeviceId: string): Promise<ServiceDayCounters | null> {
+  const { json } = await call<ServiceDayCounters | null>("GET", `/v1/devices/${serviceDeviceId}/day-counters`, undefined, 10_000);
+  return json.data ?? null;
+}

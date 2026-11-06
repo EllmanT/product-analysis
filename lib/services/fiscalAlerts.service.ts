@@ -1,15 +1,8 @@
 import FiscalAlert from "@/database/fiscalAlert.model";
-import User from "@/database/user.model";
+import { resolveFiscalAlertRecipients } from "@/lib/services/fiscalAlertSettings.service";
 import { sendAdminAlertEmail } from "@/lib/email";
 import logger from "@/lib/logger";
 import dbConnect from "@/lib/mongoose";
-
-async function recipients(): Promise<string[]> {
-  const fromEnv = (process.env.FISCAL_ALERT_EMAILS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  if (fromEnv.length) return fromEnv;
-  const admins = await User.find({ role: "admin" }).select("email").lean<{ email: string }[]>();
-  return admins.map((a) => a.email).filter(Boolean);
-}
 
 /**
  * Email the administrators once per `key`. The key is claimed in the database first, so
@@ -25,7 +18,7 @@ export async function sendFiscalAlertOnce(key: string, subject: string, text: st
       if ((e as { code?: number }).code === 11000) return false; // already sent
       throw e;
     }
-    const to = await recipients();
+    const to = await resolveFiscalAlertRecipients();
     try {
       if (!to.length) throw new Error("no administrator email addresses");
       await sendAdminAlertEmail({ to, subject: `[Fiscal] ${subject}`, text });

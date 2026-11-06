@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CENTRAL, DeviceSelect, useFiscalDevices } from "@/components/fiscal/DeviceSelect";
+import DayPreviewPanel from "@/components/fiscal/DayPreviewPanel";
+import FiscalAlertsPanel from "@/components/fiscal/FiscalAlertsPanel";
 import { Button } from "@/components/ui/button";
 
 type DeviceHealth = {
@@ -10,6 +12,8 @@ type DeviceHealth = {
   dayOpen: boolean | null;
   fiscalDayNo: number | null;
   uploadBacklog: number | null;
+  dayStatus?: string;
+  closingErrorCode?: string;
   message?: string;
 };
 
@@ -164,6 +168,15 @@ export default function FiscalDayPage() {
           </div>
         ) : null}
 
+        {!loading && state?.device?.reachable && state.device.dayStatus === "FiscalDayCloseFailed" && (
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+            <strong>ZIMRA refused to close this day{state.device.closingErrorCode ? ` (${state.device.closingErrorCode})` : ""}.</strong>{" "}
+            {state.device.closingErrorCode === "ReceiptsWithValidationErrors"
+              ? "A receipt with validation errors cannot be fixed by retrying. Selling can continue, but ZIMRA must close this day."
+              : "Selling can continue. The system keeps retrying the close; contact support if this repeats."}
+          </div>
+        )}
+
         {!loading && state?.device && (
           <div
             role="status"
@@ -296,6 +309,10 @@ export default function FiscalDayPage() {
           </div>
         </div>
       )}
+      <div className="mt-8 space-y-6">
+        <DayPreviewPanel key={deviceKey} deviceKey={deviceKey === CENTRAL ? undefined : deviceKey} />
+        <FiscalAlertsPanel />
+      </div>
     </div>
   );
 }

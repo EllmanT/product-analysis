@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { pullServiceAlerts } from "@/lib/fiscal/serviceAlerts.service";
 import { runPosQueue } from "@/lib/services/posSale.service";
 
 /** A fiscal receipt can queue behind other branches at the device; allow time for that. */
@@ -21,7 +22,8 @@ export async function GET(request: Request) {
 
   try {
     const result = await runPosQueue();
-    return NextResponse.json({ success: true, ...result });
+    const alerts = await pullServiceAlerts();
+    return NextResponse.json({ success: true, ...result, alerts });
   } catch (error) {
     const message = error instanceof Error ? error.message : "POS queue failed";
     return NextResponse.json({ success: false, message }, { status: 500 });

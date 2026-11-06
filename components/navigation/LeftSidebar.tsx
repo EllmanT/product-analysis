@@ -21,7 +21,7 @@ import { useSession } from "next-auth/react"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session } = useSession();
-  const [access, setAccess] = React.useState<{ hiddenUrls: string[]; isSuperAdmin: boolean } | null>(null);
+  const [access, setAccess] = React.useState<{ allowed: string[] | null; isSuperAdmin: boolean } | null>(null);
   const userId = session?.user?.id;
 
   React.useEffect(() => {
@@ -43,14 +43,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const mainItems = React.useMemo(() => {
     const role = normalizeRole(session?.user?.role);
-    let items: Items[] = (mainSidebarLinks as Items[]).filter(
-      (item) => !item.hidden && (!item.adminOnly || role === "admin")
-    );
-    if (role === "branch_user") {
-      // Wait for the rules so a hidden page never flashes up first.
-      if (!access) return [];
-      const hidden = new Set(access.hiddenUrls);
-      items = items.filter((item) => !item.url || !hidden.has(item.url));
+    let items: Items[] = (mainSidebarLinks as Items[]).filter((item) => !item.hidden);
+    if (role !== "admin") {
+      // Wait for the rules so a page that is not theirs never flashes up first.
+      if (!access?.allowed) return [];
+      const allowed = new Set(access.allowed);
+      items = items.filter((item) => !item.url || allowed.has(item.url));
     }
     if (access?.isSuperAdmin) {
       items = [...items, { title: "Menu access", url: "/access", icon: IconLock }];

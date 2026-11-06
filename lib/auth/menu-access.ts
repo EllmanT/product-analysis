@@ -1,57 +1,52 @@
-import { mainSidebarLinks } from "@/constants/constants";
+import { type AppRoleName, defaultPermissions, GRANTABLE, GRANTABLE_KEYS, type PermissionDef } from "@/lib/auth/permissions";
 
-/** The one role whose menu an admin can shape. Admin sees everything; a cashier is confined to the till. */
-export const CONFIGURABLE_ROLE = "branch_user" as const;
+/** Roles a super admin can shape on the Menu access screen. Admin always has everything. */
+export const ROLE_LABELS: Record<Exclude<AppRoleName, "admin">, { title: string; blurb: string }> = {
+  branch_user: { title: "Branch manager", blurb: "Runs a branch: stock, sales and reports for their own branch." },
+  cashier: { title: "Cashier", blurb: "Works at the till. Give them more only if their job needs it." },
+};
 
-type NavLink = { title: string; url: string; adminOnly?: boolean; hidden?: boolean };
-
-const links = mainSidebarLinks as NavLink[];
-
-/** Pages a branch manager is allowed to use at all. Admin-only pages stay locked: the server refuses them. */
-export const configurableLinks = links.filter((l) => l.url && !l.adminOnly && !l.hidden);
-export const configurableUrls = new Set(configurableLinks.map((l) => l.url));
-
-/** Configurable pages grouped under their section heading, in menu order, for the settings screen. */
-export function configurableSections(): { title: string; items: { title: string; url: string }[] }[] {
-  const out: { title: string; items: { title: string; url: string }[] }[] = [];
-  let current: { title: string; items: { title: string; url: string }[] } | null = null;
-  for (const l of links) {
-    if (!l.url) {
-      current = { title: l.title, items: [] };
-      out.push(current);
-    } else if (configurableUrls.has(l.url)) {
-      if (!current) {
-        current = { title: "General", items: [] };
-        out.push(current);
-      }
-      current.items.push({ title: l.title, url: l.url });
+/** Grantable permissions grouped under their section, in menu order, for the settings screen. */
+export function grantableSections(): { title: string; items: PermissionDef[] }[] {
+  const out: { title: string; items: PermissionDef[] }[] = [];
+  for (const p of GRANTABLE) {
+    let section = out.find((s) => s.title === p.section);
+    if (!section) {
+      section = { title: p.section, items: [] };
+      out.push(section);
     }
+    section.items.push(p);
   }
-  return out.filter((s) => s.items.length > 0);
+  return out;
 }
 
-/** Ready-made starting points. Each lists what stays visible; everything else configurable is hidden. */
-export const MENU_PRESETS: { id: string; label: string; description: string; visible: string[] | "all" }[] = [
-  { id: "everything", label: "Everything", description: "All pages a branch manager can use.", visible: "all" },
+/** Ready-made starting points. "Standard" is whatever the role gets out of the box. */
+export const MENU_PRESETS: {
+  id: string;
+  label: string;
+  description: string;
+  keys: (role: Exclude<AppRoleName, "admin">) => string[];
+}[] = [
+  { id: "standard", label: "Standard", description: "The usual setup for this role.", keys: (role) => defaultPermissions(role) },
   {
     id: "sales",
     label: "Sales focus",
     description: "Dashboard and the point of sale.",
-    visible: ["/dashboard", "/pos", "/pos-sales", "/pos-products", "/pos-customers"],
+    keys: () => ["/dashboard", "/pos", "/pos-sales", "/pos-products", "/pos-customers"],
   },
   {
     id: "stock",
     label: "Stock focus",
     description: "Dashboard, stock uploads and reports.",
-    visible: ["/dashboard", "/uploads", "/uploads/upload", "/branch-analytics", "/product-movement", "/products", "/branch-up-reports", "/ai-agent"],
+    keys: () => ["/dashboard", "/uploads", "/uploads/upload", "/branch-analytics", "/product-movement", "/products", "/branch-up-reports", "/ai-agent"],
+  },
+  {
+    id: "everything",
+    label: "Everything",
+    description: "Every page and action, like an admin. Menu access stays with super admins.",
+    keys: () => [...GRANTABLE_KEYS],
   },
 ];
-
-export function hiddenForPreset(visible: string[] | "all"): string[] {
-  if (visible === "all") return [];
-  const keep = new Set(visible);
-  return configurableLinks.filter((l) => !keep.has(l.url)).map((l) => l.url);
-}
 
 /** Drop section headings that have nothing under them. */
 export function pruneEmptySections<T extends { url: string }>(items: T[]): T[] {

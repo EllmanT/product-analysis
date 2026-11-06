@@ -7,15 +7,19 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { configurableSections, configurableLinks, hiddenForPreset, MENU_PRESETS } from "@/lib/auth/menu-access";
+import { grantableSections, MENU_PRESETS, ROLE_LABELS } from "@/lib/auth/menu-access";
+import { GRANTABLE } from "@/lib/auth/permissions";
 import { cn } from "@/lib/utils";
 
-const sections = configurableSections();
+type EditableRole = keyof typeof ROLE_LABELS;
+const ROLES = Object.keys(ROLE_LABELS) as EditableRole[];
+const sections = grantableSections();
 const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
 
 export default function MenuAccessPage() {
-  const [saved, setSaved] = useState<string[] | null>(null);
-  const [hidden, setHidden] = useState<string[]>([]);
+  const [saved, setSaved] = useState<Record<EditableRole, string[]> | null>(null);
+  const [draft, setDraft] = useState<Record<EditableRole, string[]> | null>(null);
+  const [role, setRole] = useState<EditableRole>("branch_user");
   const [canEdit, setCanEdit] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,11 +31,11 @@ export default function MenuAccessPage() {
       const j = await r.json().catch(() => null);
       if (ignore) return;
       if (!r.ok || !j?.success) {
-        setError("Could not load the menu settings.");
+        setError("Could not load the access settings.");
         return;
       }
-      setSaved(j.data.hiddenUrls);
-      setHidden(j.data.hiddenUrls);
+      setSaved(j.data.roles);
+      setDraft(j.data.roles);
       setCanEdit(j.data.canEdit);
     })();
     return () => {
@@ -39,29 +43,39 @@ export default function MenuAccessPage() {
     };
   }, []);
 
-  const dirty = saved !== null && !sameSet(saved, hidden);
-  const activePreset = useMemo(() => MENU_PRESETS.find((p) => sameSet(hiddenForPreset(p.visible), hidden))?.id ?? null, [hidden]);
-  const visibleCount = configurableLinks.length - hidden.length;
+  const current = useMemo(() => draft?.[role] ?? [], [draft, role]);
+  const dirtyRoles = saved && draft ? ROLES.filter((r) => !sameSet(saved[r], draft[r])) : [];
+  const dirty = dirtyRoles.length > 0;
+  const activePreset = useMemo(() => MENU_PRESETS.find((p) => sameSet(p.keys(role), current))?.id ?? null, [role, current]);
+  const pageCount = GRANTABLE.length;
+  const cannotUseTill = draft !== null && !current.includes("/pos");
 
-  const toggle = (url: string, show: boolean) => setHidden((h) => (show ? h.filter((x) => x !== url) : [...h, url]));
+  const setFor = (r: EditableRole, keys: string[]) => setDraft((d) => (d ? { ...d, [r]: keys } : d));
+  const toggle = (key: string, on: boolean) => setFor(role, on ? [...current, key] : current.filter((k) => k !== key));
 
   async function save() {
+    if (!draft || !saved) return;
     setSaving(true);
     setError(null);
     try {
-      const r = await fetch("/api/admin/menu-access", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hiddenUrls: hidden }),
-      });
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.success) {
-        setError(j?.message ?? "Could not save. Try again.");
-        return;
+      const next = { ...saved };
+      for (const r of dirtyRoles) {
+        const res = await fetch("/api/admin/menu-access", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: r, allowed: draft[r] }),
+        });
+        const j = await res.json().catch(() => null);
+        if (!res.ok || !j?.success) {
+          setError(j?.message ?? "Could not save. Try again.");
+          setSaved(next);
+          return;
+        }
+        next[r] = j.data.allowed;
       }
-      setSaved(j.data.hiddenUrls);
-      setHidden(j.data.hiddenUrls);
-      toast.success("Menu updated. Branch managers see it the next time they open the app.");
+      setSaved(next);
+      setDraft(next);
+      toast.success("Access updated. It takes effect the next time each person's page loads.");
     } finally {
       setSaving(false);
     }
@@ -71,31 +85,41 @@ export default function MenuAccessPage() {
     <div className="mx-auto w-full max-w-3xl space-y-6 p-4 pb-28 lg:p-6 lg:pb-28">
       <div>
         <h1 className="text-xl font-semibold">Menu access</h1>
-        <p className="text-sm text-muted-foreground">Choose which pages each kind of user sees in the menu.</p>
+        <p className="text-sm text-muted-foreground">Choose what each role can open and do. People are refused a page they were not given, even if they type its address.</p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border bg-background p-4">
-          <p className="flex items-center gap-2 text-sm font-medium">
-            Admin <Lock className="size-3.5 text-muted-foreground" aria-hidden />
-          </p>
-          <p className="text-sm text-muted-foreground">Sees everything. This can&apos;t be changed.</p>
-        </div>
-        <div className="rounded-xl border bg-background p-4">
-          <p className="flex items-center gap-2 text-sm font-medium">
-            Cashier <Lock className="size-3.5 text-muted-foreground" aria-hidden />
-          </p>
-          <p className="text-sm text-muted-foreground">Sees only their till. This can&apos;t be changed.</p>
-        </div>
+      <div className="rounded-xl border bg-background p-4">
+        <p className="flex items-center gap-2 text-sm font-medium">
+          Admin <Lock className="size-3.5 text-muted-foreground" aria-hidden />
+        </p>
+        <p className="text-sm text-muted-foreground">Can open and do everything. This can&apos;t be changed, so nobody can lock themselves out.</p>
       </div>
 
       <section className="space-y-5 rounded-xl border bg-background p-5">
+        <div role="tablist" aria-label="Role" className="inline-flex rounded-lg border bg-muted p-0.5">
+          {ROLES.map((r) => (
+            <button
+              key={r}
+              role="tab"
+              type="button"
+              aria-selected={role === r}
+              onClick={() => setRole(r)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none",
+                role === r ? "bg-background shadow-xs" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {ROLE_LABELS[r].title}
+              {dirtyRoles.includes(r) && <span className="ml-1.5 inline-block size-1.5 rounded-full bg-amber-500 align-middle" aria-label="unsaved changes" />}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="font-medium">Branch manager</h2>
-            <p className="text-sm text-muted-foreground">
-              {saved === null ? "Loading…" : `Sees ${visibleCount} of ${configurableLinks.length} pages.`}
-            </p>
+            <h2 className="font-medium">{ROLE_LABELS[role].title}</h2>
+            <p className="text-sm text-muted-foreground">{ROLE_LABELS[role].blurb}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{draft === null ? "Loading…" : `Can use ${current.length} of ${pageCount} pages and actions.`}</p>
           </div>
           <div role="group" aria-label="Start from a preset" className="flex flex-wrap gap-2">
             {MENU_PRESETS.map((p) => (
@@ -106,8 +130,8 @@ export default function MenuAccessPage() {
                 variant={activePreset === p.id ? "default" : "outline"}
                 aria-pressed={activePreset === p.id}
                 title={p.description}
-                disabled={!canEdit || saved === null}
-                onClick={() => setHidden(hiddenForPreset(p.visible))}
+                disabled={!canEdit || draft === null}
+                onClick={() => setFor(role, p.keys(role))}
               >
                 {p.label}
               </Button>
@@ -115,8 +139,11 @@ export default function MenuAccessPage() {
           </div>
         </div>
 
-        {!canEdit && saved !== null && (
+        {!canEdit && draft !== null && (
           <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">Only a super admin can change this. You can see the current setup here.</p>
+        )}
+        {canEdit && cannotUseTill && role === "cashier" && (
+          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">Cashiers are not allowed to open the till, so they will not be able to sell. Switch &ldquo;Open till&rdquo; back on.</p>
         )}
 
         <div className="space-y-5">
@@ -126,13 +153,13 @@ export default function MenuAccessPage() {
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{section.title}</h3>
               <ul className="space-y-1">
                 {section.items.map((item) => {
-                  const shown = !hidden.includes(item.url);
+                  const on = current.includes(item.key);
                   return (
-                    <li key={item.url} className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50">
-                      <label htmlFor={`menu-${item.url}`} className={cn("flex-1 cursor-pointer text-sm transition-colors duration-150 motion-reduce:transition-none", !shown && "text-muted-foreground")}>
+                    <li key={item.key} className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-muted/50">
+                      <label htmlFor={`perm-${role}-${item.key}`} className={cn("flex-1 cursor-pointer text-sm transition-colors duration-150 motion-reduce:transition-none", !on && "text-muted-foreground")}>
                         {item.title}
                       </label>
-                      <Switch id={`menu-${item.url}`} checked={shown} disabled={!canEdit || saved === null} onCheckedChange={(v) => toggle(item.url, v)} />
+                      <Switch id={`perm-${role}-${item.key}`} checked={on} disabled={!canEdit || draft === null} onCheckedChange={(v) => toggle(item.key, v)} />
                     </li>
                   );
                 })}
@@ -142,7 +169,7 @@ export default function MenuAccessPage() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Fiscal, Users, Branches and POS settings are for admins only. They can&apos;t be given to branch managers here.
+          Menu access, Exchange rates, Quotations, Invoices and the shop homepage settings are for admins only and can&apos;t be given to other roles.
         </p>
       </section>
 
@@ -161,9 +188,11 @@ export default function MenuAccessPage() {
           aria-hidden={!dirty}
         >
           <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">You have unsaved changes.</p>
+            <p className="text-sm text-muted-foreground">
+              You have unsaved changes{dirtyRoles.length > 0 ? ` for ${dirtyRoles.map((r) => ROLE_LABELS[r].title).join(" and ")}` : ""}.
+            </p>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setHidden(saved ?? [])} disabled={saving} tabIndex={dirty ? 0 : -1}>
+              <Button variant="outline" onClick={() => setDraft(saved)} disabled={saving} tabIndex={dirty ? 0 : -1}>
                 Discard
               </Button>
               <Button onClick={() => void save()} disabled={saving} tabIndex={dirty ? 0 : -1}>

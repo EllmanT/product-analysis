@@ -3,9 +3,12 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { requireAuth, normalizeRole } from "@/lib/auth/role";
 import { isSuperAdmin } from "@/lib/auth/super-admin";
-import { getHiddenUrls } from "@/lib/services/menuAccess.service";
+import { getRolePermissions } from "@/lib/services/permissions.service";
 
-/** The signed-in user's own menu settings: which pages are hidden from them, and whether they can edit the rules. */
+/**
+ * The signed-in user's own access: which pages and actions they hold (null for an admin, who holds everything)
+ * and whether they may edit the rules. The sidebar builds itself from this.
+ */
 export async function GET() {
   const session = await auth();
   const denied = requireAuth(session);
@@ -15,7 +18,7 @@ export async function GET() {
     success: true,
     data: {
       role,
-      hiddenUrls: role === "branch_user" ? await getHiddenUrls() : [],
+      allowed: role === "admin" ? null : (session!.user.perms ?? (await getRolePermissions(role))),
       isSuperAdmin: isSuperAdmin(session),
     },
   });

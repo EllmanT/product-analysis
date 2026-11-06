@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getSelectedTillId } from "@/lib/pos/tillSelection";
 
 import {
   addNumbers,
@@ -78,7 +79,7 @@ export function useOfflineQueue({ branchId, onSynced }: Options) {
         const r = await fetch("/api/pos/numbers/lease", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ branchId, currency, count: LEASE_COUNT }),
+          body: JSON.stringify({ branchId, currency, count: LEASE_COUNT, ...(getSelectedTillId(branchId) ? { tillId: getSelectedTillId(branchId) } : {}) }),
           signal: AbortSignal.timeout(10_000),
         });
         const j = await r.json().catch(() => null);

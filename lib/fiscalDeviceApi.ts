@@ -16,6 +16,7 @@ export const deviceSchema = z.object({
   deviceId: z.string().trim().max(20).nullable().optional(),
   deviceSerialNumber: z.string().trim().max(40).nullable().optional(),
   autoRenewCertificate: z.boolean().optional(),
+  serviceDeviceId: z.string().trim().regex(/^[a-f0-9]{24}$/, "Must be the 24 character id the fiscal service gave this device").nullable().optional().or(z.literal("")),
   deviceModelName: z.string().trim().max(60).nullable().optional(),
   deviceModelVersion: z.string().trim().max(30).nullable().optional(),
   vdEmail: z.string().trim().max(120).nullable().optional(),

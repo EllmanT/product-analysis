@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { CENTRAL, DeviceSelect } from "@/components/fiscal/DeviceSelect";
+import { DeviceTopologyPanel } from "@/components/pos/DeviceTopologyPanel";
+import { TillsPanel } from "@/components/pos/TillsPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -112,6 +114,8 @@ export default function PosSettingsPage() {
           </select>
         </div>
       </div>
+
+      <DeviceTopologyPanel branches={branches} onChanged={reload} />
 
       {/* Remounts with fresh state whenever the saved settings change or another branch is picked. */}
       {branch && <SettingsForm key={`${branch.id}:${JSON.stringify(branch.pos)}`} branch={branch} onSaved={reload} />}
@@ -269,6 +273,8 @@ function SettingsForm({ branch, onSaved }: { branch: PosBranchDto; onSaved: () =
               )}
             </div>
           </section>
+
+          <TillsPanel branchId={id} />
 
           <section className="space-y-4 rounded-xl border bg-background p-5">
             <div>

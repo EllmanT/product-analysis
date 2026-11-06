@@ -75,6 +75,7 @@ interface Form {
   /** Typed password; empty keeps the stored one. */
   vdPassword: string;
   clearVdPassword: boolean;
+  serviceDeviceId: string;
   deviceModelName: string;
   deviceModelVersion: string;
   autoScheduleEnabled: boolean;
@@ -95,6 +96,7 @@ const blankForm: Form = {
   vdEmail: "",
   vdPassword: "",
   clearVdPassword: false,
+  serviceDeviceId: "",
   deviceModelName: "",
   deviceModelVersion: "",
   autoScheduleEnabled: false,
@@ -115,6 +117,7 @@ const toForm = (d: FiscalDeviceSafe): Form => ({
   vdEmail: d.vdEmail ?? "",
   vdPassword: "",
   clearVdPassword: false,
+  serviceDeviceId: d.serviceDeviceId ?? "",
   deviceModelName: d.deviceModelName ?? "",
   deviceModelVersion: d.deviceModelVersion ?? "",
   autoScheduleEnabled: d.autoScheduleEnabled,
@@ -155,6 +158,7 @@ function DeviceEditor({
       deviceId: form.deviceId.trim() || null,
       deviceSerialNumber: form.deviceSerialNumber.trim() || null,
       vdEmail: form.vdEmail.trim() || null,
+      serviceDeviceId: form.serviceDeviceId.trim() || null,
       deviceModelName: form.deviceModelName.trim() || null,
       deviceModelVersion: form.deviceModelVersion.trim() || null,
       ...(form.clearVdPassword ? { vdPassword: null } : form.vdPassword ? { vdPassword: form.vdPassword } : {}),
@@ -258,6 +262,9 @@ function DeviceEditor({
             )}
           </Field>
         </div>
+        <Field label="Fiscal service device id" htmlFor="dev-svc" hint="Only when the app runs with FISCAL_BACKEND=service: the id the fiscal service gave this device after its certificate was uploaded there.">
+          <Input id="dev-svc" value={form.serviceDeviceId} onChange={(e) => set("serviceDeviceId", e.target.value)} placeholder="24 character id" />
+        </Field>
         <details className="text-sm">
           <summary className="cursor-pointer text-muted-foreground">Advanced: ZIMRA model headers</summary>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">

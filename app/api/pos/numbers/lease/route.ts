@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import Branch from "@/database/branch.model";
 import { resolvePosScope } from "@/lib/auth/pos-scope";
 import dbConnect from "@/lib/mongoose";
+import PosNumberLease from "@/database/posNumberLease.model";
 import { allocateNumber, formatInvoiceNumber, seriesFor } from "@/lib/services/posNumbering.service";
 
 const Body = z
@@ -12,6 +13,8 @@ const Body = z
     branchId: z.string().optional(),
     currency: z.enum(["USD", "ZWG"]),
     count: z.number().int().min(1).max(200),
+    /** The till asking, so the block can be traced to it. */
+    tillId: z.string().regex(/^[a-f0-9]{24}$/).optional(),
   })
   .strict();
 
@@ -49,6 +52,12 @@ export async function POST(request: Request) {
       const n = await allocateNumber(scope.branchId, series);
       numbers.push(formatInvoiceNumber(branch.pos.invoicePrefix, currency, n, true));
     }
+    await PosNumberLease.create({
+      branchId: scope.branchId,
+      ...(parsed.data.tillId ? { tillId: parsed.data.tillId } : {}),
+      currency,
+      numbers,
+    }).catch(() => undefined); // tracing only: never stop a till getting its numbers
     return NextResponse.json({ success: true, data: { currency, numbers } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to lease numbers";

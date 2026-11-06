@@ -56,3 +56,21 @@ certificates_*.zip
 
 # receipt evidence (real test-device data)
 /test-evidence/
+
+# More certificate / key formats and folders (private keys) - never commit
+**/certificates_*
+/test certificates/
+/scratch_certs/
+*.zip
+*.crt
+*.cer
+*.p12
+*.pem
+
+# logs and local tooling
+*.log
+.cursor/*.log
+/test-results/
+
+# vendored upstream copy, not part of this app
+/zimra-fdms-main/

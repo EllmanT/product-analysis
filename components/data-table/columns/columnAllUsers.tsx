@@ -6,11 +6,14 @@ import { SortableHeader } from "@/components/data-table/SortableHeader";
 import { ProjectActions } from "@/components/data-table/ProjectActions";
 import Name from "@/components/data-table/Name";
 import { UserRoleCell } from "@/components/data-table/UserRoleCell";
+import { UserBranchCell } from "@/components/data-table/UserBranchCell";
 
 export function buildColumnAllUsers(options?: {
   onRoleUpdated?: () => void;
+  branches?: Branch[];
 }): ColumnDef<User>[] {
   const onRoleUpdated = options?.onRoleUpdated;
+  const branches = options?.branches ?? [];
 
   return [
     {
@@ -81,11 +84,17 @@ export function buildColumnAllUsers(options?: {
         <SortableHeader column={column} title="Branch" />
       ),
       cell: ({ row }) => {
-        const branch = row.getValue("branchId") as {
-          name: string;
-          location: string;
-        };
-        return <Name name={branch?.location} />;
+        const u = row.original;
+        const current = row.getValue("branchId") as { _id?: string; name: string; location: string } | null | undefined;
+        if (!u._id) return null;
+        return (
+          <UserBranchCell
+            userId={u._id}
+            branchId={current?._id ? String(current._id) : null}
+            branches={branches}
+            onUpdated={onRoleUpdated}
+          />
+        );
       },
       enableSorting: true,
     },

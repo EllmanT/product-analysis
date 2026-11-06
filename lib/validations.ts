@@ -15,7 +15,7 @@ export const SignInSchema = z.object({
 export const SignUpSchema = z.object({
   surname: z
     .string()
-    .min(3, { message: "Surnname must be at least 3 characters long." })
+    .min(3, { message: "Surname must be at least 3 characters long." })
     .max(30, { message: "Surname cannot exceed 30 characters." })
     .regex(/^[a-zA-Z0-9_]+$/, {
       message: "Surname can only contain letters, numbers, and underscores.",
@@ -87,6 +87,27 @@ export const UserSchema = z.object({
   image: z.string().url({ message: "Please provide a valid URL" }).optional(),
   location: z.string().optional(),
 });
+
+/** Admin creating a staff member from the Users screen (role and branch are chosen by the admin). */
+export const CreateManagedUserSchema = SignUpSchema.pick({
+  name: true,
+  surname: true,
+  email: true,
+  password: true,
+})
+  .extend({
+    role: z.enum(["admin", "branch_user", "cashier"]),
+    branchId: z.string().optional(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.role !== "admin" && !d.branchId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["branchId"],
+        message: "Choose a branch for cashiers and branch users.",
+      });
+    }
+  });
 
 /** Admin-only updates to users in the same store (no email/storeId changes). */
 export const UpdateManagedUserSchema = z
@@ -204,7 +225,7 @@ export const GetUserSchema = z.object({
 export const CreateUserSchema = z.object({
   surname: z
     .string()
-    .min(3, { message: "Surnname must be at least 3 characters long." })
+    .min(3, { message: "Surname must be at least 3 characters long." })
     .max(30, { message: "Surname cannot exceed 30 characters." })
     .regex(/^[a-zA-Z0-9_]+$/, {
       message: "Surname can only contain letters, numbers, and underscores.",

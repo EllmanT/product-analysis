@@ -6,7 +6,6 @@ import dbConnect from "@/lib/mongoose";
 
 import { DetailedCredentialsSignin } from "./credentials-signin-error";
 import { normalizeRole } from "./role";
-import { isStaffEmailAllowed } from "./staff-allowlist";
 
 export function escapeForEmailRegex(value: string): string {
   return value.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -60,15 +59,9 @@ export async function authorizeCredentialsOrThrow(
     );
   }
 
-  // Cashiers are provisioned by an admin in the Users screen and can only reach /pos,
-  // so they are admitted by role instead of being listed in STAFF_ALLOWED_EMAILS.
-  const isCashier = normalizeRole(existingUser.role) === "cashier";
-  if (!isCashier && !isStaffEmailAllowed(existingUser.email)) {
-    throw new DetailedCredentialsSignin(
-      "This account is not authorized to access the staff application.",
-      "not_staff"
-    );
-  }
+  // Users with an email/password account are provisioned by an administrator (Users screen) or by
+  // the allow-listed self sign-up, so the stored role decides what they can do. The allow-list is
+  // NOT checked here: it only controls who may register themselves or sign in with Google/GitHub.
 
   return {
     id: existingUser.id,

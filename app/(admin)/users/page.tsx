@@ -1,20 +1,15 @@
 "use client"
 
 import { DataTable } from "@/components/data-table/index";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { buildColumnAllUsers } from "@/components/data-table/columns/columnAllUsers";
-import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { signUpWithCredentials } from "@/lib/actions/auth.action";
-import {  SignUpSchema } from "@/lib/validations";
-import AuthForm from "@/components/forms/AuthForm";
+import { AddUserDialog } from "@/components/users/AddUserDialog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 export default  function Page() {
 const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [storeId, setStoreId]= useState("");
-  const [users, setUsers] = useState<User[]>([])
+    const [users, setUsers] = useState<User[]>([])
 
   const loadUsers = useCallback(async () => {
     try {
@@ -33,12 +28,6 @@ const [branches, setBranches] = useState<Branch[]>([]);
       if (!res.ok) throw new Error("Failed to fetch branches");
       const { data } = await res.json();
       setBranches(data.branches ?? []);
-      const first = data.branches?.[0] as
-        | { storeId?: { _id?: string } }
-        | undefined;
-      if (first?.storeId?._id) {
-        setStoreId(String(first.storeId._id));
-      }
     } catch (err) {
       console.error(err);
     }
@@ -57,8 +46,8 @@ const [branches, setBranches] = useState<Branch[]>([]);
   }, [loadBranches, loadUsers]);
 
   const userColumns = useMemo(
-    () => buildColumnAllUsers({ onRoleUpdated: loadUsers }),
-    [loadUsers]
+    () => buildColumnAllUsers({ onRoleUpdated: loadUsers, branches }),
+    [loadUsers, branches]
   );
 
   if (loading) return <div>Loading branches...</div>;
@@ -79,28 +68,7 @@ const [branches, setBranches] = useState<Branch[]>([]);
 
 
   
-    <Dialog>
-        <DialogTrigger asChild>
-          <Button variant="outline">Add User</Button>
-        </DialogTrigger>
-        <DialogTitle></DialogTitle>
-        <DialogContent className="sm:max-w-[425px]">      
-
-     <AuthForm
-      formType="SIGN_UP"
-      schema={SignUpSchema}
-      defaultValues={{ email: "", password: "", name: "", surname: "", branchId:"", storeId:storeId }}
-      onSubmit={signUpWithCredentials}
-      menuItems={branches}
-
-    />
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline" className="w-full bg-amber-600 hover:cursor-pointer">Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-    </Dialog>
+    <AddUserDialog branches={branches} onCreated={loadUsers} />
 
 </section>
 

@@ -115,7 +115,7 @@ Set or update on your **production** deployment, then redeploy:
 | ` ` | Production origin, e.g. `https://your-app.vercel.app` |
 | `NEXTAUTH_SECRET` | Keep existing value |
 
-Without `STAFF_ALLOWED_EMAILS`, sign-in fails with “not authorized to access the staff application” even with correct passwords.
+Note: `STAFF_ALLOWED_EMAILS` no longer blocks sign-in for users that already exist with a password; it only limits self-registration and Google/GitHub sign-in. Roles come from the database.
 
 `OFFLINE_MONGODB_URI` is **not** used when `NODE_ENV=production`.
 

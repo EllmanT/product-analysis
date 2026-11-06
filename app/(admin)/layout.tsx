@@ -35,7 +35,7 @@ const layout =async ({ children }: { children: ReactNode}) => {
       <AppSidebar variant="floating" />
       <SidebarInset className='bg-gray-50' >
         <SiteHeader />
-        {session.user?.role === 'admin' && <CertExpiryBanner />}
+        {role === 'admin' && <CertExpiryBanner />}
         {children}
       </SidebarInset>
     </SidebarProvider>

@@ -6,10 +6,11 @@ import Google from "next-auth/providers/google";
 import Account from "./database/account.model";
 import User from "./database/user.model";
 import { authorizeCredentialsOrThrow } from "./lib/auth/authenticate-credentials";
+import { getBootstrapAdminEmailSet } from "./lib/auth/bootstrap-admin";
 import { getStaffAllowedEmailSet } from "./lib/auth/staff-allowlist";
 import { normalizeRole } from "./lib/auth/role";
-import { api } from "./lib/api";
 import { getRolePermissions } from "./lib/services/permissions.service";
+import { api } from "./lib/api";
 import dbConnect from "./lib/mongoose";
 import { SignInSchema } from "./lib/validations";
 
@@ -34,8 +35,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       session.user.id = token.sub as string;
       session.user.role = normalizeRole(token.role as string | undefined);
-      return session;
       session.user.perms = token.perms;
+      return session;
     },
     async jwt({ token, user, account }) {
       if (account) {
@@ -84,24 +85,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           doc && "email" in doc && doc.email
             ? String(doc.email).toLowerCase()
             : "";
-        const staffAllow = getStaffAllowedEmailSet();
-        if (email && staffAllow.has(email)) {
+        // Only the bootstrap admin list (BOOTSTRAP_ADMIN_EMAILS) is promoted to admin automatically.
+        // Everyone else keeps the role an administrator gave them (stored in the database).
+        if (email && getBootstrapAdminEmailSet().has(email)) {
           if (role !== "admin") {
-            await User.updateOne(
-              { _id: token.sub },
-              { $set: { role: "admin" } }
-            );
+            await User.updateOne({ _id: token.sub }, { $set: { role: "admin" } });
           }
           token.role = "admin";
         } else {
           token.role = role;
         }
       }
+
       // What this role may open and do travels in the token: the proxy refuses pages with it, and routes check it
       // without another lookup. Rebuilt on every call, so a change a super admin makes reaches API calls at once.
       const roleNow = normalizeRole(token.role as string | undefined);
       token.perms = roleNow === "admin" ? undefined : await getRolePermissions(roleNow);
-
 
       return token;
     },

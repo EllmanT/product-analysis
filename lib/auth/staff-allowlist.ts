@@ -1,7 +1,9 @@
 import { getBootstrapAdminEmailSet } from "./bootstrap-admin";
 
 /**
- * Emails allowed to use the staff app (NextAuth `/sign-in`, `(admin)` routes).
+ * Emails allowed to REGISTER THEMSELVES or sign in with Google/GitHub. It does not grant a role:
+ * roles live in the database and are set by an administrator (Users screen). Only
+ * `BOOTSTRAP_ADMIN_EMAILS` are promoted to admin automatically.
  * Set `STAFF_ALLOWED_EMAILS` to a comma-separated list.
  * If unset, falls back to `BOOTSTRAP_ADMIN_EMAILS` for backward compatibility.
  */

@@ -55,7 +55,10 @@ const AuthForm = <T extends FieldValues>({
     const result = (await onSubmit(data)) as ActionResponse;
 
     if (result?.success) {
-      router.push(ROUTES.HOME);
+      // Full page load, not a soft navigation: the root layout and SessionProvider keep the
+      // pre-sign-in (empty) session otherwise, which hid role-based menus (Users, POS settings...)
+      // until the next refresh.
+      window.location.assign(ROUTES.HOME);
     } else {
       const message =
         result?.error?.message ??

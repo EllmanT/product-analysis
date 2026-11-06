@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 
+import Branch from "@/database/branch.model";
 import User from "@/database/user.model";
 import { auth } from "@/auth";
 import { getUser } from "@/lib/actions/user.action";
+import { delegatedUserRules } from "@/lib/auth/delegated-users";
 import { requirePermission } from "@/lib/auth/role";
 import handleError from "@/lib/handlers/error";
 import { NotFoundError, ValidationError } from "@/lib/http-errors";
@@ -65,6 +67,9 @@ export async function DELETE(
       );
     }
 
+    const notAllowed = await delegatedUserRules(session, { targetId: id });
+    if (notAllowed) return notAllowed;
+
     const storeId = await adminStoreId(session!.user.id);
     if (!storeId) {
       return NextResponse.json({ success: false }, { status: 404 });
@@ -126,6 +131,31 @@ export async function PUT(
           ? details
           : { form: ["Invalid request body"] }
       );
+    }
+
+    const notAllowed = await delegatedUserRules(session, {
+      targetId: id,
+      newRole: parsed.data.role,
+      newBranchId: parsed.data.branchId ? String(parsed.data.branchId) : undefined,
+    });
+    if (notAllowed) return notAllowed;
+
+    // An administrator cannot demote themselves (the store could be left without an admin).
+    if (id === session!.user.id && parsed.data.role !== undefined && parsed.data.role !== "admin") {
+      return NextResponse.json(
+        { success: false, error: { message: "You cannot remove your own admin role." } },
+        { status: 400 }
+      );
+    }
+
+    if (parsed.data.branchId) {
+      const branch = await Branch.findById(parsed.data.branchId).select("storeId").lean();
+      if (!branch || Array.isArray(branch) || String(branch.storeId) !== storeId) {
+        return NextResponse.json(
+          { success: false, error: { message: "That branch does not belong to your store." } },
+          { status: 400 }
+        );
+      }
     }
 
     const patch: Record<string, unknown> = {};

@@ -1,5 +1,6 @@
 import type { IInvoice } from "@/database/invoice.model";
-import { fiscalizeInvoice, generateInvoice } from "@/lib/services/invoice.service";
+import { issueFiscalDocument } from "@/lib/fiscal/issue";
+import { generateInvoice } from "@/lib/services/invoice.service";
 
 function mapRecordMethodToInvoicePaymentMethod(
   method: string
@@ -11,8 +12,9 @@ function mapRecordMethodToInvoicePaymentMethod(
 }
 
 /**
- * After an online payment is recorded, create a draft fiscal invoice and submit to ZIMRA.
- * Idempotent: generateInvoice returns existing; fiscalize guards duplicates.
+ * After an online payment is recorded, create the invoice and hand it to the fiscal layer.
+ * A ZIMRA or device problem queues the invoice for the retry queue; it is never lost and the payment is never undone.
+ * Idempotent: generateInvoice returns the existing invoice and fiscalising twice is harmless.
  */
 export async function issueFiscalInvoiceForPaidQuotation(
   quotationId: string,
@@ -20,7 +22,10 @@ export async function issueFiscalInvoiceForPaidQuotation(
 ): Promise<void> {
   try {
     const inv = await generateInvoice(quotationId, { paymentMethod });
-    await fiscalizeInvoice(inv._id.toString());
+    const outcome = await issueFiscalDocument({ kind: "shop", invoiceId: inv._id.toString() });
+    if (outcome.status !== "FISCALISED") {
+      console.warn("[issueFiscalInvoiceForPaidQuotation]", outcome.status, { quotationId, message: outcome.message });
+    }
   } catch (err) {
     console.error("[issueFiscalInvoiceForPaidQuotation] failed", {
       quotationId,

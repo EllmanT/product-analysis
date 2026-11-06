@@ -8,7 +8,10 @@ import { generateInvoiceNumber } from "@/lib/utils/invoiceNumber";
 import { computeLineTotals, computeInvoiceTotals } from "@/lib/utils/invoiceCalculations";
 import type { IZReportDoc } from "@/database/zReport.model";
 import { closeFiscalDayWithReport, openFiscalDayOnly } from "@/lib/services/fiscalDayOps.service";
-import { resolveDeviceByKey } from "@/lib/services/fiscalDevice.service";
+import { CENTRAL_KEY, resolveDeviceByKey, resolveServiceDeviceId } from "@/lib/services/fiscalDevice.service";
+import { fiscalBackend, submitReceipt as serviceSubmitReceipt } from "@/lib/fiscal/client";
+import { buildInvoiceServiceRequest, ShopFiscalError, toInvoiceFiscalData } from "@/lib/fiscal/invoiceMapping";
+import { isRetryableProblem } from "@/lib/fiscal/serviceMapping";
 import {
   submitReceipt,
   checkFiscalDayStatus,
@@ -140,6 +143,19 @@ export async function generateInvoice(
   return invoice;
 }
 
+/** Send an invoice through the fiscal service, on the central device (the shop has no branch). */
+async function submitInvoiceViaService(invoice: IInvoice) {
+  const deviceId = await resolveServiceDeviceId(CENTRAL_KEY);
+  const result = await serviceSubmitReceipt(deviceId, buildInvoiceServiceRequest(invoice, process.env.INVOICE_DEFAULT_HS_CODE ?? "00000000"));
+  if (result.status === "fiscalised") return toInvoiceFiscalData(result);
+  if (result.status === "queued") {
+    // The service has signed and numbered it and keeps delivering. Asking again later returns the same receipt.
+    throw new ShopFiscalError(result.reason || "ZIMRA has not answered yet; the fiscal service keeps trying.", "retry");
+  }
+  const problem = result.problems?.[0] ?? { code: "REFUSED", message: "The fiscal service refused the invoice" };
+  throw new ShopFiscalError(`${problem.code}: ${problem.message}`, isRetryableProblem(problem.code) ? "retry" : "review");
+}
+
 export async function fiscalizeInvoice(invoiceId: string) {
   await dbConnect();
 
@@ -158,13 +174,17 @@ export async function fiscalizeInvoice(invoiceId: string) {
     throw new Error("Invoice has no fiscal line items. Regenerate the invoice from the quotation.");
   }
 
-  const fiscalResult = await submitReceipt(invoice);
+  const fiscalResult = fiscalBackend() === "service" ? await submitInvoiceViaService(invoice) : await submitReceipt(invoice);
 
   invoice.fiscalData = fiscalResult;
   invoice.isFiscalized = true;
   invoice.fiscalStatus = "SUBMITTED";
   invoice.status = "sent";
   invoice.fiscalSubmittedAt = new Date();
+  // Whatever was waiting to retry or be reviewed is settled now.
+  invoice.fiscalNextRetryAt = undefined;
+  invoice.fiscalNeedsReview = false;
+  invoice.fiscalLastError = undefined;
   invoice.qrCodeData =
     getZimraQrEmbedString(fiscalResult) || invoice.qrCodeData;
   await invoice.save();

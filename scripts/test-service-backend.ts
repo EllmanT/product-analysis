@@ -148,6 +148,60 @@ async function main() {
   check(old2?.status === "FISCALISED" && !old2.needsApproval, "the old sale is FISCALISED and was not held for approval", { s: old2?.status, a: old2?.needsApproval, e: old2?.lastError });
   check(old2?.soldDate === "2020-01-01", "our record keeps the day it was actually sold");
 
+  console.log("3c. A shop invoice goes through the same service, and survives an outage");
+  // The shop has no branch: it uses the central device, which is a device of its own, apart from the branch's.
+  const centralBundle = makeDeviceBundle(8102);
+  gw.addDevice(centralBundle.deviceId, centralBundle.serialNumber, centralBundle.certificatePem);
+  const centralDev = await registry.add({ tenantId: "company-1", name: "Central", certificatePem: centralBundle.certificatePem, privateKeyPem: centralBundle.privateKeyPem, environment: "test" });
+  const centralServiceId = String((centralDev as { id?: string; _id?: unknown }).id ?? (centralDev as { _id?: unknown })._id);
+  await (await manager.get(centralServiceId)).openDay();
+  await sleep(1200);
+  process.env.FISCAL_SERVICE_CENTRAL_DEVICE_ID = centralServiceId;
+  const { default: Invoice } = await import("@/database/invoice.model");
+  const shop = await import("@/lib/services/shopFiscal.service");
+  const makeInvoice = () =>
+    Invoice.create({
+      quotationId: new m.Types.ObjectId(),
+      customerId: new m.Types.ObjectId(),
+      invoiceNumber: `SHOP-${randomBytes(4).toString("hex").toUpperCase()}`,
+      items: [{ productId: new m.Types.ObjectId(), name: "Router", standardCode: "R1", quantity: 2, unitPrice: "10", lineTotal: "20" }],
+      subtotal: "20",
+      paymentMethod: "CARD",
+      taxInclusive: true,
+      totalAmount: 20,
+      lines: [{ lineNo: 1, description: "Router", quantity: 2, unitPrice: 10, taxPercent: 15.5, hsCode: "99001000" }],
+      buyerSnapshot: { registerName: "Acme Ltd", tradeName: "Acme", tin: "1234567890", email: "buyer@acme.test", phone: "", address: "1 Main St", city: "Harare", province: "Harare", vatNumber: "" },
+    });
+  const si1 = await makeInvoice();
+  const so1 = await shop.issueShopInvoice(String(si1._id));
+  const sf1 = await Invoice.findById(si1._id);
+  check(so1.status === "FISCALISED", "a shop invoice is FISCALISED through the service", { so1, err: sf1?.fiscalLastError });
+  check(sf1?.isFiscalized === true && sf1.fiscalStatus === "SUBMITTED" && !!sf1.fiscalSubmittedAt, "and is marked fiscalised");
+  check(!!sf1?.fiscalData?.verificationCode && !!sf1.qrCodeData && sf1.fiscalData.deviceId === String(centralBundle.deviceId), "with its QR, verification code and the device that signed it", sf1?.fiscalData);
+  const shopAgain = await shop.issueShopInvoice(String(si1._id));
+  check(shopAgain.status === "FISCALISED", "asking again changes nothing");
+
+  gw.faults.down = true;
+  const si2 = await makeInvoice();
+  const so2 = await shop.issueShopInvoice(String(si2._id));
+  const sf2 = await Invoice.findById(si2._id);
+  check(so2.status === "QUEUED" && sf2?.isFiscalized === false && !!sf2.fiscalNextRetryAt, "with ZIMRA down the paid invoice is QUEUED, not lost", { so2, a: sf2?.fiscalAttempts });
+  gw.faults.down = false;
+  await Invoice.updateOne({ _id: si2._id }, { $set: { fiscalNextRetryAt: new Date(Date.now() - 1000) } });
+  let shopDone = false;
+  for (let i = 0; i < 40 && !shopDone; i++) {
+    await sleep(250);
+    await shop.runShopInvoiceQueue(10);
+    shopDone = (await Invoice.findById(si2._id))?.isFiscalized === true;
+    if (!shopDone) await Invoice.updateOne({ _id: si2._id, isFiscalized: false }, { $set: { fiscalNextRetryAt: new Date(Date.now() - 1000) } });
+  }
+  const sf2b = await Invoice.findById(si2._id);
+  check(shopDone && !sf2b?.fiscalNextRetryAt, "once ZIMRA is back the queue fiscalises it", { err: sf2b?.fiscalLastError });
+  check(gw.receipts(centralBundle.deviceId).length === 2, "ZIMRA holds exactly one receipt per shop invoice", gw.receipts(centralBundle.deviceId).length);
+  const { getDayPreview } = await import("@/lib/services/fiscalDayPreview.service");
+  const centralPreview = await getDayPreview("central");
+  check(centralPreview.matches && centralPreview.shopInvoices === 2, "the central device's close preview counts the shop invoices and matches", centralPreview);
+
   console.log("4. The fiscal service itself is unreachable");
   process.env.FISCAL_SERVICE_URL = "http://127.0.0.1:1";
   const u = await pos.fiscalisePosSale(String((await sell())._id), { reason: "till" });

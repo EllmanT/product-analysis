@@ -1,3 +1,4 @@
+import Invoice from "@/database/invoice.model";
 import PosSale from "@/database/posSale.model";
 import dbConnect from "@/lib/mongoose";
 import { dayCounters, fiscalBackend } from "@/lib/fiscal/client";
@@ -20,6 +21,8 @@ export interface DayPreview {
   receipts?: number;
   rows: DayPreviewRow[];
   matches: boolean;
+  /** Shop invoices counted in the app's side (the shop sells on the central device, next to its branches). */
+  shopInvoices?: number;
 }
 
 const cents = (n: number) => Math.round(n * 100);
@@ -39,6 +42,16 @@ export async function getDayPreview(deviceKey: string = CENTRAL_KEY): Promise<Da
     .select("currency kind totalAmount")
     .lean<{ currency: string; kind: string; totalAmount: number }[]>();
 
+  // The shop has no branch, so its invoices go through the central device and are in that device's counters too.
+  let shopInvoices = 0;
+  if (deviceKey === CENTRAL_KEY) {
+    const invoices = await Invoice.find({ isFiscalized: true, "fiscalData.fiscalDayNo": c.fiscalDayNo, "fiscalData.rawResponse.source": "fiscal-service" })
+      .select("receiptCurrency receiptType totalAmount")
+      .lean<{ receiptCurrency: string; receiptType: string; totalAmount: number }[]>();
+    for (const i of invoices) sales.push({ currency: i.receiptCurrency, kind: i.receiptType === "CreditNote" ? "CREDIT_NOTE" : "SALE", totalAmount: i.receiptType === "CreditNote" ? -Math.abs(i.totalAmount) : i.totalAmount });
+    shopInvoices = invoices.length;
+  }
+
   const sum = (type: string, cur: string) => c.counters.filter((x) => x.fiscalCounterType === type && x.fiscalCounterCurrency === cur).reduce((t, x) => t + cents(x.fiscalCounterValue), 0);
   const currencies = [...new Set([...c.counters.map((x) => x.fiscalCounterCurrency), ...sales.map((s) => s.currency)])].sort();
   const rows = currencies.map((cur) => {
@@ -48,5 +61,5 @@ export async function getDayPreview(deviceKey: string = CENTRAL_KEY): Promise<Da
     const deviceCredits = Math.abs(sum("CreditNoteByTax", cur));
     return { currency: cur, deviceSales: deviceSales / 100, appSales: appSales / 100, deviceCredits: deviceCredits / 100, appCredits: appCredits / 100, matches: deviceSales === appSales && deviceCredits === appCredits };
   });
-  return { available: true, fiscalDayNo: c.fiscalDayNo, receipts: c.receiptCounter, rows, matches: rows.every((r) => r.matches) };
+  return { available: true, fiscalDayNo: c.fiscalDayNo, receipts: c.receiptCounter, rows, matches: rows.every((r) => r.matches), ...(shopInvoices ? { shopInvoices } : {}) };
 }

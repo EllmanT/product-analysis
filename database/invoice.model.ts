@@ -77,6 +77,14 @@ export interface IInvoice {
   fiscalStatus: "DRAFT" | "SUBMITTED";
   fiscalSubmittedAt?: Date;
   isFiscalized: boolean;
+  /** How many times issuing has been tried and failed. Set once the payment flow has taken over issuing. */
+  fiscalAttempts?: number;
+  /** Why the last attempt failed, in words an administrator can act on. */
+  fiscalLastError?: string;
+  /** When the queue should try again. Present only while the invoice is waiting to be fiscalised automatically. */
+  fiscalNextRetryAt?: Date;
+  /** A person must look: retrying will not help (bad data, refused by ZIMRA) or it has failed for too long. */
+  fiscalNeedsReview?: boolean;
   receiptNotes?: string;
   fiscalData?: IFiscalData;
   lines: IInvoiceLine[];
@@ -201,6 +209,10 @@ const InvoiceSchema = new Schema<IInvoice>(
     },
     fiscalSubmittedAt: { type: Date },
     isFiscalized: { type: Boolean, default: false },
+    fiscalAttempts: { type: Number, default: 0 },
+    fiscalLastError: { type: String },
+    fiscalNextRetryAt: { type: Date },
+    fiscalNeedsReview: { type: Boolean, default: false },
     receiptNotes: { type: String },
     fiscalData: { type: FiscalDataSchema },
     lines: { type: [InvoiceLineSchema], default: [] },
@@ -208,6 +220,9 @@ const InvoiceSchema = new Schema<IInvoice>(
   },
   { timestamps: true }
 );
+
+// The queue finds invoices that are waiting for another attempt.
+InvoiceSchema.index({ fiscalNextRetryAt: 1 }, { partialFilterExpression: { fiscalNextRetryAt: { $type: "date" } } });
 
 const Invoice =
   models?.Invoice || model<IInvoice>("Invoice", InvoiceSchema);

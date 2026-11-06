@@ -5,15 +5,13 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { TillDto } from "@/lib/services/posTill.service";
 
-/** Admin: how many tills a branch has, and a name and on/off switch for each. */
-export function TillsPanel({ branchId }: { branchId: string }) {
+/** Admin: a branch's tills. Each till has one control (on/off) and one plain status. */
+export function TillsPanel({ branchId, branchEnabled = true }: { branchId: string; branchEnabled?: boolean }) {
   const [tills, setTills] = useState<TillDto[] | null>(null);
-  const [count, setCount] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   const [reloadKey, setReloadKey] = useState(0);
   const reload = useCallback(() => setReloadKey((n) => n + 1), []);
@@ -25,34 +23,24 @@ export function TillsPanel({ branchId }: { branchId: string }) {
       const j = await r.json().catch(() => null);
       if (ignore || !r.ok || !j?.success) return;
       setTills(j.data);
-      setCount(String((j.data as TillDto[]).filter((t) => t.enabled).length));
     })();
     return () => {
       ignore = true;
     };
   }, [branchId, reloadKey]);
 
-  async function apply() {
-    const n = Number(count);
-    if (!Number.isInteger(n) || n < 0 || n > 50) {
-      toast.error("Enter a whole number from 0 to 50");
-      return;
-    }
-    setBusy(true);
+  async function add() {
+    setAdding(true);
     try {
-      const r = await fetch(`/api/pos/branches/${branchId}/tills`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ count: n }),
-      });
+      const r = await fetch(`/api/pos/branches/${branchId}/tills`, { method: "POST" });
       const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.success) toast.error(j?.message ?? "Could not set tills");
+      if (!r.ok || !j?.success) toast.error(j?.message ?? "Could not add a till");
       else {
         setTills(j.data);
-        toast.success(`${n} till${n === 1 ? "" : "s"} on`);
+        toast.success("Till added");
       }
     } finally {
-      setBusy(false);
+      setAdding(false);
     }
   }
 
@@ -68,53 +56,59 @@ export function TillsPanel({ branchId }: { branchId: string }) {
       reload();
       return;
     }
-    const next = (tills ?? []).map((x) => (x.id === t.id ? (j.data as TillDto) : x));
-    setTills(next);
-    setCount(String(next.filter((x) => x.enabled).length));
+    setTills((tills ?? []).map((x) => (x.id === t.id ? (j.data as TillDto) : x)));
   }
+
+  const status = (t: TillDto) =>
+    !t.enabled
+      ? { label: "Off", tone: "text-muted-foreground bg-muted" }
+      : !branchEnabled
+        ? { label: "Waiting for point of sale to be switched on", tone: "text-amber-800 bg-amber-100" }
+        : { label: "Ready", tone: "text-emerald-800 bg-emerald-100" };
 
   return (
     <section className="space-y-4 rounded-xl border bg-background p-5">
-      <div>
-        <h2 className="font-medium">Tills</h2>
-        <p className="text-sm text-muted-foreground">
-          The cash desks in this branch. They all use this branch&apos;s invoice numbers and fiscal device; the till is recorded on each sale so you can trace and report by it.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="till-count">Number of tills</Label>
-          <Input id="till-count" className="w-28" inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value)} />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-medium">Tills</h2>
+          <p className="text-sm text-muted-foreground">
+            A till is one checkout point. All tills in a branch share its receipt numbers and fiscal device, and every sale is recorded against the till that made it.
+          </p>
         </div>
-        <Button type="button" variant="outline" onClick={() => void apply()} disabled={busy || tills === null}>
-          {busy ? "Applying…" : "Apply"}
+        <Button type="button" variant="outline" size="sm" onClick={() => void add()} disabled={adding || tills === null}>
+          {adding ? "Adding…" : "Add a till"}
         </Button>
-        <p className="pb-2 text-xs text-muted-foreground">Tills beyond this number are switched off, not deleted.</p>
       </div>
+      {!branchEnabled && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">Point of sale is off for this branch, so no till can sell yet. Switch it on above and save.</p>
+      )}
       {tills && tills.length > 0 && (
         <ul className="divide-y rounded-md border">
-          {tills.map((t) => (
-            <li key={t.id} className="flex items-center gap-3 px-3 py-2">
-              <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">{t.code}</span>
-              <Input
-                key={t.name}
-                className="h-8 max-w-64"
-                defaultValue={t.name}
-                aria-label={`Name of till ${t.code}`}
-                onBlur={(e) => {
-                  const v = e.target.value.trim();
-                  if (v && v !== t.name) void patch(t, { name: v });
-                }}
-              />
-              <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-                {t.enabled ? "On" : "Off"}
-                <Switch checked={t.enabled} onCheckedChange={(v) => void patch(t, { enabled: v })} aria-label={`Till ${t.code} on or off`} />
-              </div>
-            </li>
-          ))}
+          {tills.map((t) => {
+            const st = status(t);
+            return (
+              <li key={t.id} className="flex flex-wrap items-center gap-3 px-3 py-2">
+                <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">{t.code}</span>
+                <Input
+                  key={t.name}
+                  className="h-8 max-w-64"
+                  defaultValue={t.name}
+                  aria-label={`Name of till ${t.code}`}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v && v !== t.name) void patch(t, { name: v });
+                  }}
+                />
+                <div className="ml-auto flex items-center gap-3">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors duration-150 motion-reduce:transition-none ${st.tone}`}>{st.label}</span>
+                  <Switch checked={t.enabled} onCheckedChange={(v) => void patch(t, { enabled: v })} aria-label={`Till ${t.code} on or off`} />
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
-      {tills && tills.length === 0 && <p className="text-sm text-muted-foreground">No tills yet. Tills are optional: without them, sales are not tied to a till.</p>}
+      {tills && tills.length === 0 && <p className="text-sm text-muted-foreground">No tills yet. Add one so each sale can be traced to the desk that made it.</p>}
     </section>
   );
 }

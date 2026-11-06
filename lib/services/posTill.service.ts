@@ -73,6 +73,16 @@ export async function setTillCount(branchId: string, count: number): Promise<Til
   return listTills(branchId, { includeDisabled: true });
 }
 
+/** Add one new till ("Till 3", ...) to the branch. Existing tills, switched on or off, are left alone. */
+export async function addTill(branchId: string): Promise<TillDto[]> {
+  await dbConnect();
+  const all = await listTills(branchId, { includeDisabled: true });
+  if (all.length >= MAX_TILLS) throw new TillError(`A branch can have up to ${MAX_TILLS} tills`, 400);
+  const next = all.reduce((m, t) => Math.max(m, codeNo(t.code)), 0) + 1;
+  await Till.create({ branchId: new Types.ObjectId(branchId), code: `T${next}`, name: `Till ${next}`, enabled: true });
+  return listTills(branchId, { includeDisabled: true });
+}
+
 export async function updateTill(tillId: string, patch: { name?: string; enabled?: boolean }): Promise<TillDto> {
   await dbConnect();
   const $set: Record<string, unknown> = {};

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { requireAdmin } from "@/lib/auth/role";
 import { resolvePosScope } from "@/lib/auth/pos-scope";
-import { listTills, setTillCount, TillError } from "@/lib/services/posTill.service";
+import { addTill, listTills, setTillCount, TillError } from "@/lib/services/posTill.service";
 
 /**
  * The branch's tills. Cashiers get the enabled ones (to pick which till they are on); an admin can
@@ -41,6 +41,24 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
       return NextResponse.json({ success: false, message: error.message }, { status: error.status });
     }
     const message = error instanceof Error ? error.message : "Failed to set tills";
+    return NextResponse.json({ success: false, message }, { status: 500 });
+  }
+}
+
+/** Admin only: add one more till to the branch. */
+export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const denied = requireAdmin(await auth());
+    if (denied) return denied;
+    const { id } = await context.params;
+    const scoped = await resolvePosScope(await auth(), id);
+    if (!scoped.ok) return scoped.response;
+    return NextResponse.json({ success: true, data: await addTill(id) }, { status: 201 });
+  } catch (error) {
+    if (error instanceof TillError) {
+      return NextResponse.json({ success: false, message: error.message }, { status: error.status });
+    }
+    const message = error instanceof Error ? error.message : "Failed to add till";
     return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

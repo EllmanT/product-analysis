@@ -274,7 +274,7 @@ function SettingsForm({ branch, onSaved }: { branch: PosBranchDto; onSaved: () =
             </div>
           </section>
 
-          <TillsPanel branchId={id} />
+          <TillsPanel branchId={id} branchEnabled={branch.pos.enabled} />
 
           <section className="space-y-4 rounded-xl border bg-background p-5">
             <div>

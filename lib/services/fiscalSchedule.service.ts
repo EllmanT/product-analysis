@@ -218,6 +218,39 @@ It keeps retrying every minute and will be forced after ${CLOSE_DEFER_MAX_MIN} m
 }
 
 /**
+ * Open the day when sales are waiting for it. The scheduled open only fires on one exact minute, so a missed
+ * tick (server restart, cron hiccup) would otherwise leave every sale unfiscalised until tomorrow.
+ * Only acts for a device that is set to open its day automatically, on one of its open weekdays and after
+ * its opening time. Returns true when it opened the day. Never throws.
+ */
+export async function openDayForWaitingSales(deviceKey: string, now = new Date()): Promise<boolean> {
+  if (fiscalBackend() === "service") return false;
+  try {
+    const doc: ScheduleState | undefined =
+      deviceKey === CENTRAL_KEY
+        ? await getFiscalSettingsDoc()
+        : (await listScheduledDevices()).find((x) => String(x._id) === deviceKey);
+    if (!doc || !doc.autoScheduleEnabled || !doc.autoOpenEnabled) return false;
+
+    const tz = doc.timezone?.trim() || "Africa/Harare";
+    const hm = formatInTimeZone(now, tz, "HH:mm");
+    const today = formatInTimeZone(now, tz, "yyyy-MM-dd");
+    const isoDow = Number(formatInTimeZone(now, tz, "i"));
+    const openWeekdays = doc.openWeekdays?.length ? doc.openWeekdays : [1, 2, 3, 4, 5, 6, 7];
+    if (!weekdayMatches(isoDow, openWeekdays)) return false;
+    if (toMinutes(hm) < toMinutes(doc.openTime || "00:05")) return false;
+
+    await openFiscalDayOnly(deviceKey);
+    if (deviceKey === CENTRAL_KEY) await setLastAutoOpenDate(today);
+    else await setDeviceLastAutoOpenDate(deviceKey, today);
+    return true;
+  } catch {
+    // Not opening is the normal "device is not ready" outcome; the queue tries again on its next run.
+    return false;
+  }
+}
+
+/**
  * Intended to be triggered every minute (e.g. cron + CRON_SECRET). Mirrors Laravel fiscal:process-schedules.
  * Runs the central device's schedule and each branch device's own schedule independently: a failing
  * device is reported in the messages and never stops the others.

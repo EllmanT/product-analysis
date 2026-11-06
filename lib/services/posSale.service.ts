@@ -869,7 +869,15 @@ async function runQueueForDevice(deviceKey: string, limit: number, today: string
     stillPending: 0,
   };
 
-  const status = await getPosDeviceStatus(device);
+  let status = await getPosDeviceStatus(device);
+  // Sales are waiting but the fiscal day is closed: open it (if this device is set to) so nobody has to.
+  if (status.reachable && !status.dayOpen) {
+    const waiting = await PosSale.countDocuments({ ...filter, status: { $in: ["UNFISCALISED", "UNKNOWN"] }, soldDate: today, needsApproval: false });
+    if (waiting > 0) {
+      const { openDayForWaitingSales } = await import("@/lib/services/fiscalSchedule.service");
+      if (await openDayForWaitingSales(deviceKey)) status = await getPosDeviceStatus(device);
+    }
+  }
   out.reachable = status.reachable;
   out.dayOpen = status.dayOpen;
   if (!status.reachable) {

@@ -10,7 +10,7 @@ import {
     IconChartLine,
     IconCurrencyDollar
   } from "@tabler/icons-react"
-import { Calendar, FileText, MessageCircle, Package, Receipt, ScanBarcode, Store, Tags, ReceiptText } from "lucide-react"
+import { Calendar, FileText, MessageCircle, Package, Receipt, ScanBarcode, Store, Tags, ReceiptText, Contact } from "lucide-react"
 
 export const mainSidebarLinks = [
     {
@@ -93,6 +93,11 @@ export const mainSidebarLinks = [
       icon: Tags,
     },
     {
+      title: "POS customers",
+      url: "/pos-customers",
+      icon: Contact,
+    },
+    {
       title: "POS settings",
       url: "/pos-settings",
       icon: Store,
@@ -100,9 +105,8 @@ export const mainSidebarLinks = [
     },
 
     {
-      title: "Sales",
+      title: "Fiscal",
       url: "",
-      hidden: true,
     },
     {
       title: "Quotations",
@@ -123,14 +127,12 @@ export const mainSidebarLinks = [
       url: "/fiscal-day",
       icon: Calendar,
       adminOnly: true,
-      hidden: true,
     },
     {
       title: "Central device",
       url: "/fiscal-settings",
       icon: IconSettings,
       adminOnly: true,
-      hidden: true,
     },
     {
       title: "Fiscal devices",
@@ -143,7 +145,6 @@ export const mainSidebarLinks = [
       url: "/z-reports",
       icon: FileText,
       adminOnly: true,
-      hidden: true,
     },
 
     {

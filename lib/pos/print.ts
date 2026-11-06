@@ -1,13 +1,14 @@
+import { a4DocumentHtml } from "@/lib/pos/a4";
 import { isFiscalSlip, slipDocumentHtml, type SlipBranch, type SlipSale } from "@/lib/pos/slip";
 
 /**
- * Print a slip through a hidden iframe. On a till PC running Chrome with `--kiosk-printing`
+ * Print a slip (80mm, the default) or an A4 invoice through a hidden iframe. On a till PC running Chrome with `--kiosk-printing`
  * this goes straight to the default printer with no dialog.
  */
 export async function printSlip(
   sale: SlipSale,
   branch: SlipBranch,
-  opts: { duplicate?: boolean; test?: boolean } = {}
+  opts: { duplicate?: boolean; test?: boolean; format?: "slip" | "a4" } = {}
 ): Promise<void> {
   let qrDataUrl: string | undefined;
   if (isFiscalSlip(sale) && sale.fiscal?.qrCodeUrl) {
@@ -15,7 +16,10 @@ export async function printSlip(
     qrDataUrl = await QRCode.toDataURL(sale.fiscal.qrCodeUrl, { margin: 0, width: 300, errorCorrectionLevel: "M" });
   }
 
-  const html = slipDocumentHtml(sale, branch, { qrDataUrl, duplicate: opts.duplicate, test: opts.test });
+  const html =
+    opts.format === "a4"
+      ? a4DocumentHtml(sale, branch, { qrSrc: qrDataUrl, duplicate: opts.duplicate })
+      : slipDocumentHtml(sale, branch, { qrDataUrl, duplicate: opts.duplicate, test: opts.test });
 
   await new Promise<void>((resolve) => {
     const iframe = document.createElement("iframe");

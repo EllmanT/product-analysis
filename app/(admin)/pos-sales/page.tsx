@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
+
+import PosEmailInvoiceDialog from "@/components/pos/PosEmailInvoiceDialog";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +31,7 @@ interface SaleRow {
   kind?: "SALE" | "CREDIT_NOTE";
   originalNumber?: string;
   creditNoteId?: string;
+  buyer?: { registerName?: string; email?: string };
 }
 
 const harareDate = (d = new Date()) =>
@@ -76,6 +80,7 @@ export default function PosSalesPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [creditFor, setCreditFor] = useState<string | null>(null);
   const [creditReason, setCreditReason] = useState("");
+  const [emailRow, setEmailRow] = useState<SaleRow | null>(null);
   const reload = useCallback(() => setReloadKey((n) => n + 1), []);
 
   useEffect(() => {
@@ -155,8 +160,8 @@ export default function PosSalesPage() {
   }
 
   function exportCsv() {
-    const header = ["Date", "Time", "Branch", "Document", "Number", "Provisional", "Original invoice", "Currency", "Total", "Status", "Offline sale"];
-    const lines = shown.map((r) => [r.soldDate, timeOf(r.soldAt), nameOf.get(r.branchId) ?? r.branchId, r.kind === "CREDIT_NOTE" ? "Credit note" : "Sale", r.invoiceNumber ?? "", r.provisionalNumber ?? "", r.originalNumber ?? "", r.currency, r.totalAmount.toFixed(2), STATUS_LABEL[r.status]?.label ?? r.status, r.offline ? "yes" : ""]);
+    const header = ["Date", "Time", "Branch", "Customer", "Document", "Number", "Provisional", "Original invoice", "Currency", "Total", "Status", "Offline sale"];
+    const lines = shown.map((r) => [r.soldDate, timeOf(r.soldAt), nameOf.get(r.branchId) ?? r.branchId, r.buyer?.registerName ?? "Cash sale", r.kind === "CREDIT_NOTE" ? "Credit note" : "Sale", r.invoiceNumber ?? "", r.provisionalNumber ?? "", r.originalNumber ?? "", r.currency, r.totalAmount.toFixed(2), STATUS_LABEL[r.status]?.label ?? r.status, r.offline ? "yes" : ""]);
     const csv = [header, ...lines].map((l) => l.map(csvEscape).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     const a = document.createElement("a");
@@ -389,6 +394,7 @@ export default function PosSalesPage() {
             <thead>
               <tr className="border-b">
                 <Head>Invoice</Head>
+                <Head>Customer</Head>
                 <Head>When</Head>
                 {isAdmin && !branchId && <Head>Branch</Head>}
                 <Head right>Total</Head>
@@ -408,10 +414,15 @@ export default function PosSalesPage() {
                 return (
                   <tr key={r._id} className="border-b last:border-0">
                     <Cell strong>
-                      {r.invoiceNumber ?? r.provisionalNumber ?? "—"}
+                      <Link href={`/pos-sales/${r._id}`} className="underline-offset-4 hover:underline">
+                        {r.invoiceNumber ?? r.provisionalNumber ?? "—"}
+                      </Link>
                       {r.invoiceNumber && r.provisionalNumber && !isCreditRow(r) && <span className="ml-2 text-xs font-normal text-muted-foreground">was {r.provisionalNumber}</span>}
                       {isCreditRow(r) && r.originalNumber && <span className="ml-2 text-xs font-normal text-muted-foreground">for {r.originalNumber}</span>}
                       {!isCreditRow(r) && r.creditNoteId && <span className="ml-2 text-xs font-normal text-muted-foreground">credited</span>}
+                    </Cell>
+                    <Cell>
+                      {r.buyer?.registerName ? r.buyer.registerName : <span className="text-muted-foreground">Cash sale</span>}
                     </Cell>
                     <Cell>
                       <span className="tabular-nums">
@@ -448,7 +459,17 @@ export default function PosSalesPage() {
                         </form>
                       )}
                     </Cell>
-                    <td className="px-3 py-2 text-right">
+                    <td className="space-x-2 whitespace-nowrap px-3 py-2 text-right">
+                      {["FISCALISED", "UNFISCALISED", "UNKNOWN"].includes(r.status) && (
+                        <>
+                          <Button size="sm" variant="outline" asChild>
+                            <Link href={`/pos-sales/${r._id}`}>View</Link>
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setEmailRow(r)}>
+                            Email
+                          </Button>
+                        </>
+                      )}
                       {canCredit && (
                         <Button size="sm" variant="outline" onClick={() => { setCreditFor(creditFor === r._id ? null : r._id); setCreditReason(""); }}>
                           Credit note
@@ -465,14 +486,14 @@ export default function PosSalesPage() {
               })}
               {rows && shown.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-10 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-3 py-10 text-center text-muted-foreground">
                     No sales match.
                   </td>
                 </tr>
               )}
               {!rows && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-10 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-3 py-10 text-center text-muted-foreground">
                     Loading…
                   </td>
                 </tr>
@@ -482,6 +503,14 @@ export default function PosSalesPage() {
         </div>
         {rows && rows.length === 500 && <p className="border-t px-3 py-2 text-xs text-muted-foreground">Showing the latest 500 sales. Narrow the dates or filter to see others.</p>}
       </section>
+
+      <PosEmailInvoiceDialog
+        open={!!emailRow}
+        onClose={() => setEmailRow(null)}
+        saleId={emailRow?._id ?? ""}
+        defaultEmail={emailRow?.buyer?.email}
+        customerName={emailRow?.buyer?.registerName}
+      />
     </div>
   );
 }

@@ -47,9 +47,9 @@ export function DeviceTopologyPanel({ branches, onChanged }: { branches: PosBran
   return (
     <section className="space-y-4 rounded-xl border bg-background p-5">
       <div>
-        <h2 className="font-medium">Fiscal devices by branch</h2>
+        <h2 className="font-medium">Which device does each branch use?</h2>
         <p className="text-sm text-muted-foreground">
-          Choose which device each branch sells through. New sales use the choice at once; sales already waiting stay with the device they were made on.
+          Each branch reports its sales to ZIMRA through one device. The central device is shared by every branch without its own. Changes apply to new sales at once; sales already waiting stay with the device they were made on.
         </p>
       </div>
       <div className="flex flex-wrap gap-2 text-xs">

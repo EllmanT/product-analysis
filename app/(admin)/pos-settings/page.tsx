@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { CENTRAL, DeviceSelect } from "@/components/fiscal/DeviceSelect";
+import { useFiscalDevices } from "@/components/fiscal/DeviceSelect";
 import { DeviceTopologyPanel } from "@/components/pos/DeviceTopologyPanel";
 import { TillsPanel } from "@/components/pos/TillsPanel";
 import { Button } from "@/components/ui/button";
@@ -126,6 +126,7 @@ export default function PosSettingsPage() {
 function SettingsForm({ branch, onSaved }: { branch: PosBranchDto; onSaved: () => void }) {
   const id = branch.id;
   const [form, setForm] = useState<Form>(() => toForm(branch));
+  const { devices } = useFiscalDevices();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -247,15 +248,11 @@ function SettingsForm({ branch, onSaved }: { branch: PosBranchDto; onSaved: () =
                 <Input value={form.taxCode} maxLength={4} onChange={(e) => set("taxCode", e.target.value.toUpperCase())} />
               </Field>
             </div>
-            <DeviceSelect
-              value={form.fiscalDeviceId || CENTRAL}
-              onChange={(k) => set("fiscalDeviceId", k === CENTRAL ? "" : k)}
-              label="Fiscal device"
-              activeOnly
-            />
-            {form.fiscalDeviceId !== (branch.pos.fiscalDeviceId ?? "") && (
-              <p className="text-xs text-muted-foreground">
-                New sales will use the selected device. Sales still waiting to be fiscalised stay with the device they were made on.
+            {devices.length > 0 && (
+              <p className="text-sm">
+                <span className="text-muted-foreground">Fiscal device: </span>
+                <span className="font-medium">{form.fiscalDeviceId ? (devices.find((d) => d.id === form.fiscalDeviceId)?.name ?? "Unknown device") : "Central device"}</span>
+                <span className="text-muted-foreground"> · change it in &ldquo;Which device does each branch use?&rdquo; at the top of this page.</span>
               </p>
             )}
             <div className="space-y-2 border-t pt-4">

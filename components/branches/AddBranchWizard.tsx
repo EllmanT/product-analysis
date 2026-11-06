@@ -233,7 +233,7 @@ export default function AddBranchWizard({ onCreated }: { onCreated: () => void }
     }
   }
 
-  const deviceName = form.deviceChoice === "own" ? (devices.find((d) => d.id === form.deviceId)?.name ?? "its own device") : "the shared device";
+  const deviceName = form.deviceChoice === "own" ? (devices.find((d) => d.id === form.deviceId)?.name ?? "its own device") : "the central device";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -260,7 +260,7 @@ export default function AddBranchWizard({ onCreated }: { onCreated: () => void }
               </DialogTitle>
               <DialogDescription>
                 {step === 0 && "You can change these later."}
-                {step === 1 && "The fiscal device is what reports each sale to ZIMRA. Most branches share one."}
+                {step === 1 && "The fiscal device is what reports each sale to ZIMRA. Most branches use the central device."}
                 {step === 2 && "Cashiers only ever see their till. Fiscal days open and close on their own."}
                 {step === 3 && "We filled in what we could. Everything here is optional."}
               </DialogDescription>
@@ -284,8 +284,8 @@ export default function AddBranchWizard({ onCreated }: { onCreated: () => void }
                     selected={form.deviceChoice === "shared"}
                     onSelect={() => set("deviceChoice", "shared")}
                     icon={<Share2 className="size-4" />}
-                    title="Use the shared device"
-                    body="Sales go through the same device as your other branches. This is the usual choice."
+                    title="Use the central device"
+                    body="The device shared by every branch that has none of its own. This is the usual choice."
                   />
                   <ChoiceCard
                     selected={form.deviceChoice === "own"}

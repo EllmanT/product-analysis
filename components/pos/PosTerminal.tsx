@@ -1,6 +1,7 @@
 "use client";
 
-import { FileImage, Loader2, LogOut, Printer, ReceiptText, Smartphone, Trash2, TriangleAlert } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, FileImage, Loader2, LogOut, Printer, ReceiptText, Smartphone, Trash2, TriangleAlert } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -795,6 +796,12 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
             {isAdmin ? " · administrator" : ""}
           </div>
         </div>
+
+        {canCredit && (
+          <Link href="/pos/tills" className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs transition-transform duration-150 hover:bg-accent active:scale-[0.97]">
+            <ArrowLeft className="size-3.5" aria-hidden /> Back to admin
+          </Link>
+        )}
 
         {tills.length > 0 && (
           <label className="inline-flex items-center gap-2 text-xs">

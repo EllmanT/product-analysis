@@ -24,7 +24,7 @@ export const PAGE_PERMISSIONS: PermissionDef[] = [
   { key: "/products", title: "Stock products", section: "Insights" },
   { key: "/branch-up-reports", title: "Branch upload status", section: "Insights" },
   { key: "/ai-agent", title: "Ask AI", section: "Insights" },
-  { key: "/pos", title: "Open till", section: "Point of sale" },
+  { key: "/pos", title: "Tills", section: "Point of sale" },
   { key: "/pos-sales", title: "POS sales", section: "Point of sale" },
   { key: "/pos-products", title: "POS products", section: "Point of sale" },
   { key: "/pos-customers", title: "POS customers", section: "Point of sale" },

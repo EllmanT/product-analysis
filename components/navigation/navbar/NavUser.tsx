@@ -84,9 +84,11 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <IconUserCircle />
-                Account
+              <DropdownMenuItem asChild>
+                <a href="/profile">
+                  <IconUserCircle />
+                  My profile
+                </a>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <IconCreditCard />

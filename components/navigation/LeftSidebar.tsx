@@ -16,6 +16,7 @@ import {
 import { IconInnerShadowTop, IconLock } from "@tabler/icons-react"
 import { mainSidebarLinks, secondarySidebarLinks } from "@/constants/constants"
 import { pruneEmptySections } from "@/lib/auth/menu-access"
+import { pageKeyForPath } from "@/lib/auth/permissions"
 import { normalizeRole } from "@/lib/auth/role"
 import { useSession } from "next-auth/react"
 
@@ -48,7 +49,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       // Wait for the rules so a page that is not theirs never flashes up first.
       if (!access?.allowed) return [];
       const allowed = new Set(access.allowed);
-      items = items.filter((item) => !item.url || allowed.has(item.url));
+      items = items.filter((item) => !item.url || allowed.has(pageKeyForPath(item.url) ?? item.url));
     }
     if (access?.isSuperAdmin) {
       items = [...items, { title: "Menu access", url: "/access", icon: IconLock }];

@@ -78,8 +78,8 @@ export const mainSidebarLinks = [
       url: "",
     },
     {
-      title: "Open till",
-      url: "/pos",
+      title: "Tills",
+      url: "/pos/tills",
       icon: ScanBarcode,
     },
     {

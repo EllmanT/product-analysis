@@ -26,7 +26,7 @@ const ok = (name: string, fn: () => void) => {
 
 ok("every menu item has a permission, so a new page cannot be left uncontrolled", () => {
   const known = new Set([...PAGE_PERMISSIONS.map((p) => p.key), "/admin/quotations", "/admin/invoices", "/exchange-rates"]);
-  const missing = (mainSidebarLinks as { url: string }[]).filter((l) => l.url && !known.has(l.url)).map((l) => l.url);
+  const missing = (mainSidebarLinks as { url: string }[]).filter((l) => l.url && !known.has(pageKeyForPath(l.url) ?? l.url)).map((l) => l.url);
   assert.deepEqual(missing, []);
 });
 

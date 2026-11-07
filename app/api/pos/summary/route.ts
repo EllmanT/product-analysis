@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import { Types } from "mongoose";
 
 import { auth } from "@/auth";
+import Branch from "@/database/branch.model";
 import PosSale from "@/database/posSale.model";
 import { resolvePosScope } from "@/lib/auth/pos-scope";
 import dbConnect from "@/lib/mongoose";
 import { DeviceConfigError, resolveDeviceByKey, resolveDeviceForBranch } from "@/lib/services/fiscalDevice.service";
+import { fiscalBackend } from "@/lib/fiscal/client";
+import { getServiceDeviceHealth } from "@/lib/services/fiscalServiceStatus.service";
+import { deviceKeyForBranch } from "@/lib/services/fiscalDevice.service";
 import { getPosSummary } from "@/lib/services/posSale.service";
 import { getPosDeviceStatus } from "@/lib/services/zimraPosDevice.service";
 
@@ -26,6 +30,12 @@ export async function GET(request: Request) {
     // The till shows its own branch's device. An admin looking across branches sees the central one.
     const deviceStatus = async () => {
       try {
+        if (fiscalBackend() === "service") {
+          // The branch's own device, or the central one. ZIMRA is asked through the fiscal service, not a Virtual Device.
+          const key = scope.branchId ? deviceKeyForBranch(await Branch.findById(scope.branchId).select("pos.fiscalDeviceId").lean<{ pos?: { fiscalDeviceId?: string | null } }>()) : undefined;
+          const h = await getServiceDeviceHealth(key);
+          return { ...h, lastReceiptGlobalNo: null };
+        }
         const d = scope.branchId ? await resolveDeviceForBranch(scope.branchId) : await resolveDeviceByKey();
         return await getPosDeviceStatus(d);
       } catch (e) {

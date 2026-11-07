@@ -1,5 +1,6 @@
 "use client";
 
+import { SalesTiles, type QueuedTotal, type TotalsRow } from "@/components/pos/DayTotals";
 import { Loader2, Mail, Printer, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -75,6 +76,8 @@ const time = (iso: string) =>
   new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Harare", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
 
 interface Props {
+  /** The branch's totals for today, shown as the heading. */
+  totals?: Partial<Record<"USD" | "ZWG", TotalsRow>>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   branch: PosBranchDto;
@@ -88,7 +91,7 @@ interface Props {
   isAdmin?: boolean;
 }
 
-export default function SalesSheet({ open, onOpenChange, branch, onChanged, queued = [], reachable = true, canCredit = false, isAdmin = false }: Props) {
+export default function SalesSheet({ totals, open, onOpenChange, branch, onChanged, queued = [], reachable = true, canCredit = false, isAdmin = false }: Props) {
   const [rows, setRows] = useState<SaleRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -190,6 +193,15 @@ export default function SalesSheet({ open, onOpenChange, branch, onChanged, queu
             This branch only. Anything still sending is retried automatically.
           </SheetDescription>
         </SheetHeader>
+
+        {totals && (
+          <div className="border-b px-4 py-3">
+            <SalesTiles
+              rows={totals}
+              queued={queued.map((q): QueuedTotal => ({ currency: (q.display as { currency?: string }).currency === "ZWG" ? "ZWG" : "USD", total: Number((q.display as { totalAmount?: number }).totalAmount) || 0 }))}
+            />
+          </div>
+        )}
 
         <div className="flex items-center justify-between px-4 py-2 text-xs text-muted-foreground">
           <span>{rows ? `${rows.length} sale${rows.length === 1 ? "" : "s"}` : "Loading…"}</span>

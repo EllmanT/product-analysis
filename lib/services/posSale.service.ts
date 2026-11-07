@@ -1144,6 +1144,11 @@ export interface PosSummaryRow {
   /** Fiscal credit notes (negative amounts). Not included in `fiscalised`. */
   credit: { count: number; total: number };
   pending: { count: number; total: number };
+  /**
+   * Everything still waiting for a fiscal receipt, whatever day it was sold. `pending` only covers the day asked
+   * for, so a sale from yesterday that never went through would vanish from the running figure.
+   */
+  waiting: { count: number; total: number };
   failed: number;
   voided: number;
 }
@@ -1177,9 +1182,17 @@ export async function getPosSummary(opts: {
   ]);
 
   const out: Record<PosCurrency, PosSummaryRow> = {
-    USD: { currency: "USD", fiscalised: { count: 0, total: 0, vat: 0 }, credit: { count: 0, total: 0 }, pending: { count: 0, total: 0 }, failed: 0, voided: 0 },
-    ZWG: { currency: "ZWG", fiscalised: { count: 0, total: 0, vat: 0 }, credit: { count: 0, total: 0 }, pending: { count: 0, total: 0 }, failed: 0, voided: 0 },
+    USD: { currency: "USD", fiscalised: { count: 0, total: 0, vat: 0 }, credit: { count: 0, total: 0 }, pending: { count: 0, total: 0 }, waiting: { count: 0, total: 0 }, failed: 0, voided: 0 },
+    ZWG: { currency: "ZWG", fiscalised: { count: 0, total: 0, vat: 0 }, credit: { count: 0, total: 0 }, pending: { count: 0, total: 0 }, waiting: { count: 0, total: 0 }, failed: 0, voided: 0 },
   };
+  const waitingMatch: Record<string, unknown> = { status: { $in: ["PENDING", "SUBMITTING", "UNFISCALISED", "UNKNOWN"] } };
+  if (opts.branchId) waitingMatch.branchId = new Types.ObjectId(opts.branchId);
+  if (!opts.includeTest) waitingMatch.isTest = { $ne: true };
+  const waiting = await PosSale.aggregate<{ _id: PosCurrency; count: number; total: number }>([
+    { $match: waitingMatch },
+    { $group: { _id: "$currency", count: { $sum: 1 }, total: { $sum: "$totalAmount" } } },
+  ]);
+  for (const w of waiting) if (out[w._id]) out[w._id].waiting = { count: w.count, total: round2(w.total) };
   for (const r of rows) {
     const o = out[r._id.currency];
     if (!o) continue;

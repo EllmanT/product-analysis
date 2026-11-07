@@ -296,3 +296,19 @@ Grant the branch manager **Users**.
 - The e-commerce shop and quotations (untouched on purpose).
 - The `posSale.service.ts` and `constants/constants.ts` edits that were already in your working tree before this work.
 - Renewing the ZIMRA device certificate that is still in git history.
+
+## 12. Till status and totals (cashier and admin)
+
+Needs the fiscal service (section 0.5) with a device that is `FiscalDayClosed` or open that you may use.
+
+| # | Step | Expected | P/F | Notes |
+|---|---|---|---|---|
+| 12.1 | Sign in as a cashier and look at the top bar of the till. | A status chip is there: green 'Fiscal day N open', amber 'Fiscal day closed. Receipts will be provisional.' or red 'Fiscal device unreachable. Receipts will be provisional.' (same words as an administrator). | | |
+| 12.2 | Open the fiscal day on the branch's device, reload the till. | The chip turns green with the day number. | | |
+| 12.3 | Stop `fiscal-service`, wait about 20 seconds. | The chip turns red. The till still sells. Start the service again; the chip recovers. | | |
+| 12.4 | Look at 'Sales today'. | Per currency a large invoice count with the total beneath. | | |
+| 12.5 | With the service stopped, sell twice. | Big numbers do not change. An amber line reads '2 waiting · <total>'. | | |
+| 12.6 | Go offline in DevTools and sell once. | The waiting line counts it at once. | | |
+| 12.7 | Press **F8**. | Heading tiles: Fiscalised, Waiting for ZIMRA, Credit notes, Failed or voided, per currency. | | |
+| 12.8 | As an admin open **POS sales**. | The same four tiles sit above the Totals table for the chosen range. | | |
+| 12.9 | Open **Fiscal day** as an admin. | It loads the device's status through the fiscal service (no HTTP 404 about `/api/VirtualDevice`). Open, preview and close work. | | |

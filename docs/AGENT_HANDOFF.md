@@ -116,7 +116,7 @@ Checkout and payments are off unless `NEXT_PUBLIC_SHOP_CHECKOUT_ENABLED=true`. A
 
 1. Setup flows first (wizards), then roles, cashier mode and clarity.
 2. Automatic fiscal day open/close is ON by default for new devices; the day also opens when a sale is waiting.
-3. Cashiers never see fiscal jargon or device state; only administrators do. A sale is never rejected because of ZIMRA.
+3. Cashiers see the fiscal day and device state in the till's top bar (owner decision 2026-11-07) but never error codes or device management. A sale is never rejected because of ZIMRA.
 4. Sales from an earlier day are pushed to the day that is open when the system recovers (no approval).
 5. Open/close times stay with the device.
 6. Full role-based access: any page or action can be granted to Branch manager or Cashier; Admin is fixed; no per-person overrides.

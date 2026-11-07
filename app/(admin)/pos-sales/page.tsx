@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 
+import { SalesTiles } from "@/components/pos/DayTotals";
 import PosEmailInvoiceDialog from "@/components/pos/PosEmailInvoiceDialog";
 
 import { Button } from "@/components/ui/button";
@@ -263,6 +264,8 @@ export default function PosSalesPage() {
           </button>
         </div>
       )}
+
+      {data && <SalesTiles rows={data.totals} />}
 
       <section className="rounded-xl border bg-background">
         <h2 className="border-b px-3 py-2 text-sm font-medium">Totals</h2>

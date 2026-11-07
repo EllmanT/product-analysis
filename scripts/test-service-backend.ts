@@ -301,6 +301,17 @@ async function main() {
   }
   check(/certificate/i.test(unlinkedErr), "a device with no certificate cannot be made central", unlinkedErr);
 
+  console.log("9. The waiting total keeps every unfiscalised sale, whatever day it was sold");
+  const staleSale = await sell(bid, 3);
+  await PosSale.updateOne({ _id: staleSale._id }, { $set: { status: "UNFISCALISED", soldDate: "2026-01-01" } });
+  const sumNow = await pos.getPosSummary({ branchId: bid });
+  const usdRow = sumNow.find((r) => r.currency === "USD")!;
+  check(usdRow.waiting.count >= 1 && usdRow.waiting.total >= 6, "a sale left unfiscalised from an earlier day is still in the waiting figure", usdRow.waiting);
+  check(!usdRow.pending.total || usdRow.pending.total < usdRow.waiting.total, "while today's own pending figure does not include it", { pending: usdRow.pending, waiting: usdRow.waiting });
+  const { getServiceDeviceHealth } = await import("@/lib/services/fiscalServiceStatus.service");
+  const health = await getServiceDeviceHealth(String(appDevice._id)).catch((e) => ({ reachable: false, message: String(e) }));
+  check(typeof health.reachable === "boolean", "the till's device status comes from the fiscal service, not a Virtual Device", health);
+
   await manager.shutdown();
   await new Promise<void>((r) => server.close(() => r()));
   await gw.stop();

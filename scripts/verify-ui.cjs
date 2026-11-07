@@ -79,8 +79,8 @@ const shot = async (page, name) => {
     await p.goto(BASE + "/fiscal-settings", { waitUntil: "networkidle" });
     await p.waitForTimeout(1500);
     const body = await p.locator("body").innerText();
-    note(/Central device/.test(body), "central device page loads (shared editor, or a pointer to Fiscal devices with the fiscal service)");
-    const serviceMode = /Make central|chosen on Fiscal devices|Go to Fiscal devices/.test(body);
+    note(/Fiscal devices/.test(body) || /Central device/.test(body), "old central device address forwards to Fiscal devices (service) or shows the editor (legacy)");
+    const serviceMode = p.url().includes("/fiscal-devices");
     note(serviceMode || /Automatic open and close/.test(body), "central page has the schedule section (legacy) or points to Fiscal devices (service)");
     note(serviceMode || /Certificate/.test(body), "central page has the certificate section (legacy)");
     note(!/Fiscal service device id/.test(body), "central page hides branch-only fields");

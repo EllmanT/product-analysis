@@ -34,7 +34,7 @@ export default function FiscalDayPage() {
   const [lastZReportId, setLastZReportId] = useState<string | null>(null);
   // Each branch device has its own fiscal day; "central" is the shared one.
   const [deviceKey, setDeviceKey] = useState<string>(CENTRAL);
-  const { devices } = useFiscalDevices();
+  const { devices, backend } = useFiscalDevices();
   const centralName = devices.find((d) => d.isCentral)?.name;
   const deviceName = deviceKey === CENTRAL ? (centralName ? `Central device (${centralName})` : "Central device") : (devices.find((d) => d.id === deviceKey)?.name ?? "Device");
 
@@ -110,7 +110,7 @@ export default function FiscalDayPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/fiscal-settings">Fiscalization settings</Link>
+            <Link href={backend === "service" ? "/fiscal-devices" : "/fiscal-settings"}>{backend === "service" ? "Fiscal devices" : "Fiscalization settings"}</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
             <Link href="/z-reports">Z-reports</Link>

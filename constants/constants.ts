@@ -129,12 +129,6 @@ export const mainSidebarLinks = [
       adminOnly: true,
     },
     {
-      title: "Central device",
-      url: "/fiscal-settings",
-      icon: IconSettings,
-      adminOnly: true,
-    },
-    {
       title: "Fiscal devices",
       url: "/fiscal-devices",
       icon: IconBuildingStore,

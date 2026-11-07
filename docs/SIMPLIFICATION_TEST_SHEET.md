@@ -65,7 +65,7 @@ Go to **Fiscal devices**.
 
 | # | Step | Expected | P/F | Notes |
 |---|---|---|---|---|
-| 3.1 | With no devices yet. | Empty state asks you to upload the certificate zip ZIMRA gave you. There is no **Central device settings** button. | | |
+| 3.1 | With no devices yet. | Empty state asks you to upload the certificate zip ZIMRA gave you. There is no **Central device** button or menu entry. | | |
 | 3.2 | Click **Add device**. Leave the name empty, Continue. | Asks for a name. | | |
 | 3.3 | Name it `ZIMRA test 31728`, keep **Test device**. Look for "Use a different ZIMRA address". | There is no such option with the fiscal service (legacy only). Continue. | | |
 | 3.4 | Continue to step 2. Choose **I have the zip**. Click Continue without a file. | Asks you to choose the zip. | | |
@@ -194,7 +194,7 @@ Use one browser per role: an admin, a branch manager (assigned to a branch) and 
 
 | # | Step | Expected | P/F | Notes |
 |---|---|---|---|---|
-| 7.16 | Grant the branch manager **Fiscal day** only (on top of Standard) and save. | After a page reload the menu shows Fiscal day. The page opens and loads status. Fiscal devices and Central device stay refused. | | |
+| 7.16 | Grant the branch manager **Fiscal day** only (on top of Standard) and save. | After a page reload the menu shows Fiscal day. The page opens and loads status. Fiscal devices stays refused. | | |
 | 7.17 | Grant the branch manager **POS settings**. Open it. | They can change their **own** branch's settings. | | |
 | 7.18 | As that branch manager, try to change another branch's settings (use the browser network tab to send a PATCH to `/api/pos/branches/<other branch id>`). | Refused (403). | | |
 | 7.19 | Same manager: try bulk device assignment including another branch. | Refused. | | |
@@ -234,7 +234,7 @@ Grant the branch manager **Users**.
 
 | # | Step | Expected | P/F | Notes |
 |---|---|---|---|---|
-| 7.34 | Open **Central device** in the menu. | Fiscal service: a short page explaining the central device is chosen on **Fiscal devices** with a button to go there. (Legacy: the same layout as a branch device, with the branches on the central device listed.) | | |
+| 7.34 | Look in the menu for **Central device**, then type `/fiscal-settings` in the address bar. | There is no Central device menu entry. With the fiscal service the address forwards to **Fiscal devices**. (Legacy: the page still shows the shared editor.) | | |
 | 7.35 | On Fiscal devices open **Settings** for the Central device, change the open time and the weekdays, Save settings. | Saved; the page reloads with the new values. | | |
 | 7.36 | Certificate section: choose **Folder of certificate files**, pick `certificates_<id>`, click **Check the files first**. | A report lists the files that will be used, anything missing, and warnings. Then **Upload certificate** stores it. | | |
 | 7.37 | Open a branch device with **Settings**. | It has the same weekday buttons and the folder option. | | |
@@ -253,8 +253,8 @@ Grant the branch manager **Users**.
 
 | # | Where | Expected | P/F | Notes |
 |---|---|---|---|---|
-| 8.1 | Sidebar | Upload history, Upload stock, Stock products, Branch upload status, Fiscal day, Central device (opens a pointer to Fiscal devices with the fiscal service), Day-end reports. No "Downloads" heading. "Ask AI" sits under Insights. | | |
-| 8.2 | Each page heading | Matches its menu entry (Upload history, Branch upload status, Fiscal day, Day-end reports (Z-reports), Central device settings). | | |
+| 8.1 | Sidebar | Upload history, Upload stock, Stock products, Branch upload status, Fiscal day, Fiscal devices, Day-end reports. There is no Central device entry. No "Downloads" heading. "Ask AI" sits under Insights. | | |
+| 8.2 | Each page heading | Matches its menu entry (Upload history, Branch upload status, Fiscal day, Day-end reports (Z-reports), Fiscal devices). | | |
 | 8.3 | **Stock products** | Card reads "Out of stock" with "Products with no units left". Filter tab and badge read "Out of stock". | | |
 | 8.4 | Hover the filter tabs | Each shows its rule (Low Stock: fewer than 10 units, High Value: top 25%, Inactive: marked inactive). | | |
 | 8.5 | **Branch Analytics** and **Product sales trend** charts (menu entry was "Product Movement") | Subtitle explains that sales are estimated from the drop in stock between uploads and that restocking can hide sales. | | |

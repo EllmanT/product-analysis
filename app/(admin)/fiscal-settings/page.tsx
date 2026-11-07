@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useFiscalDevices } from "@/components/fiscal/DeviceSelect";
@@ -60,6 +61,7 @@ function asDevice(s: FiscalSettingsSafe, branches: { id: string; name: string }[
 }
 
 export default function FiscalSettingsPage() {
+  const router = useRouter();
   const { backend, loaded: backendKnown } = useFiscalDevices();
   const [data, setData] = useState<{ settings: FiscalSettingsSafe; branches: { id: string; name: string }[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,23 +100,11 @@ export default function FiscalSettingsPage() {
 
   const device = data ? asDevice(data.settings, data.branches) : null;
 
-  // With the fiscal service there is no separate central setup: any added device can be made central.
-  if (backendKnown && backend === "service") {
-    return (
-      <div className="mx-auto w-full max-w-4xl space-y-4 p-4 lg:p-6">
-        <h1 className="text-xl font-semibold">Central device settings</h1>
-        <div className="space-y-3 rounded-xl border bg-background p-6 text-sm">
-          <p>
-            The central device is now one of the devices you add on <strong>Fiscal devices</strong>. Add its certificate zip there, then use <strong>Make central</strong> on the one you want.
-            Its times and certificate are changed under that device&apos;s Settings.
-          </p>
-          <Button size="sm" asChild>
-            <Link href="/fiscal-devices">Go to Fiscal devices</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // With the fiscal service every device, central or not, is managed on Fiscal devices. This address only forwards there.
+  useEffect(() => {
+    if (backendKnown && backend === "service") router.replace("/fiscal-devices");
+  }, [backendKnown, backend, router]);
+  if (!backendKnown || backend === "service") return <p className="p-6 text-sm text-muted-foreground">Opening Fiscal devices…</p>;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-4 lg:p-6">

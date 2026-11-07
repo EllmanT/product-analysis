@@ -62,7 +62,7 @@ SECTIONS = [
         "groups": [{"rows": [
             r("NAV-01", "Admin", "Read the sidebar.", "Dashboard; Uploads (Upload history, Upload stock); Insights (Branch Analytics, Product sales trend, Stock products, Branch upload status, Ask AI); Point of sale (Open till, POS sales, POS products, POS customers, POS settings); Fiscal (Fiscal day, Central device, Fiscal devices, Day-end reports); Team (Users, Branches); Menu access for a super admin.", "CHANGED"),
             r("NAV-02", "Admin", "Check there is no 'Downloads' heading and Ask AI sits under Insights.", "Correct.", "CHANGED"),
-            r("NAV-03", "Admin", "Open each page and compare its heading with its menu name.", "They match: Upload history, Branch upload status, Fiscal day, Day-end reports (Z-reports), Central device settings, Exchange rates.", "CHANGED"),
+            r("NAV-03", "Admin", "Open each page and compare its heading with its menu name.", "They match: Upload history, Branch upload status, Fiscal day, Day-end reports (Z-reports), Exchange rates.", "CHANGED"),
             r("NAV-04", "Anyone", "Open /dashboard-2 and /archived-reports.", "Both are gone (404).", "CHANGED"),
             r("NAV-05", "Branch manager", "Read the sidebar with the default setup.", "No Fiscal or Team sections and no empty headings.", "NEW"),
             r("NAV-06", "Admin", "Use the menu to open every entry once.", "Every page loads without an error.", ""),
@@ -93,7 +93,7 @@ SECTIONS = [
                 r("SEC-13", "Technical", "Run npm run check:guards.", "'All non-public API routes have an auth check.' Adding a new unguarded route makes it fail.", "NEW TECH"),
                 r("SEC-14", "Branch manager", "Call /api/products/export/branch?branchId=<a branch of ANOTHER store>&startDate=2026-01-01&endDate=2026-12-31.", "403.", "NEW TECH"),
                 r("SEC-15", "Technical", "Open the sign-in page, disable JavaScript, submit the form.", "The credentials never appear in the address bar or the server log.", "NEW TECH"),
-                r("SEC-16", "Technical", "Check what leaves the server: open the Network tab on Fiscal devices and Central device.", "No private key, PFX, password or activation key is ever in a response.", "NEW TECH"),
+                r("SEC-16", "Technical", "Check what leaves the server: open the Network tab on Fiscal devices.", "No private key, PFX, password or activation key is ever in a response.", "NEW TECH"),
                 r("SEC-17", "Super admin", "Try to give Branch manager Menu access, Exchange rates, Quotations, Invoices or the shop homepage settings.", "Not possible: those are admin only.", "NEW"),
                 r("SEC-18", "Technical", "Run npm run verify:ui (app running).", "29 checks pass for admin, branch manager and cashier; screenshots are saved.", "NEW TECH"),
                 r("SEC-19", "Technical", "Make two tills sell at the same moment on one device (SALE-33 with a stopwatch).", "No duplicate invoice numbers, no gaps, no repeated receipts at the device.", "NEW EDGE"),

@@ -115,7 +115,7 @@ SECTIONS = [
                 r("ACC-17", "Branch manager", "Look at the sidebar when a whole section is switched off for the role.", "The section heading disappears too. There are no empty headings.", "NEW"),
             ]},
             {"title": "4.3 Granting more than the default", "rows": [
-                r("ACC-18", "Super admin, Branch manager", "Grant Fiscal day to the branch manager only and save. They reload.", "Fiscal day appears and opens. Fiscal devices and Central device are still refused.", "NEW"),
+                r("ACC-18", "Super admin, Branch manager", "Grant Fiscal day to the branch manager only and save. They reload.", "Fiscal day appears and opens. Fiscal devices is still refused.", "NEW"),
                 r("ACC-19", "Branch manager", "Grant POS settings. Open it.", "They can change their OWN branch's settings.", "NEW"),
                 r("ACC-20", "Branch manager", "In the console send PATCH /api/pos/branches/<another branch id> with {\"invoicePrefix\":\"ZZ\"}.", "Refused (403). The other branch is unchanged.", "NEW TECH EDGE"),
                 r("ACC-21", "Branch manager", "POST /api/pos/branches/assign-device with a branchIds list that includes another branch.", "Refused.", "NEW TECH EDGE"),
@@ -168,7 +168,7 @@ SECTIONS = [
         ],
         "groups": [
             {"title": "6.1 Adding a device", "rows": [
-                r("DEV-01", "Admin", "Open Fiscal devices with no devices yet.", "An empty state asks you to upload the certificate zip ZIMRA gave you. There is no Central device settings button and no mention of a Virtual Device.", "CHANGED"),
+                r("DEV-01", "Admin", "Open Fiscal devices with no devices yet.", "An empty state asks you to upload the certificate zip ZIMRA gave you. There is no Central device button or menu entry and no mention of a Virtual Device.", "CHANGED"),
                 r("DEV-02", "Admin", "Add device, leave the name empty, Continue.", "Asked for a name.", "NEW"),
                 r("DEV-03", "Admin", "Name it 'ZIMRA test 31728' and keep Test device. Look for 'Use a different ZIMRA address'.", "There is no such option: devices talk to ZIMRA through the fiscal service. (LEGACY: the option exists and ftp://x is refused.) Continue.", "CHANGED"),
                 r("DEV-04", "Admin", "Step 2, 'I have the zip', Continue with no file.", "Asked to choose the zip first.", "NEW"),
@@ -189,7 +189,7 @@ SECTIONS = [
                 r("DEV-15", "Admin", "Look at the certificate chip for devices with different expiry dates.", "Green when comfortable, amber when close, red when expired, with the days left.", "NEW"),
                 r("DEV-16", "Admin", "Open a device's Settings.", "Connection, Automatic open and close (with weekday buttons for opening and closing), Certificate and Branches using this device.", "CHANGED"),
                 r("DEV-17", "Admin", "In Certificate choose 'Folder of certificate files', pick certificates_<id>, click 'Check the files first'.", "A report lists the files that will be used, anything missing, warnings and whether a usable certificate and key were found. Upload then stores it.", "NEW"),
-                r("DEV-18", "Admin", "Open Fiscal > Central device.", "With the fiscal service the menu entry opens a short page saying the central device is chosen on Fiscal devices, with a button there (see 6.4). (LEGACY: the same screen as a branch device.)", "CHANGED"),
+                r("DEV-18", "Admin", "Look in the Fiscal menu for Central device, then type /fiscal-settings in the address bar.", "With the fiscal service there is no Central device menu entry. The address forwards straight to Fiscal devices, where the central device is chosen with Make central (see 6.4). (LEGACY: the page still exists and shows the shared editor.)", "CHANGED"),
                 r("DEV-19", "Admin", "Open Settings on the device marked Central, change the open time and weekdays and save.", "Saved. The page reloads with the new values.", "NEW"),
                 r("DEV-20", "Admin", "LEGACY only: click 'Read ID and serial from device'.", "The Device ID and serial are filled in from the Virtual Device. With the fiscal service they are filled in when the certificate is added.", "LEGACY"),
                 r("DEV-21", "Admin", "Switch a branch device to inactive (Active off) and sell at a branch on it.", "The sale is saved as an invoice and not fiscalised until the device is active again.", "NEW EDGE"),
@@ -264,7 +264,7 @@ SECTIONS = [
                 r("ADM-18", "Admin", "Click 'Fill from this branch's stock upload'.", "Products from the latest stock upload are offered for import.", "OPTIONAL"),
             ]},
             {"title": "8.3 Fiscal day (manual)", "rows": [
-                r("ADM-19", "Admin", "Look for Fiscal > Central device.", "With the fiscal service it shows a pointer page: the central device is chosen on Fiscal devices (DEV-30 to DEV-35). LEGACY: the shared editor opens with the title 'Central device settings' (DEV-18).", "CHANGED"),
+                r("ADM-19", "Admin", "Look for Fiscal > Central device.", "There is no such menu entry. The central device is chosen on Fiscal devices (DEV-30 to DEV-35).", "CHANGED"),
                 r("ADM-20", "Admin", "Open Fiscal > Fiscal day and click Refresh Status.", "The day status and number are shown for the selected device."),
                 r("ADM-21", "Admin", "Compare the open day's date with today.", "A day open for more than a day is reported as stale. Close it (ADM-22) before testing.", "EDGE"),
                 r("ADM-22", "Admin", "Click Close Fiscal Day and confirm with no waiting sales.", "The day closes, a Day-end report is created, and the status shows closed."),

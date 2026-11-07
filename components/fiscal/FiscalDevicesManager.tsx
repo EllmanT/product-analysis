@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Star } from "lucide-react";
 import { toast } from "sonner";
 
 import { useFiscalDevices } from "@/components/fiscal/DeviceSelect";
@@ -791,7 +792,7 @@ export default function FiscalDevicesManager() {
   const open = openId ? devices.find((d) => d.id === openId) : undefined;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 p-4 lg:p-6">
+    <div className="w-full space-y-6 p-4 lg:p-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">Fiscal devices</h1>
@@ -824,8 +825,8 @@ export default function FiscalDevicesManager() {
           {viaService ? "No devices yet. Use Add device and upload the certificate zip ZIMRA gave you. The first device you add can be made central." : "No separate devices yet. Every branch uses the central device. Use Add device when a branch needs its own, or when you are setting up a client's test device."}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-background">
-          <table className="w-full min-w-[640px] text-left text-sm">
+        <div className="rounded-xl border bg-background">
+          <table className="w-full table-auto text-left text-sm">
             <thead className="border-b bg-slate-50 text-xs font-semibold uppercase text-slate-600">
               <tr>
                 <th className="px-4 py-3">Device</th>
@@ -838,13 +839,21 @@ export default function FiscalDevicesManager() {
             </thead>
             <tbody>
               {devices.map((d) => (
-                <tr key={d.id} className={`border-b last:border-0 ${openId === d.id ? "bg-slate-50" : ""}`}>
+                <tr
+                  key={d.id}
+                  className={`border-b last:border-0 ${d.isCentral ? "bg-emerald-50/60 [box-shadow:inset_4px_0_0_0_#10b981]" : openId === d.id ? "bg-slate-50" : ""}`}
+                >
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 font-medium text-slate-900">
+                    <div className="flex flex-wrap items-center gap-2 font-medium text-slate-900">
                       {d.name}
-                      {d.isCentral && <Chip tone="ok">Central</Chip>}
+                      {d.isCentral && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs font-semibold text-white">
+                          <Star className="size-3 fill-current" aria-hidden /> Central device
+                        </span>
+                      )}
                     </div>
-                    <div className="max-w-64 truncate text-xs text-muted-foreground">{d.effectiveZimraUrl ?? "No URL set"}</div>
+                    {d.isCentral && <div className="text-xs text-emerald-800">The shop and every branch without its own device use this one.</div>}
+                    <div className="max-w-[28rem] truncate text-xs text-muted-foreground">{d.effectiveZimraUrl ?? "No URL set"}</div>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">{d.deviceId ?? "—"}</td>
                   <td className="px-4 py-3 text-slate-700">{d.branches.length ? d.branches.map((b) => b.name).join(", ") : "—"}</td>

@@ -35,7 +35,8 @@ export default function FiscalDayPage() {
   // Each branch device has its own fiscal day; "central" is the shared one.
   const [deviceKey, setDeviceKey] = useState<string>(CENTRAL);
   const { devices } = useFiscalDevices();
-  const deviceName = deviceKey === CENTRAL ? "Central device" : (devices.find((d) => d.id === deviceKey)?.name ?? "Device");
+  const centralName = devices.find((d) => d.isCentral)?.name;
+  const deviceName = deviceKey === CENTRAL ? (centralName ? `Central device (${centralName})` : "Central device") : (devices.find((d) => d.id === deviceKey)?.name ?? "Device");
 
   async function loadStatus(key: string = deviceKey) {
     setLoading(true);

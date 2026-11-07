@@ -6,7 +6,6 @@
 import { Types } from "mongoose";
 
 import FiscalDevice from "@/database/fiscalDevice.model";
-import FiscalSettings from "@/database/fiscalSettings.model";
 import PosSale from "@/database/posSale.model";
 import {
   FiscalServiceRefused,
@@ -19,8 +18,7 @@ import {
   type ServiceDevice,
 } from "@/lib/fiscal/client";
 import dbConnect from "@/lib/mongoose";
-import { DeviceConfigError, getFiscalDeviceSafe, resolveServiceDeviceId, saveDeviceIdentity } from "@/lib/services/fiscalDevice.service";
-import { getFiscalSettingsDoc } from "@/lib/services/fiscalSettings.service";
+import { DeviceConfigError, getCentralDeviceId, getFiscalDeviceSafe, resolveServiceDeviceId, saveDeviceIdentity, setCentralDeviceId } from "@/lib/services/fiscalDevice.service";
 
 async function load(id: string) {
   await dbConnect();
@@ -80,8 +78,7 @@ export async function verifyDeviceViaService(id: string) {
  */
 export async function setCentralDevice(id: string | null): Promise<void> {
   await dbConnect();
-  const settings = await getFiscalSettingsDoc();
-  const currentId = settings.centralFiscalDeviceId ? String(settings.centralFiscalDeviceId) : null;
+  const currentId = await getCentralDeviceId();
   if (id && id === currentId) return;
 
   if (id) {
@@ -109,5 +106,5 @@ export async function setCentralDevice(id: string | null): Promise<void> {
     if (e.unsent > 0) throw new DeviceConfigError(`The current central device still has ${e.unsent} receipt(s) to send to ZIMRA.`);
   }
 
-  await FiscalSettings.updateOne({ _id: settings._id }, { $set: { centralFiscalDeviceId: id ? new Types.ObjectId(id) : null } });
+  await setCentralDeviceId(id);
 }

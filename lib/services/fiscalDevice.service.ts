@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 
 import Branch from "@/database/branch.model";
 import FiscalDevice, { type IFiscalDeviceDoc } from "@/database/fiscalDevice.model";
+import FiscalSettings from "@/database/fiscalSettings.model";
 import PosSale from "@/database/posSale.model";
 import { evaluateExpiry, type CertExpiryStatus } from "@/lib/fiscalCertInfo";
 import { fiscalBackend } from "@/lib/fiscal/client";
@@ -99,6 +100,22 @@ function resolveFromDoc(doc: IFiscalDeviceDoc): ResolvedDevice {
   };
 }
 
+/**
+ * The device an admin made central (FISCAL_BACKEND=service), or null. Read and written on the raw collection:
+ * a dev server that still holds an older cached FiscalSettings schema would otherwise drop this field silently,
+ * which looked like "no central device is chosen" straight after choosing one.
+ */
+export async function getCentralDeviceId(): Promise<string | null> {
+  await dbConnect();
+  const row = await FiscalSettings.collection.findOne({}, { projection: { centralFiscalDeviceId: 1 } });
+  return row?.centralFiscalDeviceId ? String(row.centralFiscalDeviceId) : null;
+}
+
+export async function setCentralDeviceId(id: string | null): Promise<void> {
+  await getFiscalSettingsDoc(); // makes sure the settings row exists
+  await FiscalSettings.collection.updateOne({}, { $set: { centralFiscalDeviceId: id ? new Types.ObjectId(id) : null } });
+}
+
 /** "central" (or empty) resolves to the central device; anything else must be a usable FiscalDevice. */
 export async function resolveDeviceByKey(key?: string | null): Promise<ResolvedDevice> {
   if (!key || key === CENTRAL_KEY) return resolveCentralDevice();
@@ -116,7 +133,7 @@ export async function resolveDeviceByKey(key?: string | null): Promise<ResolvedD
 export async function resolveServiceDeviceId(key?: string | null): Promise<string> {
   if (!key || key === CENTRAL_KEY) {
     // An admin's choice (Fiscal devices > Make central) wins; the environment setting is the fallback for older installs.
-    const chosen = (await getFiscalSettingsDoc()).centralFiscalDeviceId;
+    const chosen = await getCentralDeviceId();
     if (chosen) {
       const c = await FiscalDevice.findById(chosen).select("name active serviceDeviceId").lean<{ name: string; active: boolean; serviceDeviceId?: string }>();
       if (!c) throw new DeviceConfigError("The device chosen as central no longer exists. Choose another on the Fiscal devices page.");
@@ -266,16 +283,16 @@ async function branchesByDevice(): Promise<Map<string, { id: string; name: strin
 
 export async function listFiscalDevices(): Promise<FiscalDeviceSafe[]> {
   await dbConnect();
-  const [docs, map, settings] = await Promise.all([FiscalDevice.find().sort({ name: 1 }), branchesByDevice(), getFiscalSettingsDoc()]);
-  const central = settings.centralFiscalDeviceId ? String(settings.centralFiscalDeviceId) : "";
+  const [docs, map, centralId] = await Promise.all([FiscalDevice.find().sort({ name: 1 }), branchesByDevice(), getCentralDeviceId()]);
+  const central = centralId ?? "";
   return docs.map((d: IFiscalDeviceDoc) => toSafe(d, map.get(String(d._id)) ?? [], String(d._id) === central));
 }
 
 export async function getFiscalDeviceSafe(id: string): Promise<FiscalDeviceSafe | null> {
   await dbConnect();
   if (!Types.ObjectId.isValid(id)) return null;
-  const [doc, map, settings] = await Promise.all([FiscalDevice.findById(id), branchesByDevice(), getFiscalSettingsDoc()]);
-  return doc ? toSafe(doc, map.get(String(doc._id)) ?? [], String(settings.centralFiscalDeviceId ?? "") === String(doc._id)) : null;
+  const [doc, map, centralId] = await Promise.all([FiscalDevice.findById(id), branchesByDevice(), getCentralDeviceId()]);
+  return doc ? toSafe(doc, map.get(String(doc._id)) ?? [], centralId === String(doc._id)) : null;
 }
 
 async function loadDevice(id: string): Promise<IFiscalDeviceDoc> {

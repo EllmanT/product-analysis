@@ -25,22 +25,18 @@ const PatchSchema = z
     fiscalDeviceId: z.string().regex(/^[a-f0-9]{24}$/, "Invalid device").nullable().optional(),
     receipt: z
       .object({
-        companyName: text(120),
+        // Only what differs between branches. Company name, TIN, VAT number, logo and footer are company-wide (Settings > Company).
         branchName: text(120),
         address: text(200),
         phone: text(40),
         email: z.string().trim().email().max(120).optional().or(z.literal("")),
-        tin: text(40),
-        vatNumber: text(40),
-        logoUrl: text(500),
-        footerLines: z.array(z.string().trim().max(80)).max(6).optional(),
       })
       .strict()
       .optional(),
   })
   .strict();
 
-/** Admin only: enable POS for a branch and set its prefix, VAT, offline limit and slip details. */
+/** Admin only: enable POS for a branch and set its prefix, VAT, offline limit and its own address and contact for slips. */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const denied = requirePermission(await auth(), "/pos-settings");

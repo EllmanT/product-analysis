@@ -46,6 +46,7 @@
     "evidence:real": "npx tsx scripts/evidence/from-real-runs.ts",
     "test:shop-fiscal": "npx tsx scripts/test-shop-fiscal.ts",
     "test:permissions": "npx tsx scripts/test-permissions.ts",
+    "test:company": "npx tsx scripts/test-company-profile.ts",
     "test:close-schedule": "npx tsx scripts/test-close-schedule.ts",
     "test:clock-skew": "npx tsx scripts/test-clock-skew.ts",
     "check:guards": "node scripts/check-api-guards.mjs",

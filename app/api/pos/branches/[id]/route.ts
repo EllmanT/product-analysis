@@ -14,6 +14,8 @@ const text = (max: number) => z.string().trim().max(max).optional();
 
 const PatchSchema = z
   .object({
+    name: z.string().trim().min(2).max(40).optional(),
+    location: z.string().trim().min(1).max(60).optional(),
     enabled: z.boolean().optional(),
     invoicePrefix: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{1,4}$/, "1 to 4 letters or digits").optional(),
     taxPercent: z.number().min(0).max(100).optional(),
@@ -57,8 +59,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     await dbConnect();
-    const { receipt, fiscalDeviceId, ...rest } = parsed.data;
+    const { receipt, fiscalDeviceId, name, location, ...rest } = parsed.data;
     const $set: Record<string, unknown> = {};
+    if (name !== undefined) $set.name = name;
+    if (location !== undefined) $set.location = location;
     for (const [k, v] of Object.entries(rest)) $set[`pos.${k}`] = v;
     for (const [k, v] of Object.entries(receipt ?? {})) $set[`pos.receipt.${k}`] = v;
     if (Object.keys($set).length === 0 && fiscalDeviceId === undefined) {

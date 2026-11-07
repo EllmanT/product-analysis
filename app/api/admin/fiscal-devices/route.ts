@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { requirePermission } from "@/lib/auth/role";
+import { fiscalBackend } from "@/lib/fiscal/client";
 import { deviceError, deviceSchema } from "@/lib/fiscalDeviceApi";
 import { isEncryptionConfigured } from "@/lib/security/secretBox";
 import { createFiscalDevice, listFiscalDevices } from "@/lib/services/fiscalDevice.service";
@@ -15,7 +16,7 @@ export async function GET() {
       success: true,
       data: await listFiscalDevices(),
       // Without the master key a certificate or login password cannot be saved.
-      meta: { encryptionConfigured: isEncryptionConfigured() },
+      meta: { encryptionConfigured: isEncryptionConfigured(), backend: fiscalBackend() },
     });
   } catch (error) {
     return deviceError(error, "Failed to load devices");

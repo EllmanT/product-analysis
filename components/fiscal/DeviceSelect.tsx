@@ -13,6 +13,7 @@ export function useFiscalDevices(reloadKey = 0) {
   const [devices, setDevices] = useState<FiscalDeviceSafe[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [encryptionConfigured, setEncryptionConfigured] = useState(true);
+  const [backend, setBackend] = useState<"legacy" | "service">("legacy");
 
   useEffect(() => {
     let ignore = false;
@@ -23,6 +24,7 @@ export function useFiscalDevices(reloadKey = 0) {
         if (!ignore && j.success) {
           setDevices(j.data);
           setEncryptionConfigured(j.meta?.encryptionConfigured !== false);
+          setBackend(j.meta?.backend === "service" ? "service" : "legacy");
         }
       } finally {
         if (!ignore) setLoaded(true);
@@ -33,7 +35,7 @@ export function useFiscalDevices(reloadKey = 0) {
     };
   }, [reloadKey]);
 
-  return { devices, loaded, encryptionConfigured };
+  return { devices, loaded, encryptionConfigured, backend };
 }
 
 const selectClass =

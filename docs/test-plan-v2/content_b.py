@@ -83,7 +83,7 @@ SECTIONS = [
         "num": "11", "title": "When ZIMRA or the device is unavailable",
         "intro": [
             "A sale is never lost and never rejected because ZIMRA or the device is down. It is kept, numbered with a provisional number, and sent by itself when the device is back. The cashier only sees 'Invoice saved'.",
-            "To make the device unreachable: Fiscal > Central device > ZIMRA address, set an unreachable address such as http://127.0.0.1:9 and Save. Restore it in FAIL-10. With the fiscal service back end, stop the service or use the fault controls in the rehearsal (section 23) instead.",
+            "To make the device unreachable with the fiscal service (the normal set-up): stop the fiscal service, and start it again to restore (FAIL-10), or use the fault controls in the rehearsal (section 23). LEGACY only: Fiscal > Central device > ZIMRA address, set an unreachable address such as http://127.0.0.1:9 and Save, then restore it in FAIL-10.",
         ],
         "groups": [{"rows": [
             r("FAIL-01", "Admin, Cashier", "Make the device unreachable. The cashier sells one item and presses F12.", "The sale completes. The cashier sees 'Invoice saved. The final tax invoice is sent automatically.' A slip prints with a provisional number (HUP0001). Nothing mentions the device.", "CHANGED"),

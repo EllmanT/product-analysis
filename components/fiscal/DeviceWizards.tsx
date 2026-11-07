@@ -19,13 +19,17 @@ import { cn } from "@/lib/utils";
 
 type Result<T = unknown> = { ok: true; data: T } | { ok: false; message: string };
 
-async function api<T>(url: string, init: RequestInit): Promise<Result<T>> {
+/** A call that never answers must not leave the dialog on "Working…" for ever: give up and say so. */
+async function api<T>(url: string, init: RequestInit, timeoutMs = 60_000): Promise<Result<T>> {
   try {
-    const r = await fetch(url, init);
+    const r = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
     const j = await r.json().catch(() => null);
     if (!r.ok || !j?.success) return { ok: false, message: j?.message ?? `Something went wrong (${r.status}).` };
     return { ok: true, data: j as T };
-  } catch {
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "TimeoutError") {
+      return { ok: false, message: "This is taking too long, so we stopped waiting. Nothing is lost: use Try again." };
+    }
     return { ok: false, message: "Could not reach the server. Check your connection and try again." };
   }
 }
@@ -51,7 +55,8 @@ const registerWithKey = (id: string, input: { deviceId: string; serial: string; 
     body: JSON.stringify({ action: "register", ...input }),
   });
 
-const checkConnection = (id: string) => api<{ data: { device: FiscalDeviceSafe } }>(`/api/admin/fiscal-devices/${id}/sync`, { method: "POST" });
+// The server may spend up to ~50s logging in to and asking ZIMRA, so wait a little longer than that.
+const checkConnection = (id: string) => api<{ data: { device: FiscalDeviceSafe } }>(`/api/admin/fiscal-devices/${id}/sync`, { method: "POST" }, 75_000);
 
 const formatDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : null);
 
@@ -131,7 +136,19 @@ function ZipDrop({ file, onFile, disabled }: { file: File | null; onFile: (f: Fi
       <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => input.current?.click()}>
         {file ? "Choose a different file" : "Choose file"}
       </Button>
-      <input ref={input} type="file" accept=".zip" className="sr-only" aria-label="Certificate zip" onChange={(e) => pick(e.target.files?.[0])} />
+      <input
+        ref={input}
+        type="file"
+        accept=".zip"
+        className="sr-only"
+        tabIndex={-1}
+        aria-label="Certificate zip"
+        onChange={(e) => {
+          pick(e.target.files?.[0]);
+          // Clear it so choosing the same file again still counts as a change.
+          e.target.value = "";
+        }}
+      />
     </div>
   );
 }
@@ -176,7 +193,8 @@ type CertWay = "zip" | "key";
 
 const STEP_TITLES = ["Name the device", "Add its certificate", "Connecting"] as const;
 
-export function AddDeviceWizard({ onDone }: { onDone: () => void }) {
+export function AddDeviceWizard({ onDone, backend = "legacy" }: { onDone: () => void; backend?: "legacy" | "service" }) {
+  const viaService = backend === "service";
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -325,6 +343,7 @@ export function AddDeviceWizard({ onDone }: { onDone: () => void }) {
                 <Choice selected={mode === "test"} onSelect={() => setMode("test")} title="Test device" body="Sends to the ZIMRA test system. Nothing here is real tax data." />
                 <Choice selected={mode === "live"} onSelect={() => setMode("live")} title="Live device" body="Sends to the real ZIMRA system. Use this for a client going live." />
               </div>
+              {!viaService && (
               <details className="text-sm">
                 <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Use a different ZIMRA address</summary>
                 <div className="space-y-1.5 pt-3">
@@ -332,6 +351,7 @@ export function AddDeviceWizard({ onDone }: { onDone: () => void }) {
                   <p className="text-xs text-muted-foreground">Leave blank to use the standard ZIMRA address.</p>
                 </div>
               </details>
+              )}
             </>
           )}
 
@@ -339,7 +359,7 @@ export function AddDeviceWizard({ onDone }: { onDone: () => void }) {
             <>
               <div role="radiogroup" aria-label="How to add the certificate" className="grid gap-3 sm:grid-cols-2">
                 <Choice selected={way === "zip"} onSelect={() => setWay("zip")} icon={<FileArchive className="size-4" />} title="I have the zip" body="The certificate file ZIMRA sent." />
-                <Choice selected={way === "key"} onSelect={() => setWay("key")} icon={<KeyRound className="size-4" />} title="I have an activation key" body="We register the device and fetch its certificate." />
+                {!viaService && <Choice selected={way === "key"} onSelect={() => setWay("key")} icon={<KeyRound className="size-4" />} title="I have an activation key" body="We register the device and fetch its certificate." />}
               </div>
               {way === "zip" ? (
                 <ZipDrop file={zip} onFile={setZip} />
@@ -367,7 +387,7 @@ export function AddDeviceWizard({ onDone }: { onDone: () => void }) {
             <Stages
               items={[
                 { label: "Saving the device", state: stages.device.state, note: stages.device.note },
-                { label: way === "zip" ? "Installing the certificate" : "Registering with ZIMRA", state: stages.cert.state, note: stages.cert.note },
+                { label: viaService ? "Sending the certificate to ZIMRA to check it" : way === "zip" ? "Installing the certificate" : "Registering with ZIMRA", state: stages.cert.state, note: stages.cert.note },
                 { label: "Checking the connection to ZIMRA", state: stages.check.state, note: stages.check.note },
               ]}
             />
@@ -511,6 +531,74 @@ export function ReplaceCertificateDialog({ device, onDone }: { device: FiscalDev
             </div>
           </div>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Choose the central device
+// ---------------------------------------------------------------------------
+
+/** Make this device the central one: shop invoices and every branch without its own device use it. */
+export function MakeCentralDialog({ device, onDone }: { device: FiscalDeviceSafe; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function confirm() {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api("/api/admin/fiscal-devices/central", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: device.id }),
+      });
+      if (!r.ok) return setError(r.message);
+      toast.success(`${device.name} is now the central device`);
+      setOpen(false);
+      onDone();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const ready = Boolean(device.serviceDeviceId) && device.active;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setError(null);
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm" disabled={!ready} title={ready ? undefined : "Add its certificate first, and switch it on"}>
+          Make central
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => busy && e.preventDefault()}>
+        <DialogHeader>
+          <DialogTitle className="text-lg">Make {device.name} the central device?</DialogTitle>
+          <DialogDescription>
+            The shop and every branch that has no device of its own will send their receipts through {device.name}. The current central device must have its fiscal day closed and no sales waiting.
+          </DialogDescription>
+        </DialogHeader>
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button onClick={() => void confirm()} disabled={busy}>
+            {busy && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />} Make central
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

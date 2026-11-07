@@ -19,6 +19,7 @@
  *   GET  /v1/alerts[?unacknowledged=1]   durable alerts, one per device + kind + day with a counter
  *   POST /v1/alerts/:id/ack              { by? } acknowledge an alert
  */
+import type { Transport } from "./core/transport.js";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 
@@ -40,6 +41,8 @@ export interface ServerDeps {
   token: string;
   /** Overrides the ZIMRA host (tests). */
   gatewayBaseUrl?: string;
+  /** Overrides the transport for GetStatus (tests, where the fake gateway speaks plain HTTP). */
+  statusTransport?: () => Transport;
 }
 
 function send(res: ServerResponse, status: number, body: unknown): void {
@@ -169,7 +172,7 @@ export function createApp(deps: ServerDeps): Server {
         }
         if (req.method === "GET" && m[2] === "status") {
           const ident = await deps.registry.identity(id);
-          const status = await gatewayClient(ident, deps.gatewayBaseUrl).request<Record<string, unknown>>("GET", `/Device/v1/${ident.deviceId}/GetStatus`);
+          const status = await gatewayClient(ident, deps.gatewayBaseUrl, deps.statusTransport?.()).request<Record<string, unknown>>("GET", `/Device/v1/${ident.deviceId}/GetStatus`);
           return send(res, 200, { success: true, data: status });
         }
       }

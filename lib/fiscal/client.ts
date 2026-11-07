@@ -49,7 +49,7 @@ function config(): { url: string; token: string } {
   return { url, token };
 }
 
-async function call<T>(method: "GET" | "POST", path: string, body?: unknown, timeoutMs = 20_000): Promise<{ status: number; json: { success?: boolean; data?: T; message?: string } }> {
+async function call<T>(method: "GET" | "POST" | "PUT", path: string, body?: unknown, timeoutMs = 20_000): Promise<{ status: number; json: { success?: boolean; data?: T; message?: string } }> {
   const { url, token } = config();
   let res: Response;
   try {
@@ -155,4 +155,59 @@ export interface ServiceDayCounters {
 export async function dayCounters(serviceDeviceId: string): Promise<ServiceDayCounters | null> {
   const { json } = await call<ServiceDayCounters | null>("GET", `/v1/devices/${serviceDeviceId}/day-counters`, undefined, 10_000);
   return json.data ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Device management: the app hands the service a device's certificate and key. The service reads the device id,
+// asks ZIMRA (GetConfig over mutual TLS) whether it accepts the pair, and only then stores it.
+// ---------------------------------------------------------------------------
+
+export interface ServiceDevice {
+  id: string;
+  name: string;
+  deviceId: number;
+  serialNumber: string;
+  environment: "test" | "production";
+  certNotAfter: string;
+  certDaysLeft: number;
+  active: boolean;
+  taxPayerName?: string;
+}
+
+/** The tenant every StockFlow device is filed under in the service. */
+export const SERVICE_TENANT = "stockflow";
+
+/** A refusal from the service (ZIMRA said no, the certificate is expired, the device exists...). Its message is for the admin. */
+export class FiscalServiceRefused extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+function refusedOrData<T>(r: { status: number; json: { data?: T; message?: string } }, what: string): T {
+  if (r.status >= 200 && r.status < 300 && r.json.data) return r.json.data;
+  throw new FiscalServiceRefused(r.json.message || `${what} failed (HTTP ${r.status})`, r.status);
+}
+
+export async function registerServiceDevice(input: { name: string; certificatePem: string; privateKeyPem: string; environment?: "test" | "production" }): Promise<ServiceDevice> {
+  // ZIMRA is asked during the add, so allow it time.
+  return refusedOrData(await call<ServiceDevice>("POST", "/v1/devices", { tenantId: SERVICE_TENANT, ...input }, 60_000), "Adding the device");
+}
+
+export async function replaceServiceCertificate(serviceDeviceId: string, certificatePem: string, privateKeyPem: string): Promise<ServiceDevice> {
+  return refusedOrData(await call<ServiceDevice>("PUT", `/v1/devices/${serviceDeviceId}/certificate`, { certificatePem, privateKeyPem }, 60_000), "Replacing the certificate");
+}
+
+export async function getServiceDevice(serviceDeviceId: string): Promise<ServiceDevice | null> {
+  const r = await call<ServiceDevice>("GET", `/v1/devices/${serviceDeviceId}`, undefined, 10_000);
+  return r.status === 404 ? null : (r.json.data ?? null);
+}
+
+export async function listServiceDevices(): Promise<ServiceDevice[]> {
+  return (await call<ServiceDevice[]>("GET", "/v1/devices", undefined, 10_000)).json.data ?? [];
+}
+
+/** Live GetStatus from ZIMRA through the service: proves the certificate works right now. */
+export async function serviceDeviceStatus(serviceDeviceId: string): Promise<Record<string, unknown>> {
+  return refusedOrData(await call<Record<string, unknown>>("GET", `/v1/devices/${serviceDeviceId}/status`, undefined, 30_000), "Checking the device with ZIMRA");
 }

@@ -1,4 +1,4 @@
-import { Document, model, models, Schema } from "mongoose";
+import { Document, model, models, Schema, Types } from "mongoose";
 
 /** Singleton-style fiscal / ZIMRA configuration (admin-editable). */
 export interface IFiscalSettings {
@@ -58,6 +58,12 @@ export interface IFiscalSettings {
   lastAutoCloseDate?: string;
   lastAutoOpenDate?: string;
 
+  /**
+   * FISCAL_BACKEND=service: the FiscalDevice that acts as the central device (shop invoices and every branch
+   * without its own device). Unset means the FISCAL_SERVICE_CENTRAL_DEVICE_ID environment setting.
+   */
+  centralFiscalDeviceId?: Types.ObjectId | null;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -101,6 +107,8 @@ const FiscalSettingsSchema = new Schema<IFiscalSettings>(
 
     lastAutoCloseDate: { type: String },
     lastAutoOpenDate: { type: String },
+
+    centralFiscalDeviceId: { type: Schema.Types.ObjectId, ref: "FiscalDevice", default: null },
   },
   { timestamps: true }
 );

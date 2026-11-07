@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { useFiscalDevices } from "@/components/fiscal/DeviceSelect";
 import RegisterDevicePanel from "@/components/fiscal/RegisterDevicePanel";
-import { AddDeviceWizard, ReplaceCertificateDialog } from "@/components/fiscal/DeviceWizards";
+import { AddDeviceWizard, MakeCentralDialog, ReplaceCertificateDialog } from "@/components/fiscal/DeviceWizards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -782,7 +782,8 @@ function CertificatePanel({
 
 export default function FiscalDevicesManager() {
   const [reloadKey, setReloadKey] = useState(0);
-  const { devices, loaded, encryptionConfigured } = useFiscalDevices(reloadKey);
+  const { devices, loaded, encryptionConfigured, backend } = useFiscalDevices(reloadKey);
+  const viaService = backend === "service";
   // null = list only, otherwise the id of the device whose advanced settings are open.
   const [openId, setOpenId] = useState<string | null>(null);
   const reload = () => setReloadKey((n) => n + 1);
@@ -795,14 +796,18 @@ export default function FiscalDevicesManager() {
         <div>
           <h1 className="text-xl font-semibold">Fiscal devices</h1>
           <p className="text-sm text-muted-foreground">
-            Branches use the central device by default. Add a device here, then pick it for a branch in POS settings so that branch has its own fiscal day and certificate.
+            {viaService
+              ? "Add each ZIMRA device here with its certificate zip. Pick which one is central (used by the shop and by branches without their own), and give the others to branches in POS settings."
+              : "Branches use the central device by default. Add a device here, then pick it for a branch in POS settings so that branch has its own fiscal day and certificate."}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/fiscal-settings">Central device settings</Link>
-          </Button>
-          <AddDeviceWizard onDone={reload} />
+          {!viaService && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/fiscal-settings">Central device settings</Link>
+            </Button>
+          )}
+          <AddDeviceWizard onDone={reload} backend={backend} />
         </div>
       </div>
 
@@ -816,7 +821,7 @@ export default function FiscalDevicesManager() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : devices.length === 0 ? (
         <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No separate devices yet. Every branch uses the central device. Use Add device when a branch needs its own, or when you are setting up a client&apos;s test device.
+          {viaService ? "No devices yet. Use Add device and upload the certificate zip ZIMRA gave you. The first device you add can be made central." : "No separate devices yet. Every branch uses the central device. Use Add device when a branch needs its own, or when you are setting up a client's test device."}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-background">
@@ -835,7 +840,10 @@ export default function FiscalDevicesManager() {
               {devices.map((d) => (
                 <tr key={d.id} className={`border-b last:border-0 ${openId === d.id ? "bg-slate-50" : ""}`}>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-slate-900">{d.name}</div>
+                    <div className="flex items-center gap-2 font-medium text-slate-900">
+                      {d.name}
+                      {d.isCentral && <Chip tone="ok">Central</Chip>}
+                    </div>
                     <div className="max-w-64 truncate text-xs text-muted-foreground">{d.effectiveZimraUrl ?? "No URL set"}</div>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">{d.deviceId ?? "—"}</td>
@@ -846,6 +854,7 @@ export default function FiscalDevicesManager() {
                   <td className="px-4 py-3">{d.active ? <Chip tone="ok">Active</Chip> : <Chip tone="muted">Off</Chip>}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {viaService && !d.isCentral && <MakeCentralDialog device={d} onDone={reload} />}
                       <ReplaceCertificateDialog device={d} onDone={reload} />
                       <Button variant="outline" size="sm" onClick={() => setOpenId(openId === d.id ? null : d.id)}>
                         {openId === d.id ? "Close" : "Settings"}

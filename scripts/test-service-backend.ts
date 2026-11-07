@@ -56,7 +56,7 @@ async function main() {
     options: { waitMs: 1500, retryBaseMs: 30, retryMaxMs: 200, openGapMs: 1100, drainTimeoutMs: 3000, closePollMs: 20, closePollTimeoutMs: 3000, maxDateDriftMs: 270_000, busyWaitMs: 30_000 },
     backgroundMs: 50,
   });
-  const server = createApp({ registry, manager, token: TOKEN });
+  const server = createApp({ registry, manager, token: TOKEN, gatewayBaseUrl: gw.url, statusTransport: () => new FetchTransport() });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   const goodUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   process.env.FISCAL_SERVICE_URL = goodUrl;
@@ -248,6 +248,58 @@ async function main() {
   check(!sched.closed && !sched.opened, "the app's own scheduler stands down", sched);
   await ops.openFiscalDayOnly(String(appDevice._id));
   check((await (await manager.get(serviceId)).status()).dayOpen === true, "the app can open the next day through the service");
+
+  console.log("8. Devices are added from the app, and any of them can be made central");
+  const devs = await import("@/lib/services/fiscalServiceDevices.service");
+  const devSvc = await import("@/lib/services/fiscalDevice.service");
+  const fresh = makeDeviceBundle(8103);
+  gw.addDevice(fresh.deviceId, fresh.serialNumber, fresh.certificatePem);
+  const gweru = await FiscalDevice.create({ name: "Gweru device", active: true });
+  const before = (await registry.list()).length;
+  const pushed = await devs.pushCertificateToService(String(gweru._id), fresh.certificatePem, fresh.privateKeyPem);
+  const afterPush = await devSvc.getFiscalDeviceSafe(String(gweru._id));
+  check(afterPush?.serviceDeviceId === pushed.id && afterPush?.deviceId === String(fresh.deviceId), "uploading the certificate registers the device with the service and keeps its id", afterPush);
+  check(afterPush?.deviceSerialNumber === fresh.serialNumber, "and its serial number, read from the certificate");
+  await devs.pushCertificateToService(String(gweru._id), fresh.certificatePem, fresh.privateKeyPem);
+  check((await registry.list()).length === before + 1, "uploading it again does not add a second device");
+  const clone = await FiscalDevice.create({ name: "Same device again", active: true });
+  let cloneErr = "";
+  try {
+    await devs.pushCertificateToService(String(clone._id), fresh.certificatePem, fresh.privateKeyPem);
+  } catch (e) {
+    cloneErr = e instanceof Error ? e.message : String(e);
+  }
+  check(/already added as "Gweru device"/.test(cloneErr), "the same device cannot be added under a second name", cloneErr);
+  const other = makeDeviceBundle(8104);
+  let mismatch = "";
+  try {
+    await devs.pushCertificateToService(String((await FiscalDevice.create({ name: "Wrong key", active: true }))._id), other.certificatePem, fresh.privateKeyPem);
+  } catch (e) {
+    mismatch = e instanceof Error ? e.message : String(e);
+  }
+  check(mismatch.length > 0, "a certificate with someone else's key is refused with a reason", mismatch);
+  const verified = await devs.verifyDeviceViaService(String(gweru._id));
+  check(verified.device.deviceId === String(fresh.deviceId), "the connection check asks ZIMRA through the service", verified.device.deviceId);
+
+  let refused = "";
+  try {
+    await devs.setCentralDevice(String(gweru._id));
+  } catch (e) {
+    refused = e instanceof Error ? e.message : String(e);
+  }
+  check(/fiscal day open/i.test(refused), "the central device cannot change while its fiscal day is open", refused);
+  const closed = await (await manager.get(centralServiceId)).closeDay();
+  check(closed.ok === true, "the current central device's day closes", closed);
+  await devs.setCentralDevice(String(gweru._id));
+  check((await devSvc.resolveServiceDeviceId("central")) === pushed.id, "after that, central means the device that was chosen (not the environment setting)");
+  check((await devSvc.listFiscalDevices()).find((d) => String(d.id) === String(gweru._id))?.isCentral === true, "and the device list marks it Central");
+  let unlinkedErr = "";
+  try {
+    await devs.setCentralDevice(String(unlinked._id));
+  } catch (e) {
+    unlinkedErr = e instanceof Error ? e.message : String(e);
+  }
+  check(/certificate/i.test(unlinkedErr), "a device with no certificate cannot be made central", unlinkedErr);
 
   await manager.shutdown();
   await new Promise<void>((r) => server.close(() => r()));

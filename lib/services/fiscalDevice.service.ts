@@ -4,6 +4,7 @@ import Branch from "@/database/branch.model";
 import FiscalDevice, { type IFiscalDeviceDoc } from "@/database/fiscalDevice.model";
 import PosSale from "@/database/posSale.model";
 import { evaluateExpiry, type CertExpiryStatus } from "@/lib/fiscalCertInfo";
+import { fiscalBackend } from "@/lib/fiscal/client";
 import dbConnect from "@/lib/mongoose";
 import { decryptSecret, encryptSecret, isEncrypted } from "@/lib/security/secretBox";
 import {
@@ -114,8 +115,17 @@ export async function resolveDeviceByKey(key?: string | null): Promise<ResolvedD
  */
 export async function resolveServiceDeviceId(key?: string | null): Promise<string> {
   if (!key || key === CENTRAL_KEY) {
+    // An admin's choice (Fiscal devices > Make central) wins; the environment setting is the fallback for older installs.
+    const chosen = (await getFiscalSettingsDoc()).centralFiscalDeviceId;
+    if (chosen) {
+      const c = await FiscalDevice.findById(chosen).select("name active serviceDeviceId").lean<{ name: string; active: boolean; serviceDeviceId?: string }>();
+      if (!c) throw new DeviceConfigError("The device chosen as central no longer exists. Choose another on the Fiscal devices page.");
+      if (!c.active) throw new DeviceConfigError(`The central device "${c.name}" is switched off`);
+      if (!c.serviceDeviceId) throw new DeviceConfigError(`The central device "${c.name}" has no certificate in the fiscal service yet`);
+      return c.serviceDeviceId;
+    }
     const id = process.env.FISCAL_SERVICE_CENTRAL_DEVICE_ID?.trim();
-    if (!id) throw new DeviceConfigError("The central device has no fiscal-service id (FISCAL_SERVICE_CENTRAL_DEVICE_ID)");
+    if (!id) throw new DeviceConfigError("No central device is chosen. Open Fiscal devices and use Make central on a device.");
     return id;
   }
   if (!Types.ObjectId.isValid(key)) throw new DeviceConfigError("Unknown fiscal device");
@@ -193,9 +203,11 @@ export interface FiscalDeviceSafe {
   lastAutoCloseDate: string | null;
   lastAutoOpenDate: string | null;
   branches: { id: string; name: string }[];
+  /** FISCAL_BACKEND=service: this device is the central one (shop and branches without their own device). */
+  isCentral: boolean;
 }
 
-function toSafe(doc: IFiscalDeviceDoc, branches: { id: string; name: string }[]): FiscalDeviceSafe {
+function toSafe(doc: IFiscalDeviceDoc, branches: { id: string; name: string }[], isCentral = false): FiscalDeviceSafe {
   const expiry = evaluateExpiry(doc.certNotAfter);
   return {
     id: String(doc._id),
@@ -235,6 +247,7 @@ function toSafe(doc: IFiscalDeviceDoc, branches: { id: string; name: string }[])
     lastAutoCloseDate: doc.lastAutoCloseDate ?? null,
     lastAutoOpenDate: doc.lastAutoOpenDate ?? null,
     branches,
+    isCentral,
   };
 }
 
@@ -253,15 +266,16 @@ async function branchesByDevice(): Promise<Map<string, { id: string; name: strin
 
 export async function listFiscalDevices(): Promise<FiscalDeviceSafe[]> {
   await dbConnect();
-  const [docs, map] = await Promise.all([FiscalDevice.find().sort({ name: 1 }), branchesByDevice()]);
-  return docs.map((d: IFiscalDeviceDoc) => toSafe(d, map.get(String(d._id)) ?? []));
+  const [docs, map, settings] = await Promise.all([FiscalDevice.find().sort({ name: 1 }), branchesByDevice(), getFiscalSettingsDoc()]);
+  const central = settings.centralFiscalDeviceId ? String(settings.centralFiscalDeviceId) : "";
+  return docs.map((d: IFiscalDeviceDoc) => toSafe(d, map.get(String(d._id)) ?? [], String(d._id) === central));
 }
 
 export async function getFiscalDeviceSafe(id: string): Promise<FiscalDeviceSafe | null> {
   await dbConnect();
   if (!Types.ObjectId.isValid(id)) return null;
-  const [doc, map] = await Promise.all([FiscalDevice.findById(id), branchesByDevice()]);
-  return doc ? toSafe(doc, map.get(String(doc._id)) ?? []) : null;
+  const [doc, map, settings] = await Promise.all([FiscalDevice.findById(id), branchesByDevice(), getFiscalSettingsDoc()]);
+  return doc ? toSafe(doc, map.get(String(doc._id)) ?? [], String(settings.centralFiscalDeviceId ?? "") === String(doc._id)) : null;
 }
 
 async function loadDevice(id: string): Promise<IFiscalDeviceDoc> {
@@ -277,7 +291,8 @@ async function assertNotDuplicate(
   next: { zimraApiUrl?: string; zimraUseProductionUrl?: boolean; deviceId?: string }
 ): Promise<void> {
   const central = await getFiscalSettingsDoc();
-  const base = deviceBaseUrl(next);
+  // Devices behind the fiscal service all talk to the same ZIMRA address; only the Axis VD needs its own URL.
+  const base = fiscalBackend() === "service" ? null : deviceBaseUrl(next);
   const wantId = next.deviceId?.trim();
   if (wantId && central.deviceId?.trim() === wantId) {
     throw new DeviceConfigError(`Device ID ${wantId} is already the central device`);
@@ -397,7 +412,9 @@ export async function assignBranchDevice(branchId: string, deviceId: string | nu
   if (deviceId) {
     const d = await loadDevice(deviceId);
     if (!d.active) throw new DeviceConfigError("That device is switched off");
-    if (!deviceBaseUrl(d)) throw new DeviceConfigError("Set the device's ZIMRA API URL before assigning it to a branch");
+    if (fiscalBackend() === "service") {
+      if (!d.serviceDeviceId?.trim()) throw new DeviceConfigError("Add this device's certificate first, so it can be used by a branch");
+    } else if (!deviceBaseUrl(d)) throw new DeviceConfigError("Set the device's ZIMRA API URL before assigning it to a branch");
   }
   const res = await Branch.updateOne({ _id: branchId }, { $set: { "pos.fiscalDeviceId": deviceId ? new Types.ObjectId(deviceId) : null } });
   if (res.matchedCount === 0) throw new DeviceConfigError("Branch not found");

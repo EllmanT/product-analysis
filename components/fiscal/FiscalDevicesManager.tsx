@@ -2,15 +2,19 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Star } from "lucide-react";
 import { toast } from "sonner";
 
 import { useFiscalDevices } from "@/components/fiscal/DeviceSelect";
 import RegisterDevicePanel from "@/components/fiscal/RegisterDevicePanel";
-import { AddDeviceWizard, ReplaceCertificateDialog } from "@/components/fiscal/DeviceWizards";
+import { AddDeviceWizard, MakeCentralDialog, ReplaceCertificateDialog } from "@/components/fiscal/DeviceWizards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DayStatusBadge, DayStatusBadgeSkeleton, useDayOverview } from "@/components/fiscal/DayStatusBadge";
 import type { CertBundleValidation } from "@/lib/fiscalCertBundle";
 import type { FiscalDeviceSafe } from "@/lib/services/fiscalDevice.service";
 
@@ -105,6 +109,7 @@ interface Form {
   autoScheduleEnabled: boolean;
   autoCloseEnabled: boolean;
   autoOpenEnabled: boolean;
+  closeUnsentPolicy: "send_first" | "stop";
   closeTime: string;
   openTime: string;
   timezone: string;
@@ -128,6 +133,7 @@ const blankForm: Form = {
   autoScheduleEnabled: false,
   autoCloseEnabled: false,
   autoOpenEnabled: false,
+  closeUnsentPolicy: "send_first",
   closeTime: "00:00",
   openTime: "00:05",
   timezone: "Africa/Harare",
@@ -151,6 +157,7 @@ const toForm = (d: FiscalDeviceSafe): Form => ({
   autoScheduleEnabled: d.autoScheduleEnabled,
   autoCloseEnabled: d.autoCloseEnabled,
   autoOpenEnabled: d.autoOpenEnabled,
+  closeUnsentPolicy: d.closeUnsentPolicy === "stop" ? "stop" : "send_first",
   closeTime: d.closeTime,
   openTime: d.openTime,
   timezone: d.timezone,
@@ -164,7 +171,9 @@ export function DeviceEditor({
   onSaved,
   onClose,
   onDeleted,
+  layout = "page",
 }: {
+  layout?: "page" | "panel";
   device: FiscalDeviceSafe | null;
   encryptionConfigured: boolean;
   onSaved: (id: string) => void;
@@ -191,6 +200,7 @@ export function DeviceEditor({
       autoScheduleEnabled: form.autoScheduleEnabled,
       autoCloseEnabled: form.autoCloseEnabled,
       autoOpenEnabled: form.autoOpenEnabled,
+      closeUnsentPolicy: form.closeUnsentPolicy,
       closeTime: form.closeTime,
       openTime: form.openTime,
       timezone: form.timezone.trim() || "Africa/Harare",
@@ -240,8 +250,7 @@ export function DeviceEditor({
     onDeleted();
   }
 
-  return (
-    <div className="space-y-6">
+  const detailsSection = (
       <section className="space-y-4 rounded-xl border bg-background p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -353,7 +362,9 @@ export function DeviceEditor({
           </div>
         )}
       </section>
+  );
 
+  const scheduleSection = (
       <section className="space-y-4 rounded-xl border bg-background p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -384,14 +395,56 @@ export function DeviceEditor({
           </div>
         )}
       </section>
+  );
 
-      {device ? (
-        <CertificatePanel device={device} encryptionConfigured={encryptionConfigured} onChanged={() => onSaved(device.id)} />
-      ) : (
-        <p className="text-sm text-muted-foreground">Save the device first, then upload its certificate.</p>
-      )}
+  const closeSection = (
+    <section className="space-y-3 rounded-xl border bg-background p-5">
+      <div>
+        <h2 className="font-medium">Sales without a fiscal receipt when the day closes</h2>
+        <p className="text-sm text-muted-foreground">
+          Sales made while the device or the internet was down are saved and sent later. This decides what closing the day does about them. It
+          applies to automatic and manual closes.
+        </p>
+      </div>
+      <div role="radiogroup" aria-label="When the day closes" className="grid gap-2">
+        {(
+          [
+            ["send_first", "Send them first, then close (recommended)", "At close the system sends each waiting sale to ZIMRA one at a time. When none are left, the day closes. No one has to do anything."],
+            ["stop", "Stop and tell me", "The close is refused while any sale is still waiting. Use this only if you want to deal with them by hand."],
+          ] as const
+        ).map(([value, title, text]) => (
+          <label
+            key={value}
+            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${form.closeUnsentPolicy === value ? "border-primary bg-primary/5" : "hover:bg-accent/50"}`}
+          >
+            <input
+              type="radio"
+              name="close-unsent-policy"
+              className="mt-1"
+              checked={form.closeUnsentPolicy === value}
+              onChange={() => set("closeUnsentPolicy", value)}
+            />
+            <span>
+              <span className="block font-medium">{title}</span>
+              <span className="block text-muted-foreground">{text}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        A receipt ZIMRA refuses outright (for example a validation error) cannot be fixed by sending it again. It is set aside for review and the day
+        still closes, so one bad receipt never holds the day open.
+      </p>
+    </section>
+  );
 
-      {device && (
+  const certSection = device ? (
+    <CertificatePanel device={device} encryptionConfigured={encryptionConfigured} onChanged={() => onSaved(device.id)} />
+  ) : (
+    <p className="text-sm text-muted-foreground">Save the device first, then upload its certificate.</p>
+  );
+
+  const branchesSection = device && (
         <section className="space-y-2 rounded-xl border bg-background p-5">
           <h2 className="font-medium">{central ? "Branches using the central device" : "Branches using this device"}</h2>
           {device.branches.length === 0 ? (
@@ -410,8 +463,9 @@ export function DeviceEditor({
             </ul>
           )}
         </section>
-      )}
+  );
 
+  const saveBar = (
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={() => void save()} disabled={busy !== "" || (!central && !form.name.trim())}>
           {busy === "save" ? "Saving…" : central ? "Save settings" : device ? "Save device" : "Add device"}
@@ -438,11 +492,52 @@ export function DeviceEditor({
           </span>
         )}
       </div>
-      {error && (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
-      )}
+  );
+
+  const errorLine = error ? (
+    <p className="text-sm text-destructive" role="alert">
+      {error}
+    </p>
+  ) : null;
+
+  // In the slide-over the four parts are tabs and Save stays in view at the bottom.
+  if (layout === "panel") {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <Tabs defaultValue="details" className="flex min-h-0 flex-1 flex-col gap-0">
+          <TabsList className="mx-4 w-auto self-start">
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
+            <TabsTrigger value="certificate">Certificate</TabsTrigger>
+            {branchesSection && <TabsTrigger value="branches">Branches</TabsTrigger>}
+          </TabsList>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <TabsContent value="details">{detailsSection}</TabsContent>
+            <TabsContent value="schedule" className="space-y-6">
+              {scheduleSection}
+      {closeSection}
+              {closeSection}
+            </TabsContent>
+            <TabsContent value="certificate">{certSection}</TabsContent>
+            {branchesSection && <TabsContent value="branches">{branchesSection}</TabsContent>}
+          </div>
+        </Tabs>
+        <div className="space-y-2 border-t bg-background p-4">
+          {errorLine}
+          {saveBar}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {detailsSection}
+      {scheduleSection}
+      {certSection}
+      {branchesSection}
+      {saveBar}
+      {errorLine}
     </div>
   );
 }
@@ -782,7 +877,10 @@ function CertificatePanel({
 
 export default function FiscalDevicesManager() {
   const [reloadKey, setReloadKey] = useState(0);
-  const { devices, loaded, encryptionConfigured } = useFiscalDevices(reloadKey);
+  const { devices, loaded, encryptionConfigured, backend } = useFiscalDevices(reloadKey);
+  const { days, loading: daysLoading } = useDayOverview();
+  const dayOf = (id: string) => days?.find((x) => x.key === id);
+  const viaService = backend === "service";
   // null = list only, otherwise the id of the device whose advanced settings are open.
   const [openId, setOpenId] = useState<string | null>(null);
   const reload = () => setReloadKey((n) => n + 1);
@@ -790,19 +888,23 @@ export default function FiscalDevicesManager() {
   const open = openId ? devices.find((d) => d.id === openId) : undefined;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 p-4 lg:p-6">
+    <div className="w-full space-y-6 p-4 lg:p-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">Fiscal devices</h1>
           <p className="text-sm text-muted-foreground">
-            Branches use the central device by default. Add a device here, then pick it for a branch in POS settings so that branch has its own fiscal day and certificate.
+            {viaService
+              ? "Add each ZIMRA device here with its certificate zip. Pick which one is central (used by the shop and by branches without their own), and give the others to branches in POS settings."
+              : "Branches use the central device by default. Add a device here, then pick it for a branch in POS settings so that branch has its own fiscal day and certificate."}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/fiscal-settings">Central device settings</Link>
-          </Button>
-          <AddDeviceWizard onDone={reload} />
+          {!viaService && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/fiscal-settings">Central device settings</Link>
+            </Button>
+          )}
+          <AddDeviceWizard onDone={reload} backend={backend} />
         </div>
       </div>
 
@@ -816,39 +918,63 @@ export default function FiscalDevicesManager() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : devices.length === 0 ? (
         <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No separate devices yet. Every branch uses the central device. Use Add device when a branch needs its own, or when you are setting up a client&apos;s test device.
+          {viaService ? "No devices yet. Use Add device and upload the certificate zip ZIMRA gave you. The first device you add can be made central." : "No separate devices yet. Every branch uses the central device. Use Add device when a branch needs its own, or when you are setting up a client's test device."}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-background">
-          <table className="w-full min-w-[640px] text-left text-sm">
+        <div className="rounded-xl border bg-background">
+          <table className="w-full table-auto text-left text-sm">
             <thead className="border-b bg-slate-50 text-xs font-semibold uppercase text-slate-600">
               <tr>
                 <th className="px-4 py-3">Device</th>
                 <th className="px-4 py-3">Device ID</th>
                 <th className="px-4 py-3">Branches</th>
                 <th className="px-4 py-3">Certificate</th>
-                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Fiscal day</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {devices.map((d) => (
-                <tr key={d.id} className={`border-b last:border-0 ${openId === d.id ? "bg-slate-50" : ""}`}>
+                <tr
+                  key={d.id}
+                  className={`border-b last:border-0 ${d.isCentral ? "bg-emerald-50/60 [box-shadow:inset_4px_0_0_0_#10b981]" : openId === d.id ? "bg-slate-50" : ""}`}
+                >
                   <td className="px-4 py-3">
-                    <div className="font-medium text-slate-900">{d.name}</div>
-                    <div className="max-w-64 truncate text-xs text-muted-foreground">{d.effectiveZimraUrl ?? "No URL set"}</div>
+                    <div className="flex flex-wrap items-center gap-2 font-medium text-slate-900">
+                      {d.name}
+                      {d.isCentral && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs font-semibold text-white">
+                          <Star className="size-3 fill-current" aria-hidden /> Central device
+                        </span>
+                      )}
+                    </div>
+                    {d.isCentral && <div className="text-xs text-emerald-800">The shop and every branch without its own device use this one.</div>}
+                    <div className="max-w-[28rem] truncate text-xs text-muted-foreground">{d.effectiveZimraUrl ?? "No URL set"}</div>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">{d.deviceId ?? "—"}</td>
                   <td className="px-4 py-3 text-slate-700">{d.branches.length ? d.branches.map((b) => b.name).join(", ") : "—"}</td>
                   <td className="px-4 py-3">
                     <CertChip d={d} />
                   </td>
-                  <td className="px-4 py-3">{d.active ? <Chip tone="ok">Active</Chip> : <Chip tone="muted">Off</Chip>}</td>
+                  <td className="px-4 py-3">
+                    {!d.active ? (
+                      <Chip tone="muted">Switched off</Chip>
+                    ) : dayOf(d.id) ? (
+                      <Link href="/fiscal-day" title="Open the Fiscal day page" className="inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2">
+                        <DayStatusBadge day={dayOf(d.id)!} />
+                      </Link>
+                    ) : daysLoading ? (
+                      <DayStatusBadgeSkeleton />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {viaService && !d.isCentral && <MakeCentralDialog device={d} onDone={reload} />}
                       <ReplaceCertificateDialog device={d} onDone={reload} />
-                      <Button variant="outline" size="sm" onClick={() => setOpenId(openId === d.id ? null : d.id)}>
-                        {openId === d.id ? "Close" : "Settings"}
+                      <Button variant="outline" size="sm" onClick={() => setOpenId(d.id)}>
+                        Settings
                       </Button>
                     </div>
                   </td>
@@ -859,20 +985,35 @@ export default function FiscalDevicesManager() {
         </div>
       )}
 
-      {open && (
-        <DeviceEditor
-          // Remount whenever the saved device changes so the form shows what is stored.
-          key={`${open.id}:${open.certSerial}:${open.deviceId}:${open.hasVdPassword}`}
-          device={open}
-          encryptionConfigured={encryptionConfigured}
-          onSaved={() => reload()}
-          onClose={() => setOpenId(null)}
-          onDeleted={() => {
-            reload();
-            setOpenId(null);
-          }}
-        />
-      )}
+      <Sheet open={!!open} onOpenChange={(o) => !o && setOpenId(null)}>
+        <SheetContent side="right" className="w-full gap-0 sm:max-w-2xl">
+          {open && (
+            <>
+              <SheetHeader className="border-b pr-12">
+                <SheetTitle className="flex flex-wrap items-center gap-2">
+                  {open.name}
+                  {open.isCentral && <Chip tone="ok">Central device</Chip>}
+                  {!open.active ? <Chip tone="muted">Switched off</Chip> : dayOf(open.id) ? <DayStatusBadge day={dayOf(open.id)!} /> : null}
+                </SheetTitle>
+                <SheetDescription>Device ID {open.deviceId ?? "not set"}</SheetDescription>
+              </SheetHeader>
+              <DeviceEditor
+                layout="panel"
+                // Remount whenever the saved device changes so the form shows what is stored.
+                key={`${open.id}:${open.certSerial}:${open.deviceId}:${open.hasVdPassword}`}
+                device={open}
+                encryptionConfigured={encryptionConfigured}
+                onSaved={() => reload()}
+                onClose={() => setOpenId(null)}
+                onDeleted={() => {
+                  reload();
+                  setOpenId(null);
+                }}
+              />
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

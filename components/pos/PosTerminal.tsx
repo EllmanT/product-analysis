@@ -1,6 +1,8 @@
 "use client";
 
-import { FileImage, Loader2, LogOut, Printer, ReceiptText, Smartphone, Trash2, TriangleAlert } from "lucide-react";
+import Logo from "@/components/brand/Logo";
+import Link from "next/link";
+import { ArrowLeft, FileImage, Loader2, LogOut, Printer, ReceiptText, Smartphone, Trash2, TriangleAlert } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -19,6 +21,7 @@ import {
 } from "@/components/pos/cart";
 import DespatchImportDialog, { type DespatchImport } from "@/components/pos/DespatchImportDialog";
 import PhoneScanDialog from "@/components/pos/PhoneScanDialog";
+import { TillTotals, type QueuedTotal } from "@/components/pos/DayTotals";
 import SalesSheet, { type SaleRow } from "@/components/pos/SalesSheet";
 import { useOfflineQueue } from "@/components/pos/useOfflineQueue";
 import { clearAll, fallbackNumber, kvGet, kvSet, takeProvisionalNumber } from "@/lib/pos/offlineStore";
@@ -44,6 +47,10 @@ interface SummaryRow {
   fiscalised: { count: number; total: number; vat: number };
   credit?: { count: number; total: number };
   pending: { count: number; total: number };
+  /** Everything still waiting for a fiscal receipt, whatever day it was sold. */
+  waiting?: { count: number; total: number };
+  failed?: number;
+  voided?: number;
 }
 interface Summary {
   totals: SummaryRow[];
@@ -783,6 +790,10 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
     <div className="grid h-dvh grid-rows-[auto_1fr_auto] bg-muted/40 text-foreground">
       {/* Status bar */}
       <header className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b bg-background px-4 py-2.5">
+        <span className="shrink-0" title="StockFlow">
+          <Logo size="sm" showName={false} className="sm:hidden" />
+          <Logo size="sm" className="hidden sm:inline-flex" />
+        </span>
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold leading-tight">{branch.pos.receipt.branchName || branch.name}</div>
           <div className="truncate text-xs text-muted-foreground">
@@ -790,6 +801,12 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
             {isAdmin ? " · administrator" : ""}
           </div>
         </div>
+
+        {canCredit && (
+          <Link href="/pos/tills" className="inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs transition-transform duration-150 hover:bg-accent active:scale-[0.97]">
+            <ArrowLeft className="size-3.5" aria-hidden /> Back to admin
+          </Link>
+        )}
 
         {tills.length > 0 && (
           <label className="inline-flex items-center gap-2 text-xs">
@@ -818,29 +835,28 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
           </label>
         )}
 
-        {/* Device and fiscal-day health is an administrator's concern; cashiers just issue invoices. */}
-        {isAdmin && (
-          <div
-            className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
-            role="status"
-            aria-live="polite"
-          >
-            <span
-              className={cn(
-                "size-2 rounded-full",
-                !summary ? "bg-muted-foreground/40" : dayOpen ? "bg-emerald-500" : device?.reachable ? "bg-amber-500" : "bg-red-500"
-              )}
-              aria-hidden
-            />
-            {!summary
-              ? "Checking fiscal device…"
-              : !device?.reachable
-                ? "Fiscal device unreachable. Receipts will be provisional."
-                : dayOpen
-                  ? `Fiscal day ${device.fiscalDayNo ?? ""} open`
-                  : "Fiscal day closed. Receipts will be provisional."}
-          </div>
-        )}
+        {/* Everyone at the till sees whether receipts are going through, so nobody is surprised by a provisional slip. */}
+        <div
+          className="inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
+          role="status"
+          aria-live="polite"
+        >
+          <span
+            className={cn(
+              "size-2 rounded-full",
+              !summary ? "bg-muted-foreground/40" : dayOpen ? "bg-emerald-500" : device?.reachable ? "bg-amber-500" : "bg-red-500"
+            )}
+            aria-hidden
+          />
+          {!summary
+            ? "Checking fiscal device…"
+            : !device?.reachable
+              ? "Fiscal device unreachable. Receipts will be provisional."
+              : dayOpen
+                ? `Fiscal day ${device.fiscalDayNo ?? ""} open`
+                : "Fiscal day closed. Receipts will be provisional."}
+
+        </div>
 
         {!off.reachable && (
           <div
@@ -895,13 +911,13 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
           onClick={() => setSalesOpen(true)}
           className={cn(
             "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-transform duration-150 hover:bg-accent active:scale-[0.97]",
-            ((isAdmin && summary && summary.unfiscalised > 0) || off.queue.length > 0) && "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+            ((summary && summary.unfiscalised > 0) || off.queue.length > 0) && "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
           )}
         >
           <ReceiptText className="size-3.5" aria-hidden />
           {off.queue.length > 0
             ? `${off.queue.length} saved on this till`
-            : isAdmin && summary && summary.unfiscalised > 0
+            : summary && summary.unfiscalised > 0
               ? `${summary.unfiscalised} awaiting fiscalisation`
               : "Today's sales"}
           <kbd className="rounded border bg-background px-1 font-sans text-[10px] text-muted-foreground">F8</kbd>
@@ -1190,6 +1206,11 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
             </div>
           </div>
 
+          <TillTotals
+            rows={{ USD: usd, ZWG: zwg }}
+            queued={off.queue.map((q): QueuedTotal => ({ currency: (q.display as { currency?: string }).currency === "ZWG" ? "ZWG" : "USD", total: Number((q.display as { totalAmount?: number }).totalAmount) || 0 }))}
+          />
+
           <div className="rounded-xl border bg-background p-3 shadow-xs">
             <div className="mb-1.5 flex items-center justify-between">
               <h2 className="text-sm font-semibold">Customer</h2>
@@ -1278,47 +1299,6 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
               )}
             </div>
           </div>
-
-          <div className="rounded-xl border bg-background p-3 shadow-xs">
-            <h2 className="mb-1 text-sm font-semibold">Today at this branch</h2>
-            <table className="w-full text-sm">
-              <thead className="text-xs text-muted-foreground">
-                <tr>
-                  <th className="pb-1 text-left font-medium" />
-                  <th className="pb-1 text-right font-medium">Invoices</th>
-                  <th className="pb-1 text-right font-medium">Total</th>
-                </tr>
-              </thead>
-              <tbody className="tabular-nums">
-                {(
-                  [
-                    ["USD", usd],
-                    ["ZWG", zwg],
-                  ] as const
-                ).map(([c, row]) => (
-                  <tr key={c} className="border-t">
-                    <td className="py-1 font-medium">{c}</td>
-                    <td className="py-1 text-right">{row ? row.fiscalised.count : "–"}</td>
-                    <td className="py-1 text-right font-semibold">{row ? money(row.fiscalised.total) : "–"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {([usd, zwg] as const).some((r) => r && r.credit && r.credit.count > 0) && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Credit notes today:{" "}
-                {([usd, zwg] as const)
-                  .filter((r) => r && r.credit && r.credit.count > 0)
-                  .map((r) => `${r!.currency} ${money(r!.credit!.total)}`)
-                  .join(" · ")}
-              </p>
-            )}
-            {isAdmin && summary && summary.unfiscalised > 0 && (
-              <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-                {summary.unfiscalised} sale{summary.unfiscalised === 1 ? "" : "s"} issued a provisional receipt and not yet fiscalised.
-              </p>
-            )}
-          </div>
         </aside>
       </main>
 
@@ -1361,6 +1341,7 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
       )}
 
       <SalesSheet
+        totals={{ USD: usd, ZWG: zwg }}
         open={salesOpen}
         onOpenChange={(v) => {
           setSalesOpen(v);

@@ -35,11 +35,10 @@ interface Form {
   offlineHours: string;
   prefix: string;
   prefixEdited: boolean;
-  companyName: string;
   address: string;
   addressEdited: boolean;
   phone: string;
-  tin: string;
+  email: string;
 }
 
 const EMPTY: Form = {
@@ -52,11 +51,10 @@ const EMPTY: Form = {
   offlineHours: "5",
   prefix: "",
   prefixEdited: false,
-  companyName: "",
   address: "",
   addressEdited: false,
   phone: "",
-  tin: "",
+  email: "",
 };
 
 function Field({ label, htmlFor, hint, error, children }: { label: string; htmlFor?: string; hint?: string; error?: string | null; children: React.ReactNode }) {
@@ -145,7 +143,7 @@ export default function AddBranchWizard({ onCreated }: { onCreated: () => void }
     setForm((f) => ({ ...f, name, prefix: f.prefixEdited ? f.prefix : suggestPrefix(name) }));
   }
   function setLocation(location: string) {
-    setForm((f) => ({ ...f, location, address: f.addressEdited ? f.address : location }));
+    setForm((f) => ({ ...f, location }));
   }
 
   function next() {
@@ -203,11 +201,10 @@ export default function AddBranchWizard({ onCreated }: { onCreated: () => void }
           offlineLimitHours: form.offline === "unlimited" ? null : Number(form.offlineHours),
           fiscalDeviceId: form.deviceChoice === "own" ? form.deviceId : null,
           receipt: {
-            companyName: form.companyName.trim() || undefined,
             branchName: form.name.trim(),
             address: form.address.trim() || undefined,
             phone: form.phone.trim() || undefined,
-            tin: form.tin.trim() || undefined,
+            email: form.email.trim() || undefined,
           },
         }),
       });
@@ -361,15 +358,22 @@ export default function AddBranchWizard({ onCreated }: { onCreated: () => void }
 
               {step === 3 && (
                 <>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Business name" htmlFor="bw-company" hint="Printed at the top of the receipt.">
-                      <Input id="bw-company" value={form.companyName} onChange={(e) => set("companyName", e.target.value)} />
-                    </Field>
-                    <Field label="Phone" htmlFor="bw-phone">
-                      <Input id="bw-phone" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
-                    </Field>
-                  </div>
-                  <Field label="Address" htmlFor="bw-address">
+                  <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                    The business name, TIN, VAT number and footer come from the company profile in Settings, so they are not asked again here.
+                  </p>
+                  <Field
+                    label="Receipt code"
+                    htmlFor="bw-prefix"
+                    hint={`Receipts will be numbered like ${form.prefix || "HC"}U0001. Each branch needs its own code.`}
+                  >
+                    <Input
+                      id="bw-prefix"
+                      maxLength={4}
+                      value={form.prefix}
+                      onChange={(e) => setForm((f) => ({ ...f, prefix: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""), prefixEdited: true }))}
+                    />
+                  </Field>
+                  <Field label="Branch address" htmlFor="bw-address" hint="Printed on this branch's receipts. Leave blank to print head office's.">
                     <Input
                       id="bw-address"
                       value={form.address}
@@ -377,20 +381,11 @@ export default function AddBranchWizard({ onCreated }: { onCreated: () => void }
                     />
                   </Field>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="TIN" htmlFor="bw-tin">
-                      <Input id="bw-tin" value={form.tin} onChange={(e) => set("tin", e.target.value)} />
+                    <Field label="Branch phone" htmlFor="bw-phone">
+                      <Input id="bw-phone" inputMode="tel" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
                     </Field>
-                    <Field
-                      label="Receipt code"
-                      htmlFor="bw-prefix"
-                      hint={`Receipts will be numbered like ${form.prefix || "HC"}U0001. Each branch needs its own code.`}
-                    >
-                      <Input
-                        id="bw-prefix"
-                        maxLength={4}
-                        value={form.prefix}
-                        onChange={(e) => setForm((f) => ({ ...f, prefix: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""), prefixEdited: true }))}
-                      />
+                    <Field label="Branch email" htmlFor="bw-email">
+                      <Input id="bw-email" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} />
                     </Field>
                   </div>
                 </>

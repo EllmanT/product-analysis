@@ -14,6 +14,8 @@ const text = (max: number) => z.string().trim().max(max).optional();
 
 const PatchSchema = z
   .object({
+    name: z.string().trim().min(2).max(40).optional(),
+    location: z.string().trim().min(1).max(60).optional(),
     enabled: z.boolean().optional(),
     invoicePrefix: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{1,4}$/, "1 to 4 letters or digits").optional(),
     taxPercent: z.number().min(0).max(100).optional(),
@@ -25,22 +27,18 @@ const PatchSchema = z
     fiscalDeviceId: z.string().regex(/^[a-f0-9]{24}$/, "Invalid device").nullable().optional(),
     receipt: z
       .object({
-        companyName: text(120),
+        // Only what differs between branches. Company name, TIN, VAT number, logo and footer are company-wide (Settings > Company).
         branchName: text(120),
         address: text(200),
         phone: text(40),
         email: z.string().trim().email().max(120).optional().or(z.literal("")),
-        tin: text(40),
-        vatNumber: text(40),
-        logoUrl: text(500),
-        footerLines: z.array(z.string().trim().max(80)).max(6).optional(),
       })
       .strict()
       .optional(),
   })
   .strict();
 
-/** Admin only: enable POS for a branch and set its prefix, VAT, offline limit and slip details. */
+/** Admin only: enable POS for a branch and set its prefix, VAT, offline limit and its own address and contact for slips. */
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const denied = requirePermission(await auth(), "/pos-settings");
@@ -61,8 +59,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     }
 
     await dbConnect();
-    const { receipt, fiscalDeviceId, ...rest } = parsed.data;
+    const { receipt, fiscalDeviceId, name, location, ...rest } = parsed.data;
     const $set: Record<string, unknown> = {};
+    if (name !== undefined) $set.name = name;
+    if (location !== undefined) $set.location = location;
     for (const [k, v] of Object.entries(rest)) $set[`pos.${k}`] = v;
     for (const [k, v] of Object.entries(receipt ?? {})) $set[`pos.receipt.${k}`] = v;
     if (Object.keys($set).length === 0 && fiscalDeviceId === undefined) {

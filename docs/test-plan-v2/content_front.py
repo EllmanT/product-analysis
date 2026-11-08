@@ -63,8 +63,9 @@ FRONT = [
         "Start the app: npm run dev. It listens on port 3000. If another program already uses port 3000, run npx next dev -p 3100 and use that address everywhere below.",
         "Seed the test accounts if the database is empty: npm run seed:test, then npx tsx scripts/pos-seed-test-accounts.ts, then npm run pos:demo.",
         "Scheduler (OPTIONAL): set CRON_SECRET in .env.local and call /api/cron/pos-queue and /api/cron/fiscal-schedule every minute with the header Authorization: Bearer <CRON_SECRET>. Without it nothing retries by itself.",
-        "Fiscal back end: FISCAL_BACKEND=legacy (default) talks to an Axis Virtual Device; FISCAL_BACKEND=service talks to the separate fiscal service, which talks to ZIMRA directly. See the AUTO and REH sections for how each is tested.",
-        "Super admin: set BOOTSTRAP_ADMIN_EMAILS to the email of the administrator who will edit Menu access. If it is empty, every administrator counts as a super admin.",
+        "Fiscal back end for these tests: FISCAL_BACKEND=service. Start the fiscal service first: in fiscal-service copy .env.example to .env and fill FISCAL_MONGODB_URI, FISCAL_SERVICE_TOKEN and FISCAL_ENCRYPTION_KEY, then run npx tsx --env-file=.env src/main.ts (it listens on port 4100). In the app's .env.local set FISCAL_BACKEND=service, FISCAL_SERVICE_URL=http://127.0.0.1:4100 and the SAME FISCAL_SERVICE_TOKEN, then restart npm run dev. FISCAL_BACKEND=legacy (the default) talks to an Axis Virtual Device and is kept only for that device.",
+        "Test devices: keep ZIMRA's certificate zips in the git-ignored folder test certificates/. Probe them read-only first (cd fiscal-service, then npx tsx scripts/probe-device.ts \"../test certificates\") and use only devices that show FiscalDayClosed. Add them in the app on Fiscal devices (section 6). FISCAL_SERVICE_CENTRAL_DEVICE_ID is not needed: the central device is chosen on that page.",
+        "Super admin: BOOTSTRAP_ADMIN_EMAILS must contain the email you sign in with when you test Menu access, for example admin@testbranch.com (separate several emails with commas). Only those admins see Menu access. Only when the setting is empty or missing does every administrator count as a super admin. Restart the app after changing it.",
     ]),
     ("0.5 Roles", 2, "table", (
         ["Role", "What they can do by default"],
@@ -77,10 +78,10 @@ FRONT = [
         [40, 227],
     )),
     ("0.6 Devices", 2, "bullets", [
-        "A fiscal device is what reports each sale to ZIMRA. The central device is shared by every branch that has no device of its own. A branch can have its own device.",
+        "A fiscal device is what reports each sale to ZIMRA. With the fiscal service every device is a ZIMRA device added from its certificate zip. One is marked Central: the shop and every branch without a device of its own use it. Any device can be made central later (section 6.4), but only while the current central device has its day closed and nothing waiting.",
         "ZIMRA gives each device a maximum fiscal day length (usually 24 hours). Past it, ZIMRA stops taking receipts until the day is closed.",
         "A receipt ZIMRA flags RED cannot be taken back, and the fiscal day then cannot be closed by the system. Close that day on the ZIMRA portal. Never send test receipts you cannot afford to lose to a device with a shared history.",
-        "The Axis Virtual Device at 140.82.25.196:10005 answered 'License Status: pending' on 6 November 2026, so every sale on it is saved as an invoice that cannot be fiscalised until its licence is renewed. Use the direct ZIMRA test devices (section 22 and 23) instead.",
+        "The Axis Virtual Device at 140.82.25.196:10005 answered 'License Status: pending' on 6 November 2026, and the live system will not use it. Test with the direct ZIMRA test devices and the fiscal service (sections 6, 22 and 23). The public ZIMRA host has no /api/VirtualDevice paths: a ZIMRA test device added while FISCAL_BACKEND=legacy fails its connection check with HTTP 404, so switch to the service back end.",
         "Always check a device's state before using it (npx tsx fiscal-service/scripts/e2e-live.ts without --yes is read only). A device must be FiscalDayClosed and clean to be used by the rehearsal.",
     ]),
     ("0.7 What is new since v1", 2, "table", (

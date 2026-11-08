@@ -1,15 +1,16 @@
-import { FdmsClient } from "../core/transport.js";
+import { FdmsClient, type Transport } from "../core/transport.js";
 import { NodeTransport } from "../node/transport.js";
 import type { DeviceConfigSnapshot, GatewayVerifier } from "./registry.js";
 
 /** A client for one device over mutual TLS. `baseUrl` overrides the ZIMRA host (a local fake, in tests). */
 export function gatewayClient(
   id: { deviceId: number; serialNumber: string; certificatePem: string; privateKeyPem: string; environment: "test" | "production" },
-  baseUrl?: string
+  baseUrl?: string,
+  transport?: Transport
 ): FdmsClient {
   return new FdmsClient(
     { deviceId: id.deviceId, serialNumber: id.serialNumber, modelName: "Server", modelVersion: "v1" },
-    new NodeTransport({ certificatePem: id.certificatePem, privateKeyPem: id.privateKeyPem }),
+    transport ?? new NodeTransport({ certificatePem: id.certificatePem, privateKeyPem: id.privateKeyPem }),
     { environment: id.environment, baseUrl }
   );
 }

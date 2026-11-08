@@ -30,7 +30,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "StockFlow Shop",
+  title: { absolute: "StockFlow Shop" },
   description: "Browse products and build your order.",
 };
 

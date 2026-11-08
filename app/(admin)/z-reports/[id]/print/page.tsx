@@ -1,38 +1,25 @@
 "use client";
 
+import { Printer } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import ZReportDocument, { ZReportStyles, type ZReportDetail, type ZReportLayout } from "@/components/zreport/ZReportDocument";
 import { Button } from "@/components/ui/button";
-
-type Report = {
-  _id: string;
-  source: string;
-  closedAt: string;
-  fiscalDayNo: number | null;
-  deviceName?: string;
-  deviceId?: string | null;
-  totalSalesUsd: number | null;
-  totalSalesZwg: number | null;
-  rawCloseResponse: unknown;
-};
-
-function fmtMoney(n: number | null, cur: string): string {
-  if (n == null) return "—";
-  return `${cur} ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
+import { cn } from "@/lib/utils";
 
 export default function ZReportPrintPage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
-  const [report, setReport] = useState<Report | null>(null);
+  const [report, setReport] = useState<ZReportDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [layout, setLayout] = useState<ZReportLayout>("a4");
 
   const load = useCallback(async () => {
     if (!id) return;
     try {
       const res = await fetch(`/api/admin/z-reports/${id}`);
-      const json = (await res.json()) as { success: boolean; data?: Report; message?: string };
+      const json = (await res.json()) as { success: boolean; data?: ZReportDetail; message?: string };
       if (!res.ok || !json.success || !json.data) {
         setError(json.message ?? "Not found");
         return;
@@ -64,46 +51,40 @@ export default function ZReportPrintPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-8 text-slate-900 print:p-6">
-      <div className="mb-6 flex justify-end print:hidden">
+    <div className="zr-screen min-h-screen bg-white px-4 py-6 print:p-0">
+      <ZReportStyles layout={layout} />
+      <div className="zr-toolbar mx-auto mb-6 flex max-w-[760px] items-center justify-between gap-3 print:hidden">
+        <div role="group" aria-label="Paper size" className="inline-flex rounded-md border p-0.5 text-sm">
+          {(["a4", "slip"] as const).map((l) => (
+            <button
+              key={l}
+              type="button"
+              aria-pressed={layout === l}
+              onClick={() => setLayout(l)}
+              className={cn(
+                "rounded px-3 py-1.5 font-medium transition-colors",
+                layout === l ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
+              )}
+            >
+              {l === "a4" ? "A4 page" : "Till slip (80mm)"}
+            </button>
+          ))}
+        </div>
         <Button type="button" onClick={() => window.print()}>
-          Print
+          <Printer className="size-4" aria-hidden /> Print
         </Button>
       </div>
 
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-bold">Z-report (fiscal day close)</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Closed: {new Date(report.closedAt).toLocaleString()} · Source: {report.source}
-        </p>
-        {report.deviceName && (
-          <p className="text-sm text-slate-600">
-            Device: {report.deviceName}
-            {report.deviceId ? ` (ID ${report.deviceId})` : ""}
-          </p>
-        )}
-        {report.fiscalDayNo != null && (
-          <p className="text-sm text-slate-600">Fiscal day no.: {report.fiscalDayNo}</p>
-        )}
-      </header>
+      <ZReportDocument report={report} layout={layout} />
 
-      <section className="mt-8 grid gap-6 sm:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 p-4">
-          <h2 className="text-sm font-semibold uppercase text-slate-500">Total sales USD</h2>
-          <p className="mt-2 text-2xl font-bold">{fmtMoney(report.totalSalesUsd, "USD")}</p>
-        </div>
-        <div className="rounded-lg border border-slate-200 p-4">
-          <h2 className="text-sm font-semibold uppercase text-slate-500">Total sales ZWG</h2>
-          <p className="mt-2 text-2xl font-bold">{fmtMoney(report.totalSalesZwg, "ZWG")}</p>
-        </div>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="text-sm font-semibold text-slate-700">Raw ZIMRA response (reference)</h2>
-        <pre className="mt-2 max-h-[480px] overflow-auto rounded border border-slate-200 bg-slate-50 p-3 text-xs print:max-h-none">
-          {JSON.stringify(report.rawCloseResponse, null, 2)}
-        </pre>
-      </section>
+      {report.rawCloseResponse != null && (
+        <details className="mx-auto mt-10 max-w-[760px] text-xs text-slate-600 print:hidden">
+          <summary className="cursor-pointer font-medium">Technical detail (what ZIMRA returned)</summary>
+          <pre className="mt-2 max-h-[420px] overflow-auto rounded border border-slate-200 bg-slate-50 p-3">
+            {JSON.stringify(report.rawCloseResponse, null, 2)}
+          </pre>
+        </details>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, Mail, Printer, RefreshCw } from "lucide-react";
+import { SalesTiles, type QueuedTotal, type TotalsRow } from "@/components/pos/DayTotals";
+import { Loader2, Mail, Printer, RefreshCw, Search } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -61,11 +62,43 @@ const STATUS: Record<SaleRow["status"], { label: string; tone: string }> = {
   VOIDED: { label: "Voided", tone: "bg-muted text-muted-foreground" },
 };
 
-async function fetchRows(branchId: string): Promise<SaleRow[] | null> {
+export type SaleFilter = "all" | "fiscalised" | "notFiscalised" | "attention";
+
+const FILTER_STATUS: Record<SaleFilter, string | null> = {
+  all: null,
+  fiscalised: "FISCALISED",
+  notFiscalised: "PENDING,SUBMITTING,UNFISCALISED,UNKNOWN",
+  attention: "FAILED",
+};
+
+interface Counts {
+  total: number;
+  fiscalised: number;
+  notFiscalised: number;
+  attention: number;
+}
+
+async function fetchRows(branchId: string, q: string, filter: SaleFilter): Promise<SaleRow[] | null> {
   try {
-    const r = await fetch(`/api/pos/sales?branchId=${branchId}&limit=200`, { cache: "no-store" });
+    const p = new URLSearchParams({ branchId, limit: "200" });
+    if (q) p.set("q", q);
+    const status = FILTER_STATUS[filter];
+    if (status) p.set("status", status);
+    const r = await fetch(`/api/pos/sales?${p}`, { cache: "no-store" });
     const j = await r.json();
     return j.success ? (j.data as SaleRow[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchCounts(branchId: string, q: string): Promise<Counts | null> {
+  try {
+    const p = new URLSearchParams({ branchId, counts: "1" });
+    if (q) p.set("q", q);
+    const r = await fetch(`/api/pos/sales?${p}`, { cache: "no-store" });
+    const j = await r.json();
+    return j.success ? (j.data as Counts) : null;
   } catch {
     return null;
   }
@@ -75,6 +108,8 @@ const time = (iso: string) =>
   new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Harare", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
 
 interface Props {
+  /** The branch's totals for today, shown as the heading. */
+  totals?: Partial<Record<"USD" | "ZWG", TotalsRow>>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   branch: PosBranchDto;
@@ -88,7 +123,7 @@ interface Props {
   isAdmin?: boolean;
 }
 
-export default function SalesSheet({ open, onOpenChange, branch, onChanged, queued = [], reachable = true, canCredit = false, isAdmin = false }: Props) {
+export default function SalesSheet({ totals, open, onOpenChange, branch, onChanged, queued = [], reachable = true, canCredit = false, isAdmin = false }: Props) {
   const [rows, setRows] = useState<SaleRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -96,11 +131,23 @@ export default function SalesSheet({ open, onOpenChange, branch, onChanged, queu
   const [emailTo, setEmailTo] = useState("");
   const [creditFor, setCreditFor] = useState<string | null>(null);
   const [creditReason, setCreditReason] = useState("");
+  const [search, setSearch] = useState("");
+  const [q, setQ] = useState("");
+  const [filter, setFilter] = useState<SaleFilter>("all");
+  const [counts, setCounts] = useState<Counts | null>(null);
+  const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
+
+  // Wait for a pause in typing before asking the server.
+  useEffect(() => {
+    const t = setTimeout(() => setQ(search.trim()), 250);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const load = useCallback(async () => {
-    const data = await fetchRows(branch.id);
+    const [data, c] = await Promise.all([fetchRows(branch.id, q, filter), fetchCounts(branch.id, q)]);
     if (data) setRows(data);
-  }, [branch.id]);
+    if (c) setCounts(c);
+  }, [branch.id, q, filter]);
 
   const refresh = async () => {
     setLoading(true);
@@ -112,8 +159,10 @@ export default function SalesSheet({ open, onOpenChange, branch, onChanged, queu
     if (!open) return;
     let ignore = false;
     const tick = async () => {
-      const data = await fetchRows(branch.id);
-      if (!ignore && data) setRows(data);
+      const [data, c] = await Promise.all([fetchRows(branch.id, q, filter), fetchCounts(branch.id, q)]);
+      if (ignore) return;
+      if (data) setRows(data);
+      if (c) setCounts(c);
     };
     void tick();
     const t = setInterval(() => void tick(), 10_000);
@@ -121,7 +170,50 @@ export default function SalesSheet({ open, onOpenChange, branch, onChanged, queu
       ignore = true;
       clearInterval(t);
     };
-  }, [open, branch.id]);
+  }, [open, branch.id, q, filter]);
+
+  /**
+   * Try every sale that has no fiscal receipt yet, oldest first and one at a time. Stops early when the device
+   * clearly is not answering, so the till is not held up; the background queue keeps retrying either way.
+   */
+  const refiscaliseAll = async () => {
+    const waiting = await fetchRows(branch.id, "", "notFiscalised");
+    if (!waiting || waiting.length === 0) {
+      toast.message("Nothing is waiting to be fiscalised.");
+      return;
+    }
+    const oldestFirst = [...waiting].sort((a, b) => a.soldAt.localeCompare(b.soldAt));
+    setBulk({ done: 0, total: oldestFirst.length });
+    let ok = 0;
+    let missesInARow = 0;
+    let stopped = false;
+    for (let i = 0; i < oldestFirst.length; i++) {
+      try {
+        const r = await fetch(`/api/pos/sales/${oldestFirst[i]._id}/fiscalise`, { method: "POST" });
+        const j = await r.json().catch(() => null);
+        if (r.ok && j?.success && j.data.status === "FISCALISED") {
+          ok++;
+          missesInARow = 0;
+        } else {
+          missesInARow++;
+        }
+      } catch {
+        missesInARow++;
+      }
+      setBulk({ done: i + 1, total: oldestFirst.length });
+      if (missesInARow >= 3 && i < oldestFirst.length - 1) {
+        stopped = true;
+        break;
+      }
+    }
+    setBulk(null);
+    const left = oldestFirst.length - ok;
+    if (left === 0) toast.success(`All ${ok} fiscalised.`);
+    else if (stopped) toast.warning(`${ok} fiscalised. The fiscal device is not answering; the rest will keep retrying by themselves.`);
+    else toast.warning(`${ok} fiscalised, ${left} still waiting. They will keep retrying.`);
+    await load();
+    onChanged();
+  };
 
   const fiscalise = async (row: SaleRow) => {
     setBusy(row._id);
@@ -191,8 +283,72 @@ export default function SalesSheet({ open, onOpenChange, branch, onChanged, queu
           </SheetDescription>
         </SheetHeader>
 
+        {totals && (
+          <div className="border-b px-4 py-3">
+            <SalesTiles
+              rows={totals}
+              queued={queued.map((q): QueuedTotal => ({ currency: (q.display as { currency?: string }).currency === "ZWG" ? "ZWG" : "USD", total: Number((q.display as { totalAmount?: number }).totalAmount) || 0 }))}
+            />
+          </div>
+        )}
+
+        <div className="space-y-2 border-b px-4 py-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search invoice number, customer or item"
+              aria-label="Search today's sales"
+              className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40"
+            />
+          </div>
+          <div role="group" aria-label="Filter sales" className="flex flex-wrap items-center gap-1.5">
+            {(
+              [
+                ["all", "All", counts?.total],
+                ["fiscalised", "Fiscalised", counts?.fiscalised],
+                ["notFiscalised", "Not fiscalised yet", counts?.notFiscalised],
+                ...((counts?.attention ?? 0) > 0 ? ([["attention", "Needs attention", counts?.attention]] as const) : []),
+              ] as const
+            ).map(([key, label, n]) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={filter === key}
+                onClick={() => setFilter(key)}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors duration-150",
+                  filter === key ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-accent"
+                )}
+              >
+                {label}
+                {n != null && <span className="tabular-nums opacity-70">{n}</span>}
+              </button>
+            ))}
+          </div>
+          {(counts?.notFiscalised ?? 0) > 0 && (
+            <div className="flex items-center justify-between gap-3 rounded-md bg-amber-50 px-3 py-2 dark:bg-amber-950/30">
+              <p className="text-xs text-amber-900 dark:text-amber-100">
+                {bulk
+                  ? `Sending ${bulk.done} of ${bulk.total}…`
+                  : `${counts!.notFiscalised} sale${counts!.notFiscalised === 1 ? " has" : "s have"} no fiscal receipt yet. They retry by themselves.`}
+              </p>
+              <button
+                type="button"
+                disabled={!!bulk}
+                onClick={() => void refiscaliseAll()}
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-transform duration-150 hover:bg-primary/90 active:scale-[0.97] disabled:opacity-60"
+              >
+                {bulk && <Loader2 className="size-3.5 animate-spin" aria-hidden />} Refiscalise all
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center justify-between px-4 py-2 text-xs text-muted-foreground">
-          <span>{rows ? `${rows.length} sale${rows.length === 1 ? "" : "s"}` : "Loading…"}</span>
+          <span>{rows ? `${rows.length} sale${rows.length === 1 ? "" : "s"}${q || filter !== "all" ? " match" : ""}` : "Loading…"}</span>
           <button
             type="button"
             onClick={() => void refresh()}
@@ -244,7 +400,11 @@ export default function SalesSheet({ open, onOpenChange, branch, onChanged, queu
             </section>
           )}
           {!rows && !reachable && <p className="py-6 text-center text-sm text-muted-foreground">The server cannot be reached right now.</p>}
-          {rows && rows.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">No sales yet today.</p>}
+          {rows && rows.length === 0 && (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              {q || filter !== "all" ? "No sales match. Clear the search or choose All." : "No sales yet today."}
+            </p>
+          )}
           <ul className="divide-y">
             {rows?.map((s) => {
               const isCredit = s.kind === "CREDIT_NOTE";
@@ -276,7 +436,7 @@ export default function SalesSheet({ open, onOpenChange, branch, onChanged, queu
                     {s.needsApproval && <span className="text-xs text-amber-700 dark:text-amber-300">Waiting for an administrator</span>}
                     {s.status === "FAILED" && s.lastError && <span className="truncate text-xs text-destructive">{s.lastError}</span>}
                     <span className="ml-auto flex items-center gap-1">
-                      {canFiscalise && isAdmin && (
+                      {canFiscalise && (
                         <button
                           type="button"
                           disabled={busy === s._id}

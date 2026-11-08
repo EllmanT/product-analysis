@@ -1,12 +1,12 @@
 "use client";
 
+import Logo from "@/components/brand/Logo";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
   Search,
   ShoppingCart,
-  Warehouse,
   X,
   LayoutDashboard,
   FileText,
@@ -209,8 +209,7 @@ export function ShopHeader({
           href="/"
           className="flex shrink-0 items-center gap-2 text-slate-900"
         >
-          <Warehouse className="h-5 w-5 text-blue-600" />
-          <span className="text-lg font-bold tracking-tight">StockFlow</span>
+          <Logo size="md" />
         </Link>
 
         {/* Scroll-aware search (desktop) */}
@@ -316,8 +315,7 @@ export function ShopHeader({
       >
         <div className="flex items-center justify-between border-b border-slate-200 p-4">
           <div className="flex items-center gap-2">
-            <Warehouse className="h-4 w-4 text-blue-600" />
-            <span className="font-semibold text-slate-900">StockFlow</span>
+            <Logo size="sm" nameClassName="text-slate-900" />
           </div>
           <button
             type="button"

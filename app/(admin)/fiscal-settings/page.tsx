@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { useFiscalDevices } from "@/components/fiscal/DeviceSelect";
 import { CENTRAL_ID, DeviceEditor } from "@/components/fiscal/FiscalDevicesManager";
 import { Button } from "@/components/ui/button";
 import type { FiscalDeviceSafe } from "@/lib/services/fiscalDevice.service";
@@ -41,11 +43,13 @@ function asDevice(s: FiscalSettingsSafe, branches: { id: string; name: string }[
     deviceModelName: null,
     deviceModelVersion: null,
     serviceDeviceId: null,
+    isCentral: false,
     vdEmail: null,
     hasVdPassword: false,
     autoScheduleEnabled: s.autoScheduleEnabled,
     autoCloseEnabled: s.autoCloseEnabled,
     autoOpenEnabled: s.autoOpenEnabled,
+    closeUnsentPolicy: s.closeUnsentPolicy,
     closeTime: s.closeTime,
     openTime: s.openTime,
     timezone: s.timezone,
@@ -58,6 +62,8 @@ function asDevice(s: FiscalSettingsSafe, branches: { id: string; name: string }[
 }
 
 export default function FiscalSettingsPage() {
+  const router = useRouter();
+  const { backend, loaded: backendKnown } = useFiscalDevices();
   const [data, setData] = useState<{ settings: FiscalSettingsSafe; branches: { id: string; name: string }[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -94,6 +100,12 @@ export default function FiscalSettingsPage() {
   }, [reloadKey]);
 
   const device = data ? asDevice(data.settings, data.branches) : null;
+
+  // With the fiscal service every device, central or not, is managed on Fiscal devices. This address only forwards there.
+  useEffect(() => {
+    if (backendKnown && backend === "service") router.replace("/fiscal-devices");
+  }, [backendKnown, backend, router]);
+  if (!backendKnown || backend === "service") return <p className="p-6 text-sm text-muted-foreground">Opening Fiscal devices…</p>;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-4 lg:p-6">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { FiscalServiceRefused, FiscalServiceUnavailable } from "@/lib/fiscal/client";
 import { SecretBoxError } from "@/lib/security/secretBox";
 import { RenewalError } from "@/lib/services/fiscalCertRenewal.service";
 import { DeviceConfigError } from "@/lib/services/fiscalDevice.service";
@@ -25,6 +26,7 @@ export const deviceSchema = z.object({
   autoScheduleEnabled: z.boolean().optional(),
   autoCloseEnabled: z.boolean().optional(),
   autoOpenEnabled: z.boolean().optional(),
+  closeUnsentPolicy: z.enum(["send_first", "stop"]).optional(),
   closeTime: hhmm.optional(),
   openTime: hhmm.optional(),
   timezone: z.string().min(1).max(60).optional(),
@@ -33,6 +35,10 @@ export const deviceSchema = z.object({
 });
 
 export function deviceError(error: unknown, fallback: string) {
+  if (error instanceof FiscalServiceUnavailable) {
+    return NextResponse.json({ success: false, message: `The fiscal service could not be reached (${error.message}). Check that it is running and that FISCAL_SERVICE_URL and FISCAL_SERVICE_TOKEN are right.` }, { status: 503 });
+  }
+  if (error instanceof FiscalServiceRefused) return NextResponse.json({ success: false, message: error.message }, { status: 422 });
   const message = error instanceof Error ? error.message : fallback;
   const status = error instanceof DeviceConfigError || error instanceof SecretBoxError || error instanceof RenewalError ? 422 : 500;
   return NextResponse.json({ success: false, message }, { status });

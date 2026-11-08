@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StockFlow",
+  title: { default: "StockFlow", template: "%s · StockFlow" },
   description: "Get product data insights",
 };
 

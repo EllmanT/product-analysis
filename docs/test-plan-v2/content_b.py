@@ -11,10 +11,10 @@ SECTIONS = [
         "num": "9", "title": "The till: sales (happy path and edge cases)",
         "intro": [
             "Role: Cashier (cashier@harare.test) unless stated. Keys: Enter adds an item, F12 issues the invoice and prints, F2 switches currency, F3 product search, F4 customer, F8 today's sales, F9 reprint last, Esc Esc clears the sale.",
-            "The cashier's screen never shows fiscal device status, fiscal day numbers, 'fiscalise' or 'provisional'. Anything like that on a cashier's screen is a Fail (see SALE-37).",
+            "The cashier's top bar shows whether the fiscal day is open and whether the fiscal device is connected, in the same words an administrator sees (owner decision, see SALE-37). A cashier never sees ZIMRA error codes, tax set-up or admin screens.",
         ],
         "groups": [{"rows": [
-            r("SALE-01", "Cashier", "Open /pos and wait until the product box is usable.", "The till shows the branch and cashier name, the product box, currency, and 'Today at this branch'."),
+            r("SALE-01", "Cashier", "Open /pos and wait until the product box is usable.", "The till shows the branch and cashier name, the fiscal day / device status chip, the product box, currency, and the big 'Sales today' panel."),
             r("SALE-02", "Cashier", "Type 'LED Bulb 9', Enter, type 3, Enter. Add 'Extension Cord' x1. Press F12.", "Both lines show with the right totals and VAT. The button reads 'Issue invoice & print'. A slip prints and the result says 'Invoice issued' with the number (for example HU0001).", "CHANGED"),
             r("SALE-03", "Cashier", "Type LB9 exactly, then Enter.", "The LED Bulb 9W is found by code."),
             r("SALE-04", "Cashier", "Type 'led' and use the Down and Up arrows, then Enter.", "Matches are ranked sensibly; the highlighted one is added."),
@@ -39,7 +39,7 @@ SECTIONS = [
             r("SALE-23", "Cashier", "Add an item, press F12 twice quickly (or hold it).", "Exactly ONE sale is made and one slip printed.", "EDGE"),
             r("SALE-24", "Cashier", "Add an item and double-click 'Issue invoice & print'.", "Exactly ONE sale.", "EDGE CHANGED"),
             r("SALE-25", "Cashier", "Make 3 USD sales, then 2 ZWG, then 1 USD.", "USD numbers run HU0001, HU0002, HU0003, HU0004; ZWG run HZ0001, HZ0002. No gaps and no repeats."),
-            r("SALE-26", "Cashier", "After the sales look at 'Today at this branch'.", "Invoices and totals per currency match what you rang."),
+            r("SALE-26", "Cashier", "After the sales look at 'Sales today'.", "Per currency the invoice count is a large number with the total under it, and both match what you rang. Only fiscalised invoices are in the big numbers."),
             r("SALE-27", "Cashier", "Press F8.", "Today's sales opens with this branch's sales only. Badges read Issued, Saved sending, Sending or Needs attention. There is no Fiscalise button.", "CHANGED"),
             r("SALE-28", "Cashier", "After a sale press F9.", "The last slip prints again, marked as a duplicate."),
             r("SALE-29", "Cashier", "Do three complete sales without touching the mouse.", "Every step is reachable by keyboard."),
@@ -50,9 +50,13 @@ SECTIONS = [
             r("SALE-34", "Two cashiers", "A Harare cashier and a Cranborne cashier press F12 together.", "Each sale uses its own branch's numbers (HU... and CU...).", "EDGE"),
             r("SALE-35", "Cashier", "Compare F8 and the Today strip for Harare against Cranborne.", "Each cashier sees only their own branch."),
             r("SALE-36", "Cashier", "Click Sign out (no saved offline sales).", "You are signed out."),
-            r("SALE-37", "Cashier", "Search the whole till screen, the F8 list and every message for the words 'fiscal', 'ZIMRA', 'provisional', 'device'.", "None appear on screen. (The printed slip may carry 'Fiscal tax invoice' and the fiscal block.)", "NEW"),
-            r("SALE-38", "Admin", "Open the till as an admin.", "Unlike the cashier, the admin ALSO sees the fiscal device and day indicator and the 'awaiting fiscalisation' count.", "NEW"),
-            r("SALE-39", "Cashier", "Sign in on a till where the branch has an inactive or missing device, and sell.", "The sale is saved as an invoice. The cashier sees only 'Invoice saved', nothing about the device.", "NEW EDGE"),
+            r("SALE-37", "Cashier", "Look at the top bar of the till with the fiscal day open and the device connected, then with the day closed, then with the device unreachable (stop fiscal-service).", "A chip shows green 'Fiscal day N open', amber 'Fiscal day closed. Receipts will be provisional.' and red 'Fiscal device unreachable. Receipts will be provisional.'. No ZIMRA error codes or admin screens are reachable.", "CHANGED"),
+            r("SALE-38", "Admin", "Open the till as an admin.", "The admin sees the same status chip and the same 'awaiting fiscalisation' count as the cashier. The difference is the admin screens (devices, set-up), not this bar.", "CHANGED"),
+            r("SALE-39", "Cashier", "Sign in on a till where the branch has an inactive or missing device, and sell.", "The sale is saved as an invoice and the cashier is told 'Invoice saved'. The top bar says the device is unreachable or the day closed.", "CHANGED EDGE"),
+            r("SALE-40", "Cashier", "Make three fiscalised sales, then stop fiscal-service and make two more.", "Big numbers still show the 3 fiscalised invoices. An amber line under the currency reads '2 waiting · <total>'. It is NOT in the big number.", "NEW"),
+            r("SALE-41", "Cashier", "Go offline (DevTools > Network > Offline) and sell once. Do not reconnect.", "The amber waiting line counts that sale and its total straight away. After reconnecting and syncing it moves into the fiscal totals once ZIMRA has it.", "NEW EDGE"),
+            r("SALE-42", "Admin", "Leave a sale unfiscalised from an earlier day, then open the till today.", "The waiting line still counts it (waiting covers every day, not just today) until it is fiscalised.", "NEW EDGE"),
+            r("SALE-43", "Cashier", "Press F8 (Today's sales).", "The heading shows four tiles per currency: Fiscalised, Waiting for ZIMRA, Credit notes, Failed or voided. Waiting turns amber and Failed or voided turns red when above zero.", "NEW"),
         ]}],
     },
     # ------------------------------------------------------------------------------------------------------------
@@ -83,7 +87,7 @@ SECTIONS = [
         "num": "11", "title": "When ZIMRA or the device is unavailable",
         "intro": [
             "A sale is never lost and never rejected because ZIMRA or the device is down. It is kept, numbered with a provisional number, and sent by itself when the device is back. The cashier only sees 'Invoice saved'.",
-            "To make the device unreachable: Fiscal > Central device > ZIMRA address, set an unreachable address such as http://127.0.0.1:9 and Save. Restore it in FAIL-10. With the fiscal service back end, stop the service or use the fault controls in the rehearsal (section 23) instead.",
+            "To make the device unreachable with the fiscal service (the normal set-up): stop the fiscal service, and start it again to restore (FAIL-10), or use the fault controls in the rehearsal (section 23). LEGACY only: Fiscal > Central device > ZIMRA address, set an unreachable address such as http://127.0.0.1:9 and Save, then restore it in FAIL-10.",
         ],
         "groups": [{"rows": [
             r("FAIL-01", "Admin, Cashier", "Make the device unreachable. The cashier sells one item and presses F12.", "The sale completes. The cashier sees 'Invoice saved. The final tax invoice is sent automatically.' A slip prints with a provisional number (HUP0001). Nothing mentions the device.", "CHANGED"),

@@ -24,13 +24,12 @@ export const PAGE_PERMISSIONS: PermissionDef[] = [
   { key: "/products", title: "Stock products", section: "Insights" },
   { key: "/branch-up-reports", title: "Branch upload status", section: "Insights" },
   { key: "/ai-agent", title: "Ask AI", section: "Insights" },
-  { key: "/pos", title: "Open till", section: "Point of sale" },
+  { key: "/pos", title: "Tills", section: "Point of sale" },
   { key: "/pos-sales", title: "POS sales", section: "Point of sale" },
   { key: "/pos-products", title: "POS products", section: "Point of sale" },
   { key: "/pos-customers", title: "POS customers", section: "Point of sale" },
   { key: "/pos-settings", title: "POS settings", section: "Point of sale" },
   { key: "/fiscal-day", title: "Fiscal day", section: "Fiscal" },
-  { key: "/fiscal-settings", title: "Central device", section: "Fiscal" },
   { key: "/fiscal-devices", title: "Fiscal devices", section: "Fiscal" },
   { key: "/z-reports", title: "Day-end reports", section: "Fiscal" },
   { key: "/users", title: "Users", section: "Team" },
@@ -46,8 +45,8 @@ export const ACTION_PERMISSIONS: PermissionDef[] = [
 export const GRANTABLE: PermissionDef[] = [...PAGE_PERMISSIONS, ...ACTION_PERMISSIONS];
 export const GRANTABLE_KEYS = new Set(GRANTABLE.map((p) => p.key));
 
-/** Admin-only pages that are not on the menu. They have no switch; only an admin opens them. */
-const ADMIN_ONLY_PAGES = ["/admin/quotations", "/admin/invoices", "/exchange-rates", "/homepage", "/download-centre", "/access"];
+/** Admin-only pages that are not on the menu (the old Central device page now only redirects to Fiscal devices). They have no switch; only an admin opens them. */
+const ADMIN_ONLY_PAGES = ["/admin/quotations", "/admin/invoices", "/exchange-rates", "/homepage", "/download-centre", "/access", "/fiscal-settings"];
 
 /** Every address that is protected by a permission, longest first so the most specific one wins. */
 const PROTECTED_PAGES = [...PAGE_PERMISSIONS.map((p) => p.key), ...ADMIN_ONLY_PAGES].sort((a, b) => b.length - a.length);

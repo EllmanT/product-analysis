@@ -79,9 +79,10 @@ const shot = async (page, name) => {
     await p.goto(BASE + "/fiscal-settings", { waitUntil: "networkidle" });
     await p.waitForTimeout(1500);
     const body = await p.locator("body").innerText();
-    note(/Central device/.test(body), "central device page shows the shared editor");
-    note(/Automatic open and close/.test(body), "central page has the schedule section");
-    note(/Certificate/.test(body), "central page has the certificate section");
+    note(/Fiscal devices/.test(body) || /Central device/.test(body), "old central device address forwards to Fiscal devices (service) or shows the editor (legacy)");
+    const serviceMode = p.url().includes("/fiscal-devices");
+    note(serviceMode || /Automatic open and close/.test(body), "central page has the schedule section (legacy) or points to Fiscal devices (service)");
+    note(serviceMode || /Certificate/.test(body), "central page has the certificate section (legacy)");
     note(!/Fiscal service device id/.test(body), "central page hides branch-only fields");
     await shot(p, "03-central-device");
 
@@ -136,7 +137,9 @@ const shot = async (page, name) => {
     await p.goto(BASE + "/pos", { waitUntil: "networkidle" });
     await p.waitForTimeout(2500);
     const t = await p.locator("body").innerText();
-    note(!/ZIMRA|Fiscal device|Fiscal day|provisional|Fiscalise/i.test(t), "cashier's till shows no fiscal wording", (t.match(/ZIMRA|Fiscal device|Fiscal day|provisional|Fiscalise/i) || [""])[0]);
+    note(/Fiscal day|Fiscal device/i.test(t), "cashier's till shows the fiscal day / device state");
+    note(/Sales today/.test(t), "cashier's till has the big 'Sales today' totals");
+    note(!/RCPT\d|error code|Virtual ?Device/i.test(t), "cashier's till shows no ZIMRA error codes");
     note(/Issue invoice/.test(t), "cashier's main button says Issue invoice");
     await shot(p, "08-cashier-till");
     await ca.ctx.close();

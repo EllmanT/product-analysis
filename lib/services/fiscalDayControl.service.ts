@@ -34,7 +34,7 @@ export async function releaseCloseLock(deviceKey: string, owner: string): Promis
   await dbConnect();
   await FiscalDayControl.updateOne(
     { deviceKey, lockOwner: owner },
-    { $unset: { lockOwner: "", lockedUntil: "", fenceUntil: "" } }
+    { $unset: { lockOwner: "", lockedUntil: "", fenceUntil: "", drainSent: "", drainTotal: "", drainStartedAt: "" } }
   );
 }
 
@@ -53,4 +53,30 @@ export async function isFenced(deviceKey: string): Promise<boolean> {
     .select("_id")
     .lean();
   return !!row;
+}
+
+/** A long close (sending many waiting sales first) keeps its lock alive; a crashed one still lets go after the TTL. */
+export async function extendCloseLock(deviceKey: string, owner: string): Promise<void> {
+  await dbConnect();
+  await FiscalDayControl.updateOne({ deviceKey, lockOwner: owner }, { $set: { lockedUntil: new Date(Date.now() + LOCK_TTL_MS) } });
+}
+
+/** Let receipts through again (a few sales arrived while the fence was up and must be sent before closing). */
+export async function lowerFence(deviceKey: string, owner: string): Promise<void> {
+  await dbConnect();
+  await FiscalDayControl.updateOne({ deviceKey, lockOwner: owner }, { $unset: { fenceUntil: "" } });
+}
+
+export async function setDrainProgress(deviceKey: string, owner: string, sent: number, total: number): Promise<void> {
+  await dbConnect();
+  await FiscalDayControl.updateOne({ deviceKey, lockOwner: owner }, { $set: { drainSent: sent, drainTotal: total } });
+  await FiscalDayControl.updateOne({ deviceKey, lockOwner: owner, drainStartedAt: { $exists: false } }, { $set: { drainStartedAt: new Date() } });
+}
+
+export async function getDrainProgress(deviceKey: string): Promise<{ sent: number; total: number } | null> {
+  await dbConnect();
+  const row = await FiscalDayControl.findOne({ deviceKey, lockedUntil: { $gt: new Date() }, drainTotal: { $gt: 0 } })
+    .select("drainSent drainTotal")
+    .lean<{ drainSent?: number; drainTotal?: number }>();
+  return row ? { sent: row.drainSent ?? 0, total: row.drainTotal ?? 0 } : null;
 }

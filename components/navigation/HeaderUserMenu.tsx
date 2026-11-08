@@ -1,6 +1,7 @@
 "use client"
 
-import { IconChevronDown, IconLogout } from "@tabler/icons-react"
+import { IconChevronDown, IconLogout, IconUserCircle } from "@tabler/icons-react"
+import Link from "next/link"
 import { signOut } from "next-auth/react"
 
 import { Button } from "@/components/ui/button"
@@ -47,6 +48,12 @@ export function HeaderUserMenu({ user }: { user?: HeaderUser | null }) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer gap-2">
+          <Link href="/profile">
+            <IconUserCircle className="size-4" aria-hidden />
+            My profile
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem
           className="cursor-pointer gap-2 text-red-600 focus:text-red-600"
           onSelect={(e) => {

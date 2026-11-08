@@ -11,8 +11,9 @@ Nothing in this list has been run in a browser by the person who built it. Expec
 |---|---|---|
 | 0.1 | Start MongoDB (see `docs/POS_TEST_CHECKLIST.docx` section 0 for the `mongod` workaround) and run `npm run dev`. | App loads at http://localhost:3000. |
 | 0.2 | Sign in as an **admin**. Test accounts and passwords are in `docs/POS_TEST_CHECKLIST.docx` section 0.3. | You land on the dashboard. |
-| 0.3 | Have ready: a ZIMRA certificate **zip** for a test device, or a Device ID + serial + activation key. | n/a |
-| 0.4 | Know whether `BOOTSTRAP_ADMIN_EMAILS` is set. If it is empty, any admin counts as a super admin. | n/a |
+| 0.3 | Have ready: the certificate **zip** for two ZIMRA test devices, for example `test certificates/certificates_31728.zip` and `certificates_32160` (zip it). Probe them first: `cd fiscal-service`, `npx tsx scripts/probe-device.ts "../test certificates"`. Use only devices that show `FiscalDayClosed`. | n/a |
+| 0.4 | Super admin: `BOOTSTRAP_ADMIN_EMAILS` must contain the email you sign in with (for example `admin@testbranch.com`; separate several with commas). Only those admins see **Menu access**. Only when the setting is empty or missing does every admin count as a super admin. Restart the app after changing it. | n/a |
+| 0.5 | Fiscal service: in `fiscal-service` copy `.env.example` to `.env` (set `FISCAL_MONGODB_URI`, `FISCAL_SERVICE_TOKEN`, `FISCAL_ENCRYPTION_KEY`) and run `npx tsx --env-file=.env src/main.ts` (port 4100). In `.env.local` set `FISCAL_BACKEND=service`, `FISCAL_SERVICE_URL=http://127.0.0.1:4100` and the same `FISCAL_SERVICE_TOKEN`. Restart `npm run dev`. Sections 3 and 7g assume this. `FISCAL_BACKEND=legacy` (Axis Virtual Device) is only kept for that device. | n/a |
 
 Run `node scripts/check-api-guards.mjs` once. Expected: `All non-public API routes have an auth check.`
 
@@ -64,22 +65,28 @@ Go to **Fiscal devices**.
 
 | # | Step | Expected | P/F | Notes |
 |---|---|---|---|---|
-| 3.1 | With no devices yet. | Empty state mentions the central device and the Add device button. | | |
+| 3.1 | With no devices yet. | Empty state asks you to upload the certificate zip ZIMRA gave you. There is no **Central device** button or menu entry. | | |
 | 3.2 | Click **Add device**. Leave the name empty, Continue. | Asks for a name. | | |
-| 3.3 | Name `Axis test 1`, keep **Test device**. Open "Use a different ZIMRA address" and type `ftp://x`. Continue. | Error: address must start with http:// or https://. Clear it. | | |
+| 3.3 | Name it `ZIMRA test 31728`, keep **Test device**. Look for "Use a different ZIMRA address". | There is no such option with the fiscal service (legacy only). Continue. | | |
 | 3.4 | Continue to step 2. Choose **I have the zip**. Click Continue without a file. | Asks you to choose the zip. | | |
 | 3.5 | Choose a file that is not a `.zip`. | Toast: not a .zip file. | | |
 | 3.6 | Drag a certificate zip onto the box. | The box turns green and shows the file name. | | |
-| 3.7 | Continue. | Three stages run in order: saving, installing certificate, checking the connection. Each ends with a tick. | | |
-| 3.8 | On success. | Shows Device ID and serial number, "Axis test 1 is connected", and a **Choose branches** link. | | |
+| 3.7 | Continue. | Three stages run in order: saving the device, sending the certificate to ZIMRA to check it, checking the connection. Can take up to a minute. Each ends with a tick. | | |
+| 3.8 | On success. | Shows Device ID (31728) and serial number, "ZIMRA test 31728 is connected", and a **Choose branches** link. The service lists the device (`GET /v1/devices`). | | |
 | 3.9 | Click **Done**. | The device is in the table with a certificate chip showing days left. | | |
 | 3.10 | Open the device with **Settings**. | Automatic open and close is switched **on** (new devices default to it). | | |
-| 3.11 | Add another device using a **wrong** zip (or one for a different device). | The stage that failed shows its message, **Try again** appears, the earlier stages stay ticked. | | |
+| 3.11 | Add another device using a **damaged** zip, or one that is not a ZIMRA certificate. | The stage that failed shows the real reason, **Try again** appears, nothing is stored in the service. | | |
 | 3.12 | Click **Try again** after correcting the situation (or disconnecting the network to force the last stage to fail). | Resumes at the failed stage and does not create a second device. | | |
-| 3.13 | Add a device with **I have an activation key** (Device ID, serial, key). | Registers, installs the certificate, checks the connection. Skip if you have no key. | | |
+| 3.13 | Look for **I have an activation key** in step 2. | Not offered with the fiscal service (legacy only). Instead: add the **same zip again** under another name. Refused, naming the first device; the service still has one. | | |
 | 3.14 | On the device row click **New certificate**, drop a new zip, **Install certificate**. | Shows "New certificate installed" with the new expiry date, then the connection check result. | | |
 | 3.15 | Open **Add branch** again. | Step 2 now offers "Give it its own device" and lists the new device. Pick it and finish creating a branch. | | |
 | 3.16 | POS settings, then the top panel **Which device does each branch use?** | The new branch shows the device you chose. | | |
+| 3.17 | Add a second test device (for example 32160). | Added with no "address already used" message. Two devices are listed. | | |
+| 3.18 | Look at the rows. | None says Central yet (unless `FISCAL_SERVICE_CENTRAL_DEVICE_ID` is set). Each offers **Make central**. A device with no certificate has it greyed out. | | |
+| 3.19 | Click **Make central** on the first device and confirm. | "<name> is now the central device". A green **Central** chip appears on that row only. | | |
+| 3.20 | Open **Fiscal day**, open the day on the central device, then click **Make central** on the other device. | Refused: the current central device still has a fiscal day open. The chip does not move. | | |
+| 3.21 | Close that day (no sales waiting), then **Make central** on the other device. | Done. The Central chip moves. Shop invoices and branches without their own device now use it. | | |
+| 3.22 | Stop fiscal-service and try to add a device. | Stops at the first stage with a plain message that the fiscal service could not be reached. Start the service and **Try again** works. | | |
 
 ## 4. Tills (admin)
 
@@ -187,7 +194,7 @@ Use one browser per role: an admin, a branch manager (assigned to a branch) and 
 
 | # | Step | Expected | P/F | Notes |
 |---|---|---|---|---|
-| 7.16 | Grant the branch manager **Fiscal day** only (on top of Standard) and save. | After a page reload the menu shows Fiscal day. The page opens and loads status. Fiscal devices and Central device stay refused. | | |
+| 7.16 | Grant the branch manager **Fiscal day** only (on top of Standard) and save. | After a page reload the menu shows Fiscal day. The page opens and loads status. Fiscal devices stays refused. | | |
 | 7.17 | Grant the branch manager **POS settings**. Open it. | They can change their **own** branch's settings. | | |
 | 7.18 | As that branch manager, try to change another branch's settings (use the browser network tab to send a PATCH to `/api/pos/branches/<other branch id>`). | Refused (403). | | |
 | 7.19 | Same manager: try bulk device assignment including another branch. | Refused. | | |
@@ -227,8 +234,8 @@ Grant the branch manager **Users**.
 
 | # | Step | Expected | P/F | Notes |
 |---|---|---|---|---|
-| 7.34 | Open **Central device**. | The same layout as a branch device: connection, automatic open and close with weekday buttons, certificate. No name, on/off switch, login or service id. A list shows the branches on the central device. | | |
-| 7.35 | Change the open time and the weekdays, Save settings. | Saved; the page reloads with the new values. | | |
+| 7.34 | Look in the menu for **Central device**, then type `/fiscal-settings` in the address bar. | There is no Central device menu entry. With the fiscal service the address forwards to **Fiscal devices**. (Legacy: the page still shows the shared editor.) | | |
+| 7.35 | On Fiscal devices open **Settings** for the Central device, change the open time and the weekdays, Save settings. | Saved; the page reloads with the new values. | | |
 | 7.36 | Certificate section: choose **Folder of certificate files**, pick `certificates_<id>`, click **Check the files first**. | A report lists the files that will be used, anything missing, and warnings. Then **Upload certificate** stores it. | | |
 | 7.37 | Open a branch device with **Settings**. | It has the same weekday buttons and the folder option. | | |
 
@@ -246,12 +253,12 @@ Grant the branch manager **Users**.
 
 | # | Where | Expected | P/F | Notes |
 |---|---|---|---|---|
-| 8.1 | Sidebar | Upload history, Upload stock, Stock products, Branch upload status, Fiscal day, Central device, Day-end reports. No "Downloads" heading. "Ask AI" sits under Insights. | | |
-| 8.2 | Each page heading | Matches its menu entry (Upload history, Branch upload status, Fiscal day, Day-end reports (Z-reports), Central device settings). | | |
+| 8.1 | Sidebar | Upload history, Upload stock, Stock products, Branch upload status, Fiscal day, Fiscal devices, Day-end reports. There is no Central device entry. No "Downloads" heading. "Ask AI" sits under Insights. | | |
+| 8.2 | Each page heading | Matches its menu entry (Upload history, Branch upload status, Fiscal day, Day-end reports (Z-reports), Fiscal devices). | | |
 | 8.3 | **Stock products** | Card reads "Out of stock" with "Products with no units left". Filter tab and badge read "Out of stock". | | |
 | 8.4 | Hover the filter tabs | Each shows its rule (Low Stock: fewer than 10 units, High Value: top 25%, Inactive: marked inactive). | | |
 | 8.5 | **Branch Analytics** and **Product sales trend** charts (menu entry was "Product Movement") | Subtitle explains that sales are estimated from the drop in stock between uploads and that restocking can hide sales. | | |
-| 8.6 | **Central device** vs the Add branch wizard | The same term is used in both. Nobody calls it "shared device". | | |
+| 8.6 | **Central device** vs the Add branch wizard and the Central chip | The same term is used everywhere. Nobody calls it "shared device". | | |
 | 8.7 | **Dashboard** cards | Read "Products in stock", "Stock value", "Estimated sales, all time", "Branches", each with a line saying where the number comes from. The menu entry and heading say "Product sales trend" for the old Product Movement page. | | |
 
 ## 9. Removed things stay removed
@@ -289,3 +296,19 @@ Grant the branch manager **Users**.
 - The e-commerce shop and quotations (untouched on purpose).
 - The `posSale.service.ts` and `constants/constants.ts` edits that were already in your working tree before this work.
 - Renewing the ZIMRA device certificate that is still in git history.
+
+## 12. Till status and totals (cashier and admin)
+
+Needs the fiscal service (section 0.5) with a device that is `FiscalDayClosed` or open that you may use.
+
+| # | Step | Expected | P/F | Notes |
+|---|---|---|---|---|
+| 12.1 | Sign in as a cashier and look at the top bar of the till. | A status chip is there: green 'Fiscal day N open', amber 'Fiscal day closed. Receipts will be provisional.' or red 'Fiscal device unreachable. Receipts will be provisional.' (same words as an administrator). | | |
+| 12.2 | Open the fiscal day on the branch's device, reload the till. | The chip turns green with the day number. | | |
+| 12.3 | Stop `fiscal-service`, wait about 20 seconds. | The chip turns red. The till still sells. Start the service again; the chip recovers. | | |
+| 12.4 | Look at 'Sales today'. | Per currency a large invoice count with the total beneath. | | |
+| 12.5 | With the service stopped, sell twice. | Big numbers do not change. An amber line reads '2 waiting · <total>'. | | |
+| 12.6 | Go offline in DevTools and sell once. | The waiting line counts it at once. | | |
+| 12.7 | Press **F8**. | Heading tiles: Fiscalised, Waiting for ZIMRA, Credit notes, Failed or voided, per currency. | | |
+| 12.8 | As an admin open **POS sales**. | The same four tiles sit above the Totals table for the chosen range. | | |
+| 12.9 | Open **Fiscal day** as an admin. | It loads the device's status through the fiscal service (no HTTP 404 about `/api/VirtualDevice`). Open, preview and close work. | | |

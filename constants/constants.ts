@@ -78,8 +78,8 @@ export const mainSidebarLinks = [
       url: "",
     },
     {
-      title: "Open till",
-      url: "/pos",
+      title: "Tills",
+      url: "/pos/tills",
       icon: ScanBarcode,
     },
     {
@@ -126,12 +126,6 @@ export const mainSidebarLinks = [
       title: "Fiscal day",
       url: "/fiscal-day",
       icon: Calendar,
-      adminOnly: true,
-    },
-    {
-      title: "Central device",
-      url: "/fiscal-settings",
-      icon: IconSettings,
       adminOnly: true,
     },
     {

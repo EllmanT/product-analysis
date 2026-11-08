@@ -8,7 +8,7 @@
 2. **Never** `git stash`, `git reset --hard`, `git checkout -- .` or force-push: the owner usually has uncommitted work. Stage by explicit path or by hunk. **Do not push unless asked.**
 3. **Never print or commit secrets**: `.env*`, certificates and keys (`certificates_*`, `test certificates/`), activation keys, passwords.
 4. **A sale must never be lost or rejected because ZIMRA or a device is down.** Everything goes through `lib/fiscal/issue.ts`; keep it that way.
-5. **Cashiers never see fiscal jargon.** Only administrators see device and fiscal-day state.
+5. **Cashiers see whether receipts are going through** (fiscal day and device state in the till's top bar, 2026-11-07 owner decision), but never ZIMRA error codes, tax detail or admin screens. Only administrators see device management.
 6. **New API routes need an auth check** (`npm run check:guards` fails otherwise). Use `requirePermission(session, key)` from `lib/auth/role.ts`; add new menu pages to `lib/auth/permissions.ts`.
 7. **Check disk (>= 5 GB) and memory before long runs.** If a run is killed for low memory, do not restart it on your own: it may have left device days open.
 8. **Verify before you build on a claim**, and add a test with every change (fake-gateway tests in `fiscal-service/test` or `scripts/test-service-backend.ts`).

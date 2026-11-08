@@ -12,6 +12,7 @@
     "test": "tsx --test test/*.test.ts",
     "probe": "tsx scripts/probe-device.ts",
     "start": "tsx src/main.ts",
+    "dev": "tsx --env-file=.env src/main.ts",
     "renew": "tsx scripts/renew-device.ts",
     "e2e": "tsx scripts/e2e-live.ts",
     "stress": "tsx scripts/stress.ts"

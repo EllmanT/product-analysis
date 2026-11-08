@@ -7,7 +7,7 @@ interface BrowsePageProps {
 }
 
 export const metadata = {
-  title: "Browse Products — StockFlow Shop",
+  title: { absolute: "Browse Products — StockFlow Shop" },
   description: "Search and filter thousands of products",
 };
 

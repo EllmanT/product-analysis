@@ -45,7 +45,7 @@ export async function emailSaleInvoicePdf(saleId: string, to: string): Promise<v
   const profile = branch?.pos.receipt ?? {};
   const missing = a4MissingElements(slip, profile);
   if (missing.length) {
-    throw new InvoiceEmailError(`The invoice is missing: ${missing.join(", ")}. Complete the POS settings or the customer details.`, false);
+    throw new InvoiceEmailError(`The invoice is missing: ${missing.join(", ")}. Complete the company details (Settings > Company), the branch contact (Branches) or the customer details.`, false);
   }
 
   const qrPng = await QRCode.toBuffer(slip.fiscal!.qrCodeUrl!, { margin: 1, width: 320, errorCorrectionLevel: "M" });

@@ -10,6 +10,10 @@ export interface IFiscalDayControl {
   lockOwner?: string;
   lockedUntil?: Date;
   fenceUntil?: Date;
+  /** Progress of "send waiting sales, then close": how many are done of how many, and when it started. */
+  drainSent?: number;
+  drainTotal?: number;
+  drainStartedAt?: Date;
 }
 
 export interface IFiscalDayControlDoc extends IFiscalDayControl, Document {}
@@ -20,6 +24,9 @@ const FiscalDayControlSchema = new Schema<IFiscalDayControl>(
     lockOwner: String,
     lockedUntil: Date,
     fenceUntil: Date,
+    drainSent: Number,
+    drainTotal: Number,
+    drainStartedAt: Date,
   },
   { timestamps: true }
 );

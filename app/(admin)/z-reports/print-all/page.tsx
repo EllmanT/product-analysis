@@ -1,112 +1,76 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Printer } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
+import ZReportDocument, { ZReportStyles, type ZReportDetail } from "@/components/zreport/ZReportDocument";
 import { Button } from "@/components/ui/button";
 
-type Row = {
-  _id: string;
-  source: string;
-  closedAt: string;
-  fiscalDayNo: number | null;
-  deviceName?: string;
-  totalSalesUsd: number | null;
-  totalSalesZwg: number | null;
-};
+/** Printing every report at once is capped so the page stays quick; the newest come first. */
+const MAX_REPORTS = 60;
 
-type Totals = {
-  sumUsd: number;
-  sumZwg: number;
-  reportCount: number;
-};
+function PrintAll() {
+  const deviceKey = useSearchParams().get("deviceKey") ?? "";
+  const [reports, setReports] = useState<ZReportDetail[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
 
-function fmtMoney(n: number | null): string {
-  if (n == null) return "—";
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/z-reports${deviceKey ? `?deviceKey=${encodeURIComponent(deviceKey)}` : ""}`);
+        const json = (await res.json()) as { success: boolean; data?: { reports: { _id: string }[] }; message?: string };
+        if (!res.ok || !json.success || !json.data) throw new Error(json.message ?? "Could not load the reports");
+        const list = json.data.reports;
+        if (!ignore) setTotal(list.length);
+        const details = await Promise.all(
+          list.slice(0, MAX_REPORTS).map(async (r) => {
+            const d = await fetch(`/api/admin/z-reports/${r._id}`);
+            const j = (await d.json()) as { success: boolean; data?: ZReportDetail };
+            return j.success && j.data ? j.data : null;
+          })
+        );
+        if (!ignore) setReports(details.filter((d): d is ZReportDetail => d !== null));
+      } catch (e) {
+        if (!ignore) setError(e instanceof Error ? e.message : "Failed to load");
+      }
+    })();
+    return () => {
+      ignore = true;
+    };
+  }, [deviceKey]);
+
+  if (error) return <p className="p-8 text-red-600">{error}</p>;
+  if (!reports) return <p className="p-8 text-slate-500">Loading…</p>;
+
+  return (
+    <div className="zr-screen min-h-screen bg-white px-4 py-6 print:p-0">
+      <ZReportStyles layout="a4" />
+      <div className="mx-auto mb-6 flex max-w-[760px] items-center justify-between gap-3 print:hidden">
+        <p className="text-sm text-slate-600">
+          {reports.length} report{reports.length === 1 ? "" : "s"}, one per page
+          {total > MAX_REPORTS && ` (the newest ${MAX_REPORTS} of ${total})`}
+        </p>
+        <Button type="button" onClick={() => window.print()}>
+          <Printer className="size-4" aria-hidden /> Print all
+        </Button>
+      </div>
+      {reports.length === 0 && <p className="text-center text-slate-500">No Z-reports yet.</p>}
+      {reports.map((r, i) => (
+        <div key={r._id} className={i < reports.length - 1 ? "zr-pagebreak mb-10 print:mb-0" : ""}>
+          <ZReportDocument report={r} layout="a4" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function ZReportsPrintAllPage() {
-  const [rows, setRows] = useState<Row[]>([]);
-  const [totals, setTotals] = useState<Totals | null>(null);
-
-  const load = useCallback(async () => {
-    const res = await fetch("/api/admin/z-reports");
-    const json = (await res.json()) as {
-      success: boolean;
-      data?: { reports: Row[]; totals: Totals };
-    };
-    if (json.success && json.data) {
-      setRows(json.data.reports);
-      setTotals(json.data.totals);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const multiDevice = new Set(rows.map((r) => r.deviceName)).size > 1;
-
   return (
-    <div className="min-h-screen bg-white p-8 text-slate-900 print:p-6">
-      <div className="mb-6 flex justify-end print:hidden">
-        <Button type="button" onClick={() => window.print()}>
-          Print all
-        </Button>
-      </div>
-
-      <h1 className="text-2xl font-bold">Z-reports — full register</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Generated {new Date().toLocaleString()}
-      </p>
-
-      {multiDevice && (
-        <p className="mt-2 text-sm text-slate-600">
-          Several devices: the totals below add every device together. Each device has its own fiscal day.
-        </p>
-      )}
-
-      {totals && (
-        <div className="mt-6 grid gap-4 border border-slate-200 p-4 sm:grid-cols-3">
-          <div>
-            <p className="text-xs font-semibold uppercase text-slate-500">Sum USD</p>
-            <p className="text-lg font-bold">{fmtMoney(totals.sumUsd)}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase text-slate-500">Sum ZWG</p>
-            <p className="text-lg font-bold">{fmtMoney(totals.sumZwg)}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold uppercase text-slate-500">Row count</p>
-            <p className="text-lg font-bold">{totals.reportCount}</p>
-          </div>
-        </div>
-      )}
-
-      <table className="mt-8 w-full border-collapse text-left text-sm">
-        <thead>
-          <tr className="border-b-2 border-slate-800">
-            <th className="py-2 pr-4">Closed</th>
-            {multiDevice && <th className="py-2 pr-4">Device</th>}
-            <th className="py-2 pr-4">Source</th>
-            <th className="py-2 pr-4">Day</th>
-            <th className="py-2 pr-4">USD</th>
-            <th className="py-2 pr-4">ZWG</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r._id} className="border-b border-slate-200">
-              <td className="py-2 pr-4">{new Date(r.closedAt).toLocaleString()}</td>
-              {multiDevice && <td className="py-2 pr-4">{r.deviceName}</td>}
-              <td className="py-2 pr-4 capitalize">{r.source}</td>
-              <td className="py-2 pr-4">{r.fiscalDayNo ?? "—"}</td>
-              <td className="py-2 pr-4 font-mono">{fmtMoney(r.totalSalesUsd)}</td>
-              <td className="py-2 pr-4 font-mono">{fmtMoney(r.totalSalesZwg)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Suspense fallback={<p className="p-8 text-slate-500">Loading…</p>}>
+      <PrintAll />
+    </Suspense>
   );
 }

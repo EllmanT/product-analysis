@@ -118,6 +118,8 @@ export interface IPosSale {
   /** The device refused this receipt on validation grounds. An admin must look before the day is closed. */
   needsReview?: boolean;
   reviewNote?: string;
+  /** The day was closed without this refused receipt (close policy "send first"). It still needs a person. */
+  setAsideAt?: Date;
   approvedBy?: Types.ObjectId;
   /** Test sales created by the simulation tooling. */
   isTest: boolean;
@@ -233,6 +235,7 @@ const PosSaleSchema = new Schema<IPosSale>(
     needsApproval: { type: Boolean, default: false },
     needsReview: { type: Boolean, default: false },
     reviewNote: String,
+    setAsideAt: Date,
     approvedBy: { type: Schema.Types.ObjectId, ref: "User" },
     isTest: { type: Boolean, default: false },
     offline: { type: Boolean, default: false },

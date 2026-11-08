@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import CompanyProfileForm from "@/components/settings/CompanyProfileForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type EmailSettingsPayload = {
   smtpHost: string | null;
@@ -37,6 +39,10 @@ function parseRecipientsText(s: string): string[] {
 }
 
 export default function SettingsPage() {
+  const [tab, setTab] = useState("company");
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "email") setTab("email");
+  }, []);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,23 +195,10 @@ export default function SettingsPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center text-slate-500">
-        Loading settings…
-      </div>
-    );
-  }
-
-  return (
-    <div className="mx-auto max-w-3xl space-y-10 px-4 py-8">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Outbound email (merged with server environment when a field is blank) and admin notification
-          preferences.
-        </p>
-      </div>
+  const emailBody = loading ? (
+    <div className="flex min-h-[40vh] items-center justify-center text-slate-500">Loading settings…</div>
+  ) : (
+    <div className="space-y-10">
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -386,6 +379,27 @@ export default function SettingsPage() {
           {saving ? "Saving…" : "Save settings"}
         </Button>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <p className="mt-1 text-sm text-slate-500">The company details printed on receipts, and outbound email.</p>
+      </div>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="company">Company</TabsTrigger>
+          <TabsTrigger value="email">Email and alerts</TabsTrigger>
+        </TabsList>
+        <TabsContent value="company" className="pt-4">
+          <CompanyProfileForm />
+        </TabsContent>
+        <TabsContent value="email" className="max-w-3xl pt-4">
+          {emailBody}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -212,6 +212,7 @@ export interface FiscalDeviceSafe {
   autoScheduleEnabled: boolean;
   autoCloseEnabled: boolean;
   autoOpenEnabled: boolean;
+  closeUnsentPolicy: "send_first" | "stop";
   closeTime: string;
   openTime: string;
   timezone: string;
@@ -256,6 +257,7 @@ function toSafe(doc: IFiscalDeviceDoc, branches: { id: string; name: string }[],
     autoScheduleEnabled: doc.autoScheduleEnabled,
     autoCloseEnabled: doc.autoCloseEnabled,
     autoOpenEnabled: doc.autoOpenEnabled,
+    closeUnsentPolicy: doc.closeUnsentPolicy === "stop" ? "stop" : "send_first",
     closeTime: doc.closeTime,
     openTime: doc.openTime,
     timezone: doc.timezone,
@@ -343,6 +345,7 @@ export interface FiscalDeviceInput {
   autoScheduleEnabled?: boolean;
   autoCloseEnabled?: boolean;
   autoOpenEnabled?: boolean;
+  closeUnsentPolicy?: "send_first" | "stop";
   closeTime?: string;
   openTime?: string;
   timezone?: string;
@@ -370,6 +373,7 @@ function applyInput(doc: IFiscalDeviceDoc, input: FiscalDeviceInput) {
     "autoScheduleEnabled",
     "autoCloseEnabled",
     "autoOpenEnabled",
+    "closeUnsentPolicy",
     "closeTime",
     "openTime",
     "timezone",

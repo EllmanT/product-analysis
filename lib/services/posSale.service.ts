@@ -408,7 +408,7 @@ export async function createPosSale(input: CreatePosSaleInput): Promise<IPosSale
 // ---------------------------------------------------------------------------
 
 export interface FiscaliseOptions {
-  reason: "till" | "auto-retry" | "manual" | "reconcile";
+  reason: "till" | "auto-retry" | "manual" | "reconcile" | "close-drain";
   /** Skip the circuit breaker (manual action or a status check just succeeded). */
   force?: boolean;
   /** Admin who approved fiscalising a sale from a previous day. */

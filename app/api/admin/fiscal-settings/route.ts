@@ -17,6 +17,7 @@ const patchSchema = z.object({
   autoScheduleEnabled: z.boolean().optional(),
   autoCloseEnabled: z.boolean().optional(),
   autoOpenEnabled: z.boolean().optional(),
+  closeUnsentPolicy: z.enum(["send_first", "stop"]).optional(),
   closeTime: z
     .string()
     .regex(/^\d{2}:\d{2}$/)

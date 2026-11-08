@@ -251,7 +251,7 @@ function BranchPanel({ branch, onSaved, onToggle }: { branch: PosBranchDto; onSa
         </label>
         {on && (
           <Button variant="outline" asChild>
-            <Link href={`/pos?branchId=${branch.id}`}>Open till</Link>
+            <Link href={`/pos?branchId=${branch.id}`}>Go to Till</Link>
           </Button>
         )}
       </header>

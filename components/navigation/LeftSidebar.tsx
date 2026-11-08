@@ -13,7 +13,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { IconInnerShadowTop, IconLock } from "@tabler/icons-react"
+import Link from "next/link"
+import Logo from "@/components/brand/Logo"
+import { IconLock } from "@tabler/icons-react"
 import { mainSidebarLinks, secondarySidebarLinks } from "@/constants/constants"
 import { pruneEmptySections } from "@/lib/auth/menu-access"
 import { pageKeyForPath } from "@/lib/auth/permissions"
@@ -66,10 +68,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="#">
-                <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">StockFlow.</span>
-              </a>
+              <Link href="/dashboard" aria-label="StockFlow dashboard">
+                <Logo />
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

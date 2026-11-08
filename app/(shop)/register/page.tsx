@@ -1,7 +1,7 @@
 "use client";
 
 import { SignUp } from "@clerk/nextjs";
-import { Warehouse } from "lucide-react";
+import Logo from "@/components/brand/Logo";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
@@ -32,19 +32,7 @@ export default function ShopRegisterPage() {
   return (
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-slate-950 px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center justify-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600">
-            <Warehouse className="h-5 w-5 text-white" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-white">
-            StockFlow
-          </span>
-        </div>
-        <p className="mb-4 text-center text-sm text-slate-300">
-          Create a customer account in a few steps. You can choose a personal or
-          business profile later in account settings when you need company
-          details on quotes and invoices.
-        </p>
+        <Logo size="lg" onDark className="mb-6 w-full justify-center" nameClassName="text-xl font-bold text-white" />
         <Suspense
           fallback={
             <div className="rounded-2xl bg-white p-12 text-center text-slate-600">

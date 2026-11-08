@@ -1,5 +1,6 @@
 "use client";
 
+import Logo from "@/components/brand/Logo";
 import Link from "next/link";
 import { ArrowLeft, FileImage, Loader2, LogOut, Printer, ReceiptText, Smartphone, Trash2, TriangleAlert } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -789,6 +790,10 @@ export default function PosTerminal({ branch, cashierName, rate, isAdmin, canCre
     <div className="grid h-dvh grid-rows-[auto_1fr_auto] bg-muted/40 text-foreground">
       {/* Status bar */}
       <header className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b bg-background px-4 py-2.5">
+        <span className="shrink-0" title="StockFlow">
+          <Logo size="sm" showName={false} className="sm:hidden" />
+          <Logo size="sm" className="hidden sm:inline-flex" />
+        </span>
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold leading-tight">{branch.pos.receipt.branchName || branch.name}</div>
           <div className="truncate text-xs text-muted-foreground">

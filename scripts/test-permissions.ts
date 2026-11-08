@@ -91,6 +91,7 @@ ok("a cashier is confined to the till's API by default", () => {
   assert.equal(apiAllowed("/api/menu-access", perms), true);
   assert.equal(apiAllowed("/api/analytics/time-series", perms), false);
   assert.equal(apiAllowed("/api/admin/fiscal-day/status", perms), false);
+  assert.equal(apiAllowed("/api/admin/fiscal-day/overview", perms), false);
   assert.equal(apiAllowed("/api/users", perms), false);
   assert.equal(apiAllowed("/api/shop/quotations", perms), false);
   assert.equal(apiAllowed("/api/unknown", perms), false);

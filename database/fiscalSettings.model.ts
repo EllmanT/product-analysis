@@ -46,6 +46,8 @@ export interface IFiscalSettings {
   autoScheduleEnabled: boolean;
   autoCloseEnabled: boolean;
   autoOpenEnabled: boolean;
+  /** What closing the day does about sales still without a fiscal receipt. Missing means send_first. */
+  closeUnsentPolicy?: "send_first" | "stop";
   /** Local time in `timezone`, format HH:mm */
   closeTime: string;
   openTime: string;
@@ -99,6 +101,7 @@ const FiscalSettingsSchema = new Schema<IFiscalSettings>(
     autoScheduleEnabled: { type: Boolean, default: false },
     autoCloseEnabled: { type: Boolean, default: false },
     autoOpenEnabled: { type: Boolean, default: false },
+    closeUnsentPolicy: { type: String, enum: ["send_first", "stop"], default: "send_first" },
     closeTime: { type: String, default: "00:00" },
     openTime: { type: String, default: "00:05" },
     timezone: { type: String, default: "Africa/Harare" },

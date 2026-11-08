@@ -136,9 +136,39 @@ export async function GET(request: Request) {
     const tillId = url.searchParams.get("tillId");
     if (tillId && Types.ObjectId.isValid(tillId)) filter.tillId = new Types.ObjectId(tillId);
     const status = url.searchParams.get("status");
-    if (status) filter.status = { $in: status.split(",") };
     if (url.searchParams.get("needsApproval") === "1") filter.needsApproval = true;
     if (url.searchParams.get("includeTest") !== "1") filter.isTest = { $ne: true };
+
+    // Search: invoice or provisional number, buyer, item description, or an exact amount.
+    const q =(url.searchParams.get("q") ?? "").trim().slice(0, 80);
+    if (q) {
+      const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      const amount = Number(q.replace(/,/g, ""));
+      filter.$or = [
+        { invoiceNumber: rx },
+        { provisionalNumber: rx },
+        { "buyer.registerName": rx },
+        { "buyer.tradeName": rx },
+        { "buyer.tin": rx },
+        { "lines.description": rx },
+        ...(Number.isFinite(amount) && q !== "" ? [{ totalAmount: amount }] : []),
+      ];
+    }
+    // Counts for the filter chips: same day, branch and search, but every status.
+    if (url.searchParams.get("counts") === "1") {
+      const grouped = await PosSale.aggregate<{ _id: string; n: number }>([{ $match: filter }, { $group: { _id: "$status", n: { $sum: 1 } } }]);
+      const n = (...s: string[]) => grouped.filter((g) => s.includes(g._id)).reduce((t, g) => t + g.n, 0);
+      return NextResponse.json({
+        success: true,
+        data: {
+          total: grouped.reduce((t, g) => t + g.n, 0),
+          fiscalised: n("FISCALISED"),
+          notFiscalised: n("PENDING", "SUBMITTING", "UNFISCALISED", "UNKNOWN"),
+          attention: n("FAILED"),
+        },
+      });
+    }
+    if (status) filter.status = { $in: status.split(",") };
 
     const limit = Math.min(Number(url.searchParams.get("limit")) || 100, 500);
     const sales = await PosSale.find(filter)

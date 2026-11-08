@@ -67,7 +67,9 @@
       "Bash(Out-Null)",
       "Bash(Write-Output \"Directory created\")",
       "Bash(Select-Object Name, PSIsContainer)",
-      "Bash(Select-Object -First 20)"
+      "Bash(Select-Object -First 20)",
+      "Bash(awk -F= '/^ZIMSWITCH_ENTITY_VISA_MASTER_USD=|^ZIMSWITCH_AUTHORIZATION_TOKEN=|^ECOCASH_MERCHANT_CODE=|^ECOCASH_MERCHANT_PIN=/{print $1\"_LEN=\"length\\($2\\)}' .env.local)",
+      "Bash(node *)"
     ]
   }
 }

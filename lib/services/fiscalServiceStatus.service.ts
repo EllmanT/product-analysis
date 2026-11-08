@@ -12,6 +12,8 @@ export interface ServiceDayState {
   device: DeviceHealth;
   deviceKey: string;
   deviceName: string;
+  /** Whether the fiscal service itself holds this day (false: opened by another tool, so it cannot be used). */
+  engineDayOpen: boolean | null;
 }
 
 export async function getServiceDayState(deviceKey?: string): Promise<ServiceDayState> {
@@ -30,6 +32,7 @@ export async function getServiceDayState(deviceKey?: string): Promise<ServiceDay
       status: "Unknown",
       deviceKey: target.key,
       deviceName: target.name,
+      engineDayOpen: eng?.dayOpen ?? null,
       device: { reachable: false, dayOpen: eng?.dayOpen ?? null, fiscalDayNo: eng?.fiscalDayNo ?? null, uploadBacklog: eng?.unsent ?? null, message },
     };
   }
@@ -43,6 +46,7 @@ export async function getServiceDayState(deviceKey?: string): Promise<ServiceDay
     status,
     deviceKey: target.key,
     deviceName: target.name,
+    engineDayOpen: eng ? eng.dayOpen : null,
     device: {
       reachable: true,
       dayOpen: isOpen,

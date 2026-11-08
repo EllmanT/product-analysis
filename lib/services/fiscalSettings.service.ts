@@ -59,6 +59,7 @@ export type FiscalSettingsSafe = {
   autoScheduleEnabled: boolean;
   autoCloseEnabled: boolean;
   autoOpenEnabled: boolean;
+  closeUnsentPolicy: "send_first" | "stop";
   closeTime: string;
   openTime: string;
   timezone: string;
@@ -141,6 +142,7 @@ function toSafe(doc: IFiscalSettingsDoc): FiscalSettingsSafe {
     autoScheduleEnabled: doc.autoScheduleEnabled,
     autoCloseEnabled: doc.autoCloseEnabled,
     autoOpenEnabled: doc.autoOpenEnabled,
+    closeUnsentPolicy: doc.closeUnsentPolicy === "stop" ? "stop" : "send_first",
     closeTime: doc.closeTime,
     openTime: doc.openTime,
     timezone: doc.timezone,
@@ -167,6 +169,7 @@ export async function patchFiscalSettings(
     autoScheduleEnabled: boolean;
     autoCloseEnabled: boolean;
     autoOpenEnabled: boolean;
+    closeUnsentPolicy: "send_first" | "stop";
     closeTime: string;
     openTime: string;
     timezone: string;
@@ -186,6 +189,7 @@ export async function patchFiscalSettings(
   if (input.autoScheduleEnabled !== undefined) set.autoScheduleEnabled = input.autoScheduleEnabled;
   if (input.autoCloseEnabled !== undefined) set.autoCloseEnabled = input.autoCloseEnabled;
   if (input.autoOpenEnabled !== undefined) set.autoOpenEnabled = input.autoOpenEnabled;
+  if (input.closeUnsentPolicy !== undefined) set.closeUnsentPolicy = input.closeUnsentPolicy;
   if (input.closeTime !== undefined) set.closeTime = input.closeTime;
   if (input.openTime !== undefined) set.openTime = input.openTime;
   if (input.timezone !== undefined) set.timezone = input.timezone;

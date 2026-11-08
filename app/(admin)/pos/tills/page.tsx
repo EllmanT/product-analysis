@@ -89,7 +89,7 @@ export default function TillsPage() {
                         <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground">{t.code}</span>
                         <span className="min-w-0 flex-1 truncate text-sm">{t.name}</span>
                         <Button size="sm" onClick={() => open(branch.id, t.id)}>
-                          Open
+                          Go to Till
                         </Button>
                       </li>
                     ))}
@@ -98,7 +98,7 @@ export default function TillsPage() {
                   <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm text-muted-foreground">
                     <span>No tills added yet.</span>
                     <Button size="sm" variant="outline" onClick={() => open(branch.id, null)}>
-                      Open anyway
+                      Go to Till
                     </Button>
                   </div>
                 )

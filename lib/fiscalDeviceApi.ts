@@ -26,6 +26,7 @@ export const deviceSchema = z.object({
   autoScheduleEnabled: z.boolean().optional(),
   autoCloseEnabled: z.boolean().optional(),
   autoOpenEnabled: z.boolean().optional(),
+  closeUnsentPolicy: z.enum(["send_first", "stop"]).optional(),
   closeTime: hhmm.optional(),
   openTime: hhmm.optional(),
   timezone: z.string().min(1).max(60).optional(),

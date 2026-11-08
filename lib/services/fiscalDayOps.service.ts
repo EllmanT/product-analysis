@@ -7,11 +7,14 @@ import FiscalDevice from "@/database/fiscalDevice.model";
 import { closeDay as serviceCloseDay, fiscalBackend, openDay as serviceOpenDay } from "@/lib/fiscal/client";
 import dbConnect from "@/lib/mongoose";
 import logger from "@/lib/logger";
-import { acquireCloseLock, raiseFence, releaseCloseLock } from "@/lib/services/fiscalDayControl.service";
+import { acquireCloseLock, lowerFence, raiseFence, releaseCloseLock } from "@/lib/services/fiscalDayControl.service";
+import { countUnsetAside, drainUnsentBeforeClose, getCloseUnsentPolicy, markSetAside } from "@/lib/services/fiscalCloseDrain.service";
+import { sendFiscalAlertOnce } from "@/lib/services/fiscalAlerts.service";
 import { CENTRAL_KEY, resolveDeviceByKey, resolveServiceDeviceId, saleDeviceFilter, type ResolvedDevice } from "@/lib/services/fiscalDevice.service";
 import { runPosQueue, todayInTz } from "@/lib/services/posSale.service";
 import { getDeviceUploadBacklog, getPosDeviceStatus } from "@/lib/services/zimraPosDevice.service";
 import { closeFiscalDay, openFiscalDay } from "@/lib/services/zimraFiscal.service";
+import { computeDayBreakdown } from "@/lib/services/zReportBreakdown.service";
 import { closeErrorFromMessage, closeErrorIsPermanent, type CloseErrorCode } from "@/lib/zimraDayStatus";
 import { extractZReportTotals } from "@/lib/zimraZReport";
 
@@ -142,6 +145,61 @@ async function recordAttempt(
 }
 
 /**
+ * Get a device ready to close: every sale without a fiscal receipt is dealt with, then the fence goes up.
+ *  - policy "send_first": waiting sales are sent one at a time first (see fiscalCloseDrain.service.ts). Sales that
+ *    arrive while the fence is going up are sent in another pass, up to three passes.
+ *  - policy "stop": the queue gets one ordinary run, and anything left refuses the close.
+ * Returns how many sales were still waiting (only non-zero for a forced close). Throws PendingPosSalesError when
+ * a normal close would strand sales.
+ */
+async function settleUnsentAndFence(
+  deviceKey: string,
+  owner: string,
+  opts: { forced: boolean; sendFirst: boolean; runQueueAfterFence: boolean }
+): Promise<number> {
+  let pending = 0;
+  for (let pass = 1; ; pass++) {
+    await runPosQueue(25, { deviceKey }).catch(() => undefined);
+    if (opts.sendFirst) await drainUnsentBeforeClose(deviceKey, owner);
+    pending = await countPendingPosSales(deviceKey);
+    if (!opts.forced && pending > 0) throw new PendingPosSalesError(pending);
+
+    await raiseFence(deviceKey, owner);
+    await waitForInFlightSales(deviceKey);
+    if (opts.runQueueAfterFence) await runPosQueue(25, { deviceKey }).catch(() => undefined);
+    pending = await countPendingPosSales(deviceKey);
+    if (pending === 0 || opts.forced) return pending;
+    if (!opts.sendFirst || pass >= 3) throw new PendingPosSalesError(pending);
+    await lowerFence(deviceKey, owner); // a sale arrived while the fence went up: send it too
+  }
+}
+
+/**
+ * Refused receipts (a validation error ZIMRA will never accept) cannot be fixed by sending again. With "send first"
+ * they are set aside for review instead of holding the day open. Returns how many were set aside.
+ */
+async function reviewGate(deviceKey: string, source: "manual" | "scheduled", forced: boolean, sendFirst: boolean): Promise<number> {
+  if (sendFirst) return countUnsetAside(deviceKey);
+  const review = await countSalesNeedingReview(deviceKey);
+  if (review > 0 && (source === "scheduled" || !forced)) throw new ReviewRequiredError(review);
+  return 0;
+}
+
+async function afterClosedSetAside(deviceKey: string, name: string, count: number): Promise<void> {
+  if (count <= 0) return;
+  await markSetAside(deviceKey).catch(() => undefined);
+  await sendFiscalAlertOnce(
+    `close-set-aside:${deviceKey}:${todayInTz()}`,
+    `${count} receipt${count === 1 ? " was" : "s were"} set aside when the day closed`,
+    `The fiscal day on "${name}" closed on schedule. ${count} receipt${count === 1 ? " was" : "s were"} refused by the fiscal device and could not be sent, so ${
+      count === 1 ? "it was" : "they were"
+    } set aside and ${count === 1 ? "is" : "are"} not in today's figures.
+
+Sending them again cannot fix this. Open Admin > POS sales, look at the refused receipt${count === 1 ? "" : "s"}, and issue ${count === 1 ? "it" : "them"} again with the right details.`
+  ).catch(() => undefined);
+}
+
+/**
  * FISCAL_BACKEND=service: close the day through the fiscal service. Same guards as the legacy close (one close at a
  * time, reviewed refusals, the app's own queue drained, a fence while it runs), but the device-level work (drain
  * what the service still holds, check the counters against ZIMRA, recover from close errors) is the service's.
@@ -156,22 +214,11 @@ async function closeViaService(source: "manual" | "scheduled", opts: { force?: b
   const startedAt = new Date();
   let pendingSeen = 0;
   try {
-    const review = await countSalesNeedingReview(deviceKey);
-    if (review > 0 && (source === "scheduled" || !forced)) throw new ReviewRequiredError(review);
+    const sendFirst = (await getCloseUnsentPolicy(deviceKey)) === "send_first";
+    const setAside = await reviewGate(deviceKey, source, forced, sendFirst);
 
-    // Send and collect everything the app still holds while tills keep selling.
-    await runPosQueue(25, { deviceKey }).catch(() => undefined);
-    if (!forced) {
-      pendingSeen = await countPendingPosSales(deviceKey);
-      if (pendingSeen > 0) throw new PendingPosSalesError(pendingSeen);
-    }
-    await raiseFence(deviceKey, owner);
-    await waitForInFlightSales(deviceKey);
-    await runPosQueue(25, { deviceKey }).catch(() => undefined);
-    if (!forced) {
-      pendingSeen = await countPendingPosSales(deviceKey);
-      if (pendingSeen > 0) throw new PendingPosSalesError(pendingSeen);
-    }
+    // Send and collect everything the app still holds while tills keep selling, then hold new receipts back.
+    pendingSeen = await settleUnsentAndFence(deviceKey, owner, { forced, sendFirst, runQueueAfterFence: true });
 
     let res: Awaited<ReturnType<typeof serviceCloseDay>>;
     try {
@@ -199,7 +246,12 @@ async function closeViaService(source: "manual" | "scheduled", opts: { force?: b
       fiscalDayNo: data.fiscalDayNo ?? null,
       totalSalesUsd: num("USD"),
       totalSalesZwg: num("ZWG"),
+      breakdown: await computeDayBreakdown(deviceKey, data.fiscalDayNo ?? null),
+      setAsideCount: setAside,
       rawCloseResponse: { source: "fiscal-service", ...data },
+    }).then(async (z: IZReportDoc) => {
+      await afterClosedSetAside(deviceKey, name, setAside);
+      return z;
     });
   } finally {
     await releaseCloseLock(deviceKey, owner).catch(() => undefined);
@@ -232,8 +284,8 @@ export async function closeFiscalDayWithReport(
   const startedAt = new Date();
   let pendingSeen = 0;
   try {
-    const review = await countSalesNeedingReview(deviceKey);
-    if (review > 0 && (source === "scheduled" || !forced)) throw new ReviewRequiredError(review);
+    const sendFirst = (await getCloseUnsentPolicy(deviceKey)) === "send_first";
+    const setAside = await reviewGate(deviceKey, source, forced, sendFirst);
 
     // Read the device first: a Red receipt cannot be retried away, and a close in progress must not be repeated.
     const before = await getPosDeviceStatus(device);
@@ -263,6 +315,7 @@ export async function closeFiscalDayWithReport(
           deviceName: device.name,
           deviceId: device.deviceId,
           fiscalDayNo: before.fiscalDayNo,
+          breakdown: await computeDayBreakdown(deviceKey, before.fiscalDayNo),
           totalSalesUsd: null,
           totalSalesZwg: null,
           rawCloseResponse: { note: "Closed by an earlier request that was still in progress" },
@@ -271,19 +324,10 @@ export async function closeFiscalDayWithReport(
       throw new FiscalCloseError(`The device is still processing an earlier close (${after}). It will not be sent again.`);
     }
 
-    // Drain the queue and reconcile UNKNOWN sales while tills are still selling normally.
-    await runPosQueue(25, { deviceKey }).catch(() => undefined);
+    // Drain the queue and reconcile UNKNOWN sales while tills are still selling normally, then hold new receipts
+    // back for the few seconds the close needs.
+    pendingSeen = await settleUnsentAndFence(deviceKey, owner, { forced, sendFirst, runQueueAfterFence: false });
     if (!forced) {
-      pendingSeen = await countPendingPosSales(deviceKey);
-      if (pendingSeen > 0) throw new PendingPosSalesError(pendingSeen);
-    }
-
-    // Nothing is waiting: hold new receipts back for the few seconds the close needs, then check again.
-    await raiseFence(deviceKey, owner);
-    await waitForInFlightSales(deviceKey);
-    if (!forced) {
-      pendingSeen = await countPendingPosSales(deviceKey);
-      if (pendingSeen > 0) throw new PendingPosSalesError(pendingSeen);
       await waitForDeviceUpload(device);
     } else {
       // A forced close still gives the device a chance to finish uploading first, but never blocks on it.
@@ -318,7 +362,12 @@ export async function closeFiscalDayWithReport(
       fiscalDayNo: t.fiscalDayNo,
       totalSalesUsd: t.usd,
       totalSalesZwg: t.zwg,
+      breakdown: await computeDayBreakdown(deviceKey, t.fiscalDayNo),
+      setAsideCount: setAside,
       rawCloseResponse: raw,
+    }).then(async (z: IZReportDoc) => {
+      await afterClosedSetAside(deviceKey, device.name, setAside);
+      return z;
     });
   } finally {
     await releaseCloseLock(deviceKey, owner).catch(() => undefined);

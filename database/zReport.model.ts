@@ -13,6 +13,10 @@ export interface IZReport {
   totalSalesUsd: number | null;
   totalSalesZwg: number | null;
   rawCloseResponse: unknown;
+  /** VAT breakdown per currency and rate, saved when the day closed (see lib/zReportBreakdown.ts). */
+  breakdown?: unknown;
+  /** Receipts set aside (refused by the device) when the day closed; they are not in the day's figures. */
+  setAsideCount?: number;
 }
 
 export interface IZReportDoc extends IZReport, Document {}
@@ -28,6 +32,8 @@ const ZReportSchema = new Schema<IZReport>(
     totalSalesUsd: { type: Number, default: null },
     totalSalesZwg: { type: Number, default: null },
     rawCloseResponse: { type: Schema.Types.Mixed },
+    breakdown: { type: Schema.Types.Mixed },
+    setAsideCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

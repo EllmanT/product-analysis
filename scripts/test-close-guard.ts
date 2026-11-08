@@ -48,6 +48,8 @@ const fake = {
   closeCalls: 0,
   /** When true SubmitReceipt answers with a validation refusal and stores nothing. */
   refuseSubmits: false,
+  /** When true the device does not answer at all (the connection is cut). */
+  down: false,
   server: undefined as http.Server | undefined,
 };
 const pad10 = (n: number) => String(n).padStart(10, "0");
@@ -93,6 +95,7 @@ function startFake(): Promise<void> {
           res.writeHead(s, { "Content-Type": "application/json" });
           res.end(JSON.stringify(o));
         };
+        if (fake.down) return void req.socket.destroy();
         const p = new URL(req.url ?? "/", "http://x").pathname;
         if (p.endsWith("/GetStatus")) return send(statusReply());
         if (p.endsWith("/OpenFiscalDay")) {
@@ -221,8 +224,9 @@ async function main() {
   await ops.closeFiscalDayWithReport("manual", {});
   await reopen();
 
-  // 4. A refused receipt is flagged and holds back the scheduled close
-  console.log("4. Refused receipt");
+  // 4. With the policy "stop", a refused receipt is flagged and holds back the scheduled close
+  console.log("4. Refused receipt (policy: stop)");
+  await FiscalSettings.updateOne({}, { $set: { closeUnsentPolicy: "stop" } });
   fake.refuseSubmits = true;
   const bad = await sell();
   fake.refuseSubmits = false;
@@ -237,6 +241,46 @@ async function main() {
   const z4 = await ops.closeFiscalDayWithReport("scheduled", {});
   check(!!z4 && fake.status === "FiscalDayClosed", "after review the close goes through");
   await reopen();
+  await FiscalSettings.updateOne({}, { $set: { closeUnsentPolicy: "send_first" } });
+
+  // 4b. With "send first" (the default) a refused receipt is set aside and the day still closes
+  console.log("4b. Refused receipt (policy: send first)");
+  fake.refuseSubmits = true;
+  const bad2 = await sell();
+  fake.refuseSubmits = false;
+  const z4b = await ops.closeFiscalDayWithReport("scheduled", {});
+  check(!!z4b && fake.status === "FiscalDayClosed", "the day closes although one receipt was refused");
+  check((z4b as unknown as { setAsideCount?: number }).setAsideCount === 1, "the Z-report says one receipt was set aside", (z4b as unknown as { setAsideCount?: number }).setAsideCount);
+  const bad2Doc = await PosSale.findById(bad2._id).lean<{ status: string; needsReview?: boolean; setAsideAt?: Date }>();
+  check(bad2Doc?.status === "FAILED" && bad2Doc.needsReview === true && !!bad2Doc.setAsideAt, "the receipt stays FAILED, flagged for review and marked set aside", bad2Doc);
+  await reopen();
+
+  // 4c. Sales saved while the device was down are sent at close, one at a time, and then the day closes
+  console.log("4c. Unfiscalised sales are sent at close");
+  fake.down = true;
+  const q1 = await sell();
+  const q2 = await sell();
+  fake.down = false;
+  check(q1.status !== "FISCALISED" && q2.status !== "FISCALISED", "both sales are saved without a fiscal receipt", [q1.status, q2.status]);
+  const z4c = await ops.closeFiscalDayWithReport("scheduled", {});
+  check(!!z4c && fake.status === "FiscalDayClosed", "the day closes by itself");
+  const left = await PosSale.countDocuments({ _id: { $in: [q1._id, q2._id] }, status: "FISCALISED" });
+  check(left === 2, "both sales were fiscalised before the close", left);
+  const bd = (z4c as unknown as { breakdown?: { currencies: { currency: string; receipts: number }[] } }).breakdown;
+  check(bd?.currencies?.[0]?.receipts === 2, "the Z-report breakdown counts them", bd);
+  await reopen();
+
+  // 4d. With "stop", the same situation refuses the close instead
+  console.log("4d. Unfiscalised sales (policy: stop)");
+  await pos.clearSaleReview(String(bad2._id));
+  await FiscalSettings.updateOne({}, { $set: { closeUnsentPolicy: "stop" } });
+  fake.down = true;
+  await sell();
+  fake.down = false;
+  const e4d = await ops.closeFiscalDayWithReport("scheduled", {}).then(() => null, (e) => e);
+  check(e4d instanceof ops.PendingPosSalesError || fake.status === "FiscalDayClosed", "a close is either refused or the queue had time to send it", e4d?.message);
+  await FiscalSettings.updateOne({}, { $set: { closeUnsentPolicy: "send_first" } });
+  if (fake.status !== "FiscalDayOpened") await reopen();
 
   // 5. CountersMismatch is read from the device, recorded, and does not stop selling
   console.log("5. Close refused: CountersMismatch");

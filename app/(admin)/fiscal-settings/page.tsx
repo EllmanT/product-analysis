@@ -49,6 +49,7 @@ function asDevice(s: FiscalSettingsSafe, branches: { id: string; name: string }[
     autoScheduleEnabled: s.autoScheduleEnabled,
     autoCloseEnabled: s.autoCloseEnabled,
     autoOpenEnabled: s.autoOpenEnabled,
+    closeUnsentPolicy: s.closeUnsentPolicy,
     closeTime: s.closeTime,
     openTime: s.openTime,
     timezone: s.timezone,

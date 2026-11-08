@@ -1,5 +1,6 @@
 "use client";
 
+import { Printer } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -96,7 +97,7 @@ export default function ZReportsPage() {
             Refresh
           </Button>
           <Button asChild className="bg-slate-900 text-white hover:bg-slate-800">
-            <Link href="/z-reports/print-all" target="_blank">
+            <Link href={`/z-reports/print-all${deviceKey ? `?deviceKey=${encodeURIComponent(deviceKey)}` : ""}`} target="_blank">
               Print all
             </Link>
           </Button>
@@ -203,9 +204,9 @@ export default function ZReportsPage() {
                     <Link
                       href={`/z-reports/${r._id}/print`}
                       target="_blank"
-                      className="text-emerald-700 underline hover:text-emerald-900"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium text-slate-800 transition-colors hover:bg-slate-50"
                     >
-                      Print
+                      <Printer className="size-3.5" aria-hidden /> View and print
                     </Link>
                   </td>
                 </tr>

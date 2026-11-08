@@ -2,14 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "path": "/api/cron/pos-queue",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/fiscal-schedule",
-      "schedule": "* * * * *"
-    },
-    {
       "path": "/api/cron/cert-expiry",
       "schedule": "0 6 * * *"
     }

@@ -2,6 +2,8 @@
 
 Written 2026-11-08. Goal: StockFlow (Vercel) and the fiscal service (always-on host) both live, so the client can run their own tests against the **ZIMRA test environment**. Nothing here points at live ZIMRA. Names only, never values: keep real values in the host dashboards and a password manager.
 
+**Chosen hosting for testing: Vercel Hobby (app) + Render free (fiscal service) + Atlas M0, all free tiers.** Follow `docs/DEPLOY_RENDER_VERCEL.md` for the step-by-step; this file is the full list of what must be true. Blank variable files to copy into the hosts: `docs/env/app.production.env.template` (Vercel) and `docs/env/fiscal-service.production.env.template` (Render). Free-tier changes to the sections below: `vercel.json` now holds only the daily `cert-expiry` cron (Hobby rejects per-minute crons), so the `pos-queue` and `fiscal-schedule` jobs run from cron-job.org every minute; Render free sleeps after 15 minutes idle, so an uptime monitor pings `/health` every 5 minutes.
+
 ## 0. Architecture in one picture
 
 ```

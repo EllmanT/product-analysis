@@ -835,7 +835,13 @@ async function runQueueForDevice(deviceKey: string, limit: number): Promise<PosQ
     // The service delivers by itself; here we only collect what it has accepted and send what never reached it.
     const out: PosQueueDeviceResult = { key: deviceKey, name: deviceKey, reachable: false, dayOpen: null, attempted: 0, fiscalised: 0, stillPending: 0 };
     try {
-      const st = await engineStatus(await resolveServiceDeviceId(deviceKey));
+      let st = await engineStatus(await resolveServiceDeviceId(deviceKey));
+      // Sales are waiting but the fiscal day is closed: open it (if this device is set to) so nobody has to. The
+      // fiscal service's own schedule only opens at the device's opening time, which can be many hours away.
+      if (!st.dayOpen && (await pendingCount()) > 0) {
+        const { openDayForWaitingSales } = await import("@/lib/services/fiscalSchedule.service");
+        if (await openDayForWaitingSales(deviceKey)) st = await engineStatus(await resolveServiceDeviceId(deviceKey));
+      }
       out.reachable = true;
       out.dayOpen = st.dayOpen;
       if (st.paused) out.message = `Paused: ${st.paused}`;

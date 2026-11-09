@@ -4,6 +4,7 @@ import { fiscalBackend } from "@/lib/fiscal/client";
 
 import {
   CENTRAL_KEY,
+  getCentralDeviceId,
   listScheduledDevices,
   resolveDeviceByKey,
   setDeviceLastAutoCloseDate,
@@ -268,12 +269,16 @@ It keeps retrying every minute and will be forced after ${CLOSE_DEFER_MAX_MIN} m
  * its opening time. Returns true when it opened the day. Never throws.
  */
 export async function openDayForWaitingSales(deviceKey: string, now = correctedNow()): Promise<boolean> {
-  if (fiscalBackend() === "service") return false;
   try {
+    // With the fiscal service the central device is the FiscalDevice an admin chose, and its schedule lives on that
+    // record; the central settings row only describes a legacy Virtual Device.
+    const service = fiscalBackend() === "service";
+    const centralId = service && deviceKey === CENTRAL_KEY ? await getCentralDeviceId() : null;
+    const scheduleKey = centralId ?? deviceKey;
     const doc: ScheduleState | undefined =
-      deviceKey === CENTRAL_KEY
+      deviceKey === CENTRAL_KEY && !service
         ? await getFiscalSettingsDoc()
-        : (await listScheduledDevices()).find((x) => String(x._id) === deviceKey);
+        : (await listScheduledDevices()).find((x) => String(x._id) === scheduleKey);
     if (!doc || !doc.autoScheduleEnabled || !doc.autoOpenEnabled) return false;
 
     const tz = doc.timezone?.trim() || "Africa/Harare";
@@ -285,8 +290,8 @@ export async function openDayForWaitingSales(deviceKey: string, now = correctedN
     if (toMinutes(hm) < toMinutes(doc.openTime || "00:05")) return false;
 
     await openFiscalDayOnly(deviceKey);
-    if (deviceKey === CENTRAL_KEY) await setLastAutoOpenDate(today);
-    else await setDeviceLastAutoOpenDate(deviceKey, today);
+    if (deviceKey === CENTRAL_KEY && !service) await setLastAutoOpenDate(today);
+    else await setDeviceLastAutoOpenDate(scheduleKey, today);
     return true;
   } catch {
     // Not opening is the normal "device is not ready" outcome; the queue tries again on its next run.

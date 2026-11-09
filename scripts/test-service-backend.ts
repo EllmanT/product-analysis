@@ -312,6 +312,24 @@ async function main() {
   const health = await getServiceDeviceHealth(String(appDevice._id)).catch((e) => ({ reachable: false, message: String(e) }));
   check(typeof health.reachable === "boolean", "the till's device status comes from the fiscal service, not a Virtual Device", health);
 
+  console.log("10. Sales waiting while the day is closed open the day by themselves (and only if the device allows it)");
+  await ops.closeFiscalDayWithReport("manual", { deviceKey: String(appDevice._id), force: true });
+  check((await (await manager.get(serviceId)).status()).dayOpen === false, "setup: the day is closed");
+  const w = await pos.fiscalisePosSale(String((await sell(bid, 7))._id), { reason: "till" });
+  check(w.status === "UNFISCALISED", "a sale made while the day is closed waits", { s: w.status, e: w.lastError });
+  await FiscalDevice.updateOne({ _id: appDevice._id }, { $set: { autoScheduleEnabled: true, autoOpenEnabled: false, openTime: "00:00", timezone: "Africa/Harare" } });
+  await pos.runPosQueue(25, { deviceKey: String(appDevice._id) });
+  check((await (await manager.get(serviceId)).status()).dayOpen === false, "automatic opening switched off: the queue leaves the day closed");
+  await FiscalDevice.updateOne({ _id: appDevice._id }, { $set: { autoOpenEnabled: true } });
+  let done10 = false;
+  for (let i = 0; i < 40 && !done10; i++) {
+    await pos.runPosQueue(25, { deviceKey: String(appDevice._id) });
+    done10 = (await PosSale.findById(w._id))?.status === "FISCALISED";
+    if (!done10) await sleep(250);
+  }
+  check((await (await manager.get(serviceId)).status()).dayOpen === true, "automatic opening on: the queue opened the day");
+  check(done10, "and the waiting sale was then fiscalised", { s: (await PosSale.findById(w._id))?.status, e: (await PosSale.findById(w._id))?.lastError });
+
   await manager.shutdown();
   await new Promise<void>((r) => server.close(() => r()));
   await gw.stop();

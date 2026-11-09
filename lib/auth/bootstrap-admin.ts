@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { timingSafeEqual } from "crypto";
 
 import Account from "@/database/account.model";
+import Store from "@/database/store.model";
 import User from "@/database/user.model";
 
 /**
@@ -74,4 +75,30 @@ export async function provisionBootstrapAdmin(
     password: await bcrypt.hash(seed, 12),
   });
   return true;
+}
+
+/**
+ * The dashboard and most staff pages need the admin to belong to a store (the normal sign-up creates
+ * one). A bootstrap admin has none, so give them one the first time they sign in, and repair
+ * accounts created before this existed. Only touches bootstrap admins who have no store yet.
+ */
+export async function ensureBootstrapAdminStore(user: {
+  _id: unknown;
+  email: string;
+  storeId?: unknown;
+}): Promise<void> {
+  if (user.storeId) return;
+  if (!getBootstrapAdminEmailSet().has(user.email.trim().toLowerCase())) return;
+
+  const existing = await Store.findOne({ userId: user._id });
+  const store =
+    existing ??
+    (await Store.create({
+      name: (process.env.BOOTSTRAP_STORE_NAME ?? "").trim() || "My Store",
+      userId: user._id,
+    }));
+  await User.updateOne(
+    { _id: user._id, storeId: { $exists: false } },
+    { $set: { storeId: store._id, role: "admin" } }
+  );
 }

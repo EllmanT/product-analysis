@@ -4,7 +4,7 @@ import Account from "@/database/account.model";
 import User from "@/database/user.model";
 import dbConnect from "@/lib/mongoose";
 
-import { provisionBootstrapAdmin } from "./bootstrap-admin";
+import { ensureBootstrapAdminStore, provisionBootstrapAdmin } from "./bootstrap-admin";
 import { DetailedCredentialsSignin } from "./credentials-signin-error";
 import { normalizeRole } from "./role";
 
@@ -62,6 +62,9 @@ export async function authorizeCredentialsOrThrow(
       "invalid_password"
     );
   }
+
+  // A bootstrap admin needs a store for the dashboard to open; create it now (and repair older accounts).
+  await ensureBootstrapAdminStore(existingUser);
 
   // Users with an email/password account are provisioned by an administrator (Users screen) or by
   // the allow-listed self sign-up, so the stored role decides what they can do. The allow-list is

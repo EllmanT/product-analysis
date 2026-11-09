@@ -4,6 +4,7 @@ import Account from "@/database/account.model";
 import User from "@/database/user.model";
 import dbConnect from "@/lib/mongoose";
 
+import { provisionBootstrapAdmin } from "./bootstrap-admin";
 import { DetailedCredentialsSignin } from "./credentials-signin-error";
 import { normalizeRole } from "./role";
 
@@ -21,6 +22,9 @@ export async function authorizeCredentialsOrThrow(
   password: string
 ) {
   await dbConnect();
+  // Fresh deployment: a bootstrap admin signing in with the env password gets their account created.
+  await provisionBootstrapAdmin(email, password);
+
   const emailTrimmed = email.trim();
   const emailRegex = new RegExp(`^${escapeForEmailRegex(emailTrimmed)}$`, "i");
   const existingUser = await User.findOne({ email: emailRegex });

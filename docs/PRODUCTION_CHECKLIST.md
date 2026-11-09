@@ -50,6 +50,7 @@ Browser ──► Vercel (Next.js app, 3 cron jobs) ──HTTPS + bearer token�
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | **Production** Clerk instance keys (`pk_live_`/`sk_live_`), not the dev instance. `proxy.ts` wraps everything in Clerk. Add your domain in the Clerk dashboard |
 | `CRON_SECRET` | Random secret. Vercel sends it as `Authorization: Bearer …` to the three cron routes; without it they answer 503 and nothing retries or opens/closes days |
 | `BOOTSTRAP_ADMIN_EMAILS` | Comma list of super-admin emails. **If left empty, every admin counts as a super admin** |
+| `BOOTSTRAP_ADMIN_PASSWORD` | First-login password for those emails. Their admin account is created on first sign-in with it; it never overwrites an existing password. Change it in the app, then delete this variable |
 | `STAFF_ALLOWED_EMAILS` | Comma list allowed to self-register and sign in with OAuth |
 | `FISCAL_ENCRYPTION_KEY` | Base64 of 32 random bytes (app-side secret box). Different from the service's key |
 | `NEXT_PUBLIC_SITE_URL`, `SITE_URL`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_API_BASE_URL` | All the app's public URL, `https://app.<domain>` (used in emails, PDFs, links, API calls) |
@@ -151,7 +152,7 @@ Steps (host-independent):
 ## 7. Smoke test after deploy (do this before the client sees it)
 
 - [ ] Open the app URL: sign-in page loads, no console errors.
-- [ ] Sign in with an email in `BOOTSTRAP_ADMIN_EMAILS`. Create the first admin first if the database is empty (see `docs/LIVE_DB_RESET.md` for fresh-database setup and `docs/TEST_USERS.md` for roles).
+- [ ] Sign in with an email in `BOOTSTRAP_ADMIN_EMAILS` and `BOOTSTRAP_ADMIN_PASSWORD` (creates the first admin on an empty database; see `docs/LIVE_DB_RESET.md` for fresh-database setup and `docs/TEST_USERS.md` for roles).
 - [ ] In Vercel > Cron Jobs, press "Run" on `pos-queue` and `fiscal-schedule`: both return `success: true`, not 401/503.
 - [ ] Settings > company profile: client's legal name, TIN, VAT number, address are right.
 - [ ] Create a branch, a till, and a cashier. Sign in as the cashier on the till.

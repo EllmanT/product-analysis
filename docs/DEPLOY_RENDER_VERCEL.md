@@ -89,7 +89,7 @@ Why not a second repo: the fiscal service has no code shared with the app (check
    - `MONGODB_URI` (the `stockflow` URI), `MONGO_DB_NAME` = `stockflow`
    - `AUTH_SECRET`, `CRON_SECRET`
    - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
-   - `BOOTSTRAP_ADMIN_EMAILS`, `STAFF_ALLOWED_EMAILS` (your email, and the client's admin email)
+   - `BOOTSTRAP_ADMIN_EMAILS`, `BOOTSTRAP_ADMIN_PASSWORD`, `STAFF_ALLOWED_EMAILS` (your email, and the client's admin email; the password is the first-login password for the bootstrap emails)
    - `FISCAL_BACKEND` = `service`, `FISCAL_SERVICE_URL` = `https://stockflow-fiscal.onrender.com`, `FISCAL_SERVICE_TOKEN` = same as Render, `FISCAL_ENCRYPTION_KEY` = the **app** key
    - `POS_TIMEZONE` = `Africa/Harare`
    - `SMTP_*`, `ADMIN_EMAIL`, `INVOICE_COMPANY_*`, `INVOICE_DEFAULT_*`
@@ -103,7 +103,7 @@ Why not a second repo: the fiscal service has no code shared with the app (check
 
 ## 4. First sign-in and first device
 
-1. Open the Vercel address and sign in with an email in `BOOTSTRAP_ADMIN_EMAILS` (register first if the database is empty).
+1. Open the Vercel address and sign in with an email in `BOOTSTRAP_ADMIN_EMAILS` and the `BOOTSTRAP_ADMIN_PASSWORD` value (the account is created on that first sign-in; then change the password and remove the variable).
 2. Settings: set the company profile (legal name, TIN, VAT number, address).
 3. Create a branch, then a till, then a cashier.
 4. Fiscal devices > **Add device** with a ZIMRA **test** certificate zip. Only use a device whose day is `FiscalDayClosed` (probe it read-only first, see `docs/FISCAL_RUNBOOK.md` section 3). The wizard sends the certificate to Render and verifies it. **Make central** if it is the shop device.

@@ -330,6 +330,33 @@ async function main() {
   check((await (await manager.get(serviceId)).status()).dayOpen === true, "automatic opening on: the queue opened the day");
   check(done10, "and the waiting sale was then fiscalised", { s: (await PosSale.findById(w._id))?.status, e: (await PosSale.findById(w._id))?.lastError });
 
+  console.log("11. Fully manual: no cron, no automatic open or close. Sales while closed, Open day, more sales, Close day");
+  await FiscalDevice.updateOne({ _id: appDevice._id }, { $set: { autoScheduleEnabled: false, autoOpenEnabled: false, autoCloseEnabled: false } });
+  await ops.closeFiscalDayWithReport("manual", { deviceKey: String(appDevice._id), force: true });
+  check((await (await manager.get(serviceId)).status()).dayOpen === false, "setup: the day is closed");
+  const closedSale = await pos.fiscalisePosSale(String((await sell(bid, 11))._id), { reason: "till" });
+  check(closedSale.status === "UNFISCALISED", "a sale made while the day is closed waits", { s: closedSale.status, e: closedSale.lastError });
+  await sleep(300);
+  check((await PosSale.findById(closedSale._id))?.status === "UNFISCALISED", "and stays waiting: nothing else is running to send it");
+  await ops.openFiscalDayOnly(String(appDevice._id));
+  check((await (await manager.get(serviceId)).status()).dayOpen === true, "Open day opens the day");
+  await sleep(1200);
+  const openSale = await pos.fiscalisePosSale(String((await sell(bid, 12))._id), { reason: "till" });
+  check(openSale.status === "FISCALISED", "a sale made while the day is open is fiscalised at once", { s: openSale.status, e: openSale.lastError });
+  const beforeClose = await PosSale.findById(closedSale._id);
+  check(beforeClose?.status === "UNFISCALISED", "the earlier sale is still waiting just before the close", beforeClose?.status);
+  let closeErr = "";
+  let z11: Awaited<ReturnType<typeof ops.closeFiscalDayWithReport>> | null = null;
+  try {
+    z11 = await ops.closeFiscalDayWithReport("manual", { deviceKey: String(appDevice._id) });
+  } catch (e) {
+    closeErr = e instanceof Error ? e.message : String(e);
+  }
+  check(!!z11 && !closeErr, "Close day (not forced) succeeds", closeErr);
+  const afterClose = await PosSale.findById(closedSale._id);
+  check(afterClose?.status === "FISCALISED" && !!afterClose.fiscal?.receiptGlobalNo, "closing the day sent the waiting sale and it is FISCALISED", { s: afterClose?.status, e: afterClose?.lastError });
+  check((await (await manager.get(serviceId)).status()).dayOpen === false, "and the day is closed");
+
   await manager.shutdown();
   await new Promise<void>((r) => server.close(() => r()));
   await gw.stop();

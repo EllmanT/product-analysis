@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
-import { Branch, Store } from "@/database";
+import { Branch } from "@/database";
+import { getUserStoreId } from "@/lib/auth/admin-store";
 import { requirePermission } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import { NextResponse } from "next/server";
@@ -17,8 +18,8 @@ export async function DELETE(
   }
 
   await dbConnect();
-  const [store] = await Store.find({ userId: session!.user.id });
-  if (!store) {
+  const storeId = await getUserStoreId(session!.user.id);
+  if (!storeId) {
     return NextResponse.json({ success: false }, { status: 404 });
   }
 
@@ -27,7 +28,7 @@ export async function DELETE(
     return NextResponse.json({ success: false }, { status: 404 });
   }
 
-  if (String(branch.storeId) !== String(store._id)) {
+  if (String(branch.storeId) !== storeId) {
     return NextResponse.json({ success: false }, { status: 403 });
   }
 

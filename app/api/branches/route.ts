@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
-import { Branch, Store } from "@/database";
+import { Branch } from "@/database";
 import { getBranchesByStore } from "@/lib/actions/branch.action";
 import { getUser } from "@/lib/actions/user.action";
+import { resolveAdminStore } from "@/lib/auth/admin-store";
 import { requirePermission, requireAuth, normalizeRole } from "@/lib/auth/role";
 import dbConnect from "@/lib/mongoose";
 import { AddBranchSchema } from "@/lib/validations";
@@ -11,6 +12,11 @@ export async function GET() {
   const unauth = requireAuth(session);
   if (unauth) return unauth;
 
+  if (normalizeRole(session!.user.role) === "admin") {
+    // Link the admin to their store and gather branches made under another store they own.
+    await resolveAdminStore(session!.user.id);
+  }
+
   const { success, data } = await getUser({ userId: session!.user.id });
   if (!success || !data?.user.storeId) {
     return NextResponse.json({ success: false }, { status: 404 });
@@ -19,9 +25,12 @@ export async function GET() {
   const role = normalizeRole(data.user.role);
 
   if (role === "admin") {
-    const { data: newData } = await getBranchesByStore({
+    const { success: listed, data: newData } = await getBranchesByStore({
       storeId: String(data.user.storeId),
     });
+    if (!listed || !newData) {
+      return NextResponse.json({ success: false }, { status: 500 });
+    }
     return NextResponse.json({ success: true, data: newData }, { status: 200 });
   }
 
@@ -65,21 +74,18 @@ export async function POST(request: Request) {
   }
 
   await dbConnect();
-  const userId = session!.user.id;
-  const [store] = await Store.find({ userId });
-  if (!store) {
+  const storeId = await resolveAdminStore(session!.user.id);
+  if (!storeId) {
     return NextResponse.json({ success: false }, { status: 404 });
   }
 
   const { name, location } = parsed.data;
-  const existingBranch = await Branch.findOne({ name, location });
+  const existingBranch = await Branch.findOne({ name, location, storeId });
   if (existingBranch) {
-    return NextResponse.json({ success: false }, { status: 500 });
+    return NextResponse.json({ success: false }, { status: 409 });
   }
 
-  const [newBranch] = await Branch.create([
-    { name, location, storeId: store._id },
-  ]);
+  const [newBranch] = await Branch.create([{ name, location, storeId }]);
 
   return NextResponse.json(
     { success: true, data: JSON.parse(JSON.stringify(newBranch)) },

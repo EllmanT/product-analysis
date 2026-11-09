@@ -98,7 +98,7 @@ export async function ensureBootstrapAdminStore(user: {
       userId: user._id,
     }));
   await User.updateOne(
-    { _id: user._id, storeId: { $exists: false } },
+    { _id: user._id, $or: [{ storeId: null }, { storeId: { $exists: false } }] },
     { $set: { storeId: store._id, role: "admin" } }
   );
 }

@@ -181,10 +181,16 @@ export default function AddBranchWizard({ onCreated }: { onCreated: () => void }
     try {
       let id = branchId;
       if (!id) {
-        const created = await addBranch({ name: form.name.trim(), location: form.location.trim() });
-        const data = created.success ? (created.data as unknown as { _id?: string } | undefined) : undefined;
-        if (!created.success || !data?._id) {
-          setError("Could not create the branch. A branch with the same name and location may already exist.");
+        let created: Awaited<ReturnType<typeof addBranch>> | null = null;
+        try {
+          created = await addBranch({ name: form.name.trim(), location: form.location.trim() });
+        } catch {
+          created = null;
+        }
+        const data = created?.success ? (created.data as unknown as { _id?: string } | undefined) : undefined;
+        if (!created?.success || !data?._id) {
+          const reason = created && !created.success ? created.error?.message : undefined;
+          setError(reason ?? "Could not create the branch. A branch with the same name and location may already exist.");
           setStep(0);
           return;
         }

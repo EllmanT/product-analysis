@@ -8,7 +8,8 @@ import Branch from "@/database/branch.model";
 import User from "@/database/user.model";
 import { escapeForEmailRegex } from "@/lib/auth/authenticate-credentials";
 import { delegatedCreateRules } from "@/lib/auth/delegated-users";
-import { requirePermission } from "@/lib/auth/role";
+import { resolveAdminStore } from "@/lib/auth/admin-store";
+import { normalizeRole, requirePermission } from "@/lib/auth/role";
 import handleError from "@/lib/handlers/error";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/http-errors";
 import dbConnect from "@/lib/mongoose";
@@ -48,8 +49,15 @@ export async function createManagedUser(params: CreateManagedUserParams): Promis
 
     await dbConnect();
 
-    const admin = await User.findById(session!.user.id).select("storeId").lean();
-    const adminStoreId = admin && !Array.isArray(admin) && admin.storeId ? String(admin.storeId) : null;
+    const isAdmin = normalizeRole(session!.user.role) === "admin";
+    let adminStoreId: string | null;
+    if (isAdmin) {
+      // Also repairs an admin with no linked store and branches left under another store they own.
+      adminStoreId = await resolveAdminStore(session!.user.id);
+    } else {
+      const me = await User.findById(session!.user.id).select("storeId").lean();
+      adminStoreId = me && !Array.isArray(me) && me.storeId ? String(me.storeId) : null;
+    }
     if (!adminStoreId) throw new NotFoundError("Your account is not linked to a store.");
 
     let branchObjectId: string | undefined;

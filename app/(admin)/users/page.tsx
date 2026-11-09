@@ -1,6 +1,8 @@
 "use client"
 
 import { DataTable } from "@/components/data-table/index";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { buildColumnAllUsers } from "@/components/data-table/columns/columnAllUsers";
 import { AddUserDialog } from "@/components/users/AddUserDialog";
@@ -9,6 +11,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 export default  function Page() {
 const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [branchesFailed, setBranchesFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
     const [users, setUsers] = useState<User[]>([])
 
   const loadUsers = useCallback(async () => {
@@ -24,14 +28,22 @@ const [branches, setBranches] = useState<Branch[]>([]);
 
   const loadBranches = useCallback(async () => {
     try {
-      const res = await fetch("/api/branches");
+      const res = await fetch("/api/branches", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to fetch branches");
       const { data } = await res.json();
       setBranches(data.branches ?? []);
+      setBranchesFailed(false);
     } catch (err) {
       console.error(err);
+      setBranchesFailed(true);
     }
   }, []);
+
+  async function retryBranches() {
+    setRetrying(true);
+    await loadBranches();
+    setRetrying(false);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +83,19 @@ const [branches, setBranches] = useState<Branch[]>([]);
     <AddUserDialog branches={branches} onCreated={loadUsers} />
 
 </section>
+
+      {branchesFailed ? (
+        <div role="alert" className="mx-6 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
+          <span>We could not load your branches, so you cannot pick one for a new user yet.</span>
+          <Button variant="outline" size="sm" onClick={() => void retryBranches()} disabled={retrying}>
+            {retrying ? "Trying…" : "Try again"}
+          </Button>
+        </div>
+      ) : branches.length === 0 ? (
+        <p className="mx-6 mt-3 rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          There are no branches in your store yet. <Link href="/branches" className="underline underline-offset-4">Add a branch</Link> first, then come back to add its users.
+        </p>
+      ) : null}
 
       <p className="mx-6 mt-3 text-sm text-muted-foreground">
         Changing a user&apos;s role applies after they sign out and sign back in.

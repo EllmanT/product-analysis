@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
-import { requirePermission } from "@/lib/auth/role";
+import { resolveAdminStore } from "@/lib/auth/admin-store";
+import { normalizeRole, requirePermission } from "@/lib/auth/role";
 import { getUser, getUsers } from "@/lib/actions/user.action";
 import { managerBranchId } from "@/lib/auth/delegated-users";
 import { NextResponse } from "next/server";
@@ -12,6 +13,8 @@ export async function GET() {
   const userId = session!.user.id;
 
 console.log("her now 23")
+
+  if (normalizeRole(session!.user.role) === "admin") await resolveAdminStore(userId);
 
   const { success, data } = await getUser({ userId });
   if (!success || !data?.user.storeId) {

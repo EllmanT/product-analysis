@@ -1,6 +1,7 @@
 "use server"
 
-import { Branch, Store } from "@/database"
+import { Branch } from "@/database"
+import { resolveAdminStore } from "@/lib/auth/admin-store"
 import { normalizeRole } from "@/lib/auth/role"
 import action from "../handlers/action"
 import handleError from "../handlers/error"
@@ -31,23 +32,26 @@ params:CreateBranchParams
       return { success: false, status: 403 } as ActionResponse<IBranchDoc>;
     }
 
-    const [store] = await Store.find({userId})
+    // The store on the admin's own record, so the branch shows up wherever branches are listed by store.
+    const storeId = await resolveAdminStore(userId);
 
-    if(!store) throw new Error("No access to create branch");
+    if(!storeId) {
+      return handleError(new Error("Your account is not linked to a store, so a branch cannot be added. Ask support to link it.")) as ErrorResponse;
+    }
 
     const session = await mongoose.startSession()
   session.startTransaction();
 
     try {
 
-        const existingBranch = await Branch.findOne({name, location})
+        const existingBranch = await Branch.findOne({name, location, storeId})
 
         if(existingBranch) return {success:false , status:500}
 
             const [newBranch]= await Branch.create([{
                 name:name,
                 location:location,
-                storeId:store._id,
+                storeId:storeId,
             }],{session})
       await session.commitTransaction()  
       return {success:true,
